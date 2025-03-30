@@ -1,0 +1,614 @@
+{
+  "current_region_id": "town",
+  "current_room_id": "town_square",
+  "player": {
+    "name": "Adventurer",
+    "inventory": {
+      "max_slots": 20,
+      "max_weight": 100.0,
+      "slots": [
+        {
+          "item": {
+            "type": "Weapon",
+            "item_id": "item_starter_dagger",
+            "name": "Rusty Dagger",
+            "description": "A simple dagger with a rusty blade, but it's better than nothing.",
+            "weight": 1.0,
+            "value": 5,
+            "stackable": false,
+            "properties": {
+              "damage": 3,
+              "durability": 20,
+              "max_durability": 20
+            }
+          },
+          "quantity": 1
+        },
+        {
+          "item": {
+            "type": "Consumable",
+            "item_id": "item_healing_potion_small",
+            "name": "Small Healing Potion",
+            "description": "A small vial containing a red liquid that can heal minor wounds.",
+            "weight": 0.5,
+            "value": 10,
+            "stackable": true,
+            "properties": {
+              "uses": 1,
+              "max_uses": 1,
+              "effect_value": 15,
+              "effect_type": "heal"
+            }
+          },
+          "quantity": 2
+        },
+        {
+          "item": {
+            "type": "Key",
+            "item_id": "item_tavern_cellar_key",
+            "name": "Tavern Cellar Key",
+            "description": "A small iron key that opens the cellar of the Drunken Dragon tavern.",
+            "weight": 0.1,
+            "value": 0,
+            "stackable": false,
+            "properties": {
+              "target_id": "tavern_cellar_door"
+            }
+          },
+          "quantity": 1
+        },
+        {
+          "item": null,
+          "quantity": 0
+        }
+      ]
+    },
+    "health": 100,
+    "max_health": 100,
+    "stats": {
+      "strength": 10,
+      "dexterity": 10,
+      "intelligence": 10
+    },
+    "level": 1,
+    "experience": 0,
+    "experience_to_level": 100,
+    "skills": {
+      "swordsmanship": 1
+    },
+    "effects": [],
+    "quest_log": {
+      "missing_supplies": "started"
+    }
+  },
+  "regions": {
+    "town": {
+      "name": "Riverside Village",
+      "description": "A peaceful village nestled by the Silver River. The buildings are made of sturdy timber with thatched roofs, and the villagers are known for their hospitality.",
+      "rooms": {
+        "town_square": {
+          "name": "Town Square",
+          "description": "The heart of Riverside Village. A large fountain sits in the center of the cobblestone square. Villagers come and go, some stopping to chat with their neighbors. Shops line the perimeter, and you can hear the distant sound of flowing water from the river.",
+          "exits": {
+            "north": "tavern",
+            "east": "market",
+            "south": "river_road",
+            "west": "blacksmith"
+          },
+          "items": [
+            {
+              "type": "Item",
+              "item_id": "item_town_notice",
+              "name": "Town Notice",
+              "description": "A notice posted on the town bulletin board. It reads: 'MISSING: Supplies from the last merchant caravan. Anyone with information please speak to the Town Elder.'",
+              "weight": 0.1,
+              "value": 0,
+              "stackable": false,
+              "properties": {}
+            }
+          ],
+          "visited": true,
+          "properties": {}
+        },
+        "tavern": {
+          "name": "The Drunken Dragon Tavern",
+          "description": "A warm, inviting tavern with a large hearth at one end. The smell of roasting meat and fresh bread fills the air. Patrons sit at wooden tables, drinking ale and sharing stories. A staircase leads up to the guest rooms, and you notice a locked door behind the bar.",
+          "exits": {
+            "south": "town_square",
+            "up": "tavern_rooms"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {
+            "noisy": true
+          }
+        },
+        "tavern_rooms": {
+          "name": "Tavern Upper Floor",
+          "description": "A narrow hallway with several doors leading to guest rooms. The floor creaks underfoot, and you can hear the muffled sounds of conversation from below.",
+          "exits": {
+            "down": "tavern"
+          },
+          "items": [
+            {
+              "type": "Item",
+              "item_id": "item_traveler_journal",
+              "name": "Traveler's Journal",
+              "description": "A leather-bound journal with entries from a merchant who passed through the village. The last entry mentions strange noises in the forest at night and missing supplies.",
+              "weight": 0.5,
+              "value": 5,
+              "stackable": false,
+              "properties": {}
+            }
+          ],
+          "visited": false,
+          "properties": {}
+        },
+        "market": {
+          "name": "Village Market",
+          "description": "The busy market area where villagers trade goods. Stalls sell everything from fresh produce to handcrafted goods. The air is filled with the shouts of merchants and the scent of spices.",
+          "exits": {
+            "west": "town_square",
+            "north": "general_store"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "general_store": {
+          "name": "General Store",
+          "description": "A well-stocked shop with goods of all kinds. Shelves line the walls, filled with tools, preserved foods, clothing, and sundries. The shopkeeper keeps a careful eye on all the merchandise.",
+          "exits": {
+            "south": "market"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "blacksmith": {
+          "name": "Blacksmith's Forge",
+          "description": "The heat from the forge hits you as you enter. The rhythmic sound of hammer on anvil rings through the air. Weapons and tools hang on the walls, and the blacksmith works tirelessly at their craft.",
+          "exits": {
+            "east": "town_square"
+          },
+          "items": [
+            {
+              "type": "Weapon",
+              "item_id": "item_iron_sword",
+              "name": "Iron Sword",
+              "description": "A well-crafted iron sword with a leather-wrapped hilt. The blade is sharp and balanced.",
+              "weight": 3.0,
+              "value": 50,
+              "stackable": false,
+              "properties": {
+                "damage": 8,
+                "durability": 50,
+                "max_durability": 50
+              }
+            }
+          ],
+          "visited": false,
+          "properties": {
+            "noisy": true,
+            "smell": "smoky"
+          }
+        },
+        "river_road": {
+          "name": "River Road",
+          "description": "A wide dirt road that runs parallel to the Silver River. The sound of flowing water is louder here, and you can see boats moving along the river. Trees provide shade along the path.",
+          "exits": {
+            "north": "town_square",
+            "south": "riverside",
+            "east": "forest:forest_path"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "riverside": {
+          "name": "Riverside Dock",
+          "description": "A wooden dock extends into the river. Fishing boats are tied up, gently bobbing in the current. Fishermen sort their catches or repair nets, while river traders load and unload cargo.",
+          "exits": {
+            "north": "river_road"
+          },
+          "items": [
+            {
+              "type": "Consumable",
+              "item_id": "item_fresh_fish",
+              "name": "Fresh Fish",
+              "description": "A recently caught fish, still fresh and glistening. It would make a good meal.",
+              "weight": 1.0,
+              "value": 3,
+              "stackable": true,
+              "properties": {
+                "uses": 1,
+                "max_uses": 1,
+                "effect_value": 5,
+                "effect_type": "heal"
+              }
+            }
+          ],
+          "visited": false,
+          "properties": {
+            "smell": "fishy"
+          }
+        }
+      }
+    },
+    "forest": {
+      "name": "Whispering Woods",
+      "description": "A dense forest that borders Riverside Village. The trees grow tall and close together, creating a canopy that filters the sunlight. Local legends speak of strange creatures living in its depths.",
+      "rooms": {
+        "forest_path": {
+          "name": "Forest Path",
+          "description": "A narrow path that winds between the trees. The forest is alive with the sounds of birds and rustling leaves. Shafts of sunlight break through the canopy overhead.",
+          "exits": {
+            "west": "town:river_road",
+            "east": "clearing",
+            "north": "dense_woods"
+          },
+          "items": [
+            {
+              "type": "Consumable",
+              "item_id": "item_forest_berries",
+              "name": "Forest Berries",
+              "description": "A handful of wild berries growing along the path. They look edible.",
+              "weight": 0.2,
+              "value": 2,
+              "stackable": true,
+              "properties": {
+                "uses": 1,
+                "max_uses": 1,
+                "effect_value": 3,
+                "effect_type": "heal"
+              }
+            }
+          ],
+          "visited": false,
+          "properties": {}
+        },
+        "clearing": {
+          "name": "Forest Clearing",
+          "description": "A peaceful clearing where the trees thin out. Wildflowers grow in the grassy area, and the sky is visible overhead. The clearing feels strangely serene compared to the rest of the forest.",
+          "exits": {
+            "west": "forest_path",
+            "south": "abandoned_cabin"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "dense_woods": {
+          "name": "Dense Woods",
+          "description": "The forest grows denser here, with trees growing closer together. The path is harder to follow, and less light filters through the branches. The sounds of the forest seem more distant.",
+          "exits": {
+            "south": "forest_path",
+            "east": "ancient_tree"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {
+            "dark": true
+          }
+        },
+        "ancient_tree": {
+          "name": "Ancient Oak",
+          "description": "A massive oak tree dominates this area, its trunk wider than several people standing together. Its roots spread out across the ground, and its branches reach high into the sky. There's a hollow at the base of the trunk.",
+          "exits": {
+            "west": "dense_woods",
+            "east": "caves:cave_entrance"
+          },
+          "items": [
+            {
+              "type": "Treasure",
+              "item_id": "item_old_coin",
+              "name": "Ancient Coin",
+              "description": "A tarnished silver coin bearing unfamiliar markings. It appears to be very old and might be valuable to a collector.",
+              "weight": 0.1,
+              "value": 25,
+              "stackable": false,
+              "properties": {
+                "treasure_type": "coin"
+              }
+            }
+          ],
+          "visited": false,
+          "properties": {}
+        },
+        "abandoned_cabin": {
+          "name": "Abandoned Cabin",
+          "description": "A dilapidated wooden cabin that appears to have been abandoned for years. The door hangs off its hinges, and parts of the roof have fallen in. Despite its condition, it might provide shelter from the elements.",
+          "exits": {
+            "north": "clearing"
+          },
+          "items": [
+            {
+              "type": "Item",
+              "item_id": "item_torn_map",
+              "name": "Torn Map",
+              "description": "A torn piece of parchment showing a partial map of the region. There appears to be a marked location deep in the forest, but part of the map is missing.",
+              "weight": 0.1,
+              "value": 5,
+              "stackable": false,
+              "properties": {}
+            }
+          ],
+          "visited": false,
+          "properties": {
+            "dark": true
+          }
+        }
+      }
+    },
+    "caves": {
+      "name": "Shadow Caves",
+      "description": "A network of caves in the hills beyond the forest. Few villagers venture this far from town, and those who do tell tales of strange echoes and mysterious lights.",
+      "rooms": {
+        "cave_entrance": {
+          "name": "Cave Entrance",
+          "description": "A dark opening in the hillside marks the entrance to the caves. Cool air flows out from the darkness within. Moss grows around the entrance, and you can hear water dripping somewhere inside.",
+          "exits": {
+            "west": "forest:ancient_tree",
+            "in": "main_cavern"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "main_cavern": {
+          "name": "Main Cavern",
+          "description": "A large open space within the cave system. Stalactites hang from the ceiling, and the ground is uneven with rocks and small puddles. Your footsteps echo in the chamber.",
+          "exits": {
+            "out": "cave_entrance",
+            "north": "narrow_passage",
+            "east": "crystal_room"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {
+            "dark": true
+          }
+        },
+        "narrow_passage": {
+          "name": "Narrow Passage",
+          "description": "A tight corridor that winds between stone walls. You have to duck in places to avoid hitting your head. The passage feels claustrophobic, and the air is stale.",
+          "exits": {
+            "south": "main_cavern",
+            "north": "underground_pool"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {
+            "dark": true
+          }
+        },
+        "crystal_room": {
+          "name": "Crystal Chamber",
+          "description": "This chamber is filled with crystalline formations that catch and reflect light in dazzling patterns. The crystals vary in color from clear to amethyst, creating an otherworldly beauty.",
+          "exits": {
+            "west": "main_cavern"
+          },
+          "items": [
+            {
+              "type": "Treasure",
+              "item_id": "item_glowing_crystal",
+              "name": "Glowing Crystal",
+              "description": "A fist-sized crystal that emits a faint blue glow. It feels warm to the touch and seems to pulse with an inner light.",
+              "weight": 1.0,
+              "value": 75,
+              "stackable": false,
+              "properties": {
+                "treasure_type": "gem"
+              }
+            }
+          ],
+          "visited": false,
+          "properties": {}
+        },
+        "underground_pool": {
+          "name": "Underground Pool",
+          "description": "The passage opens into a chamber with a still, dark pool of water. The surface is like a mirror, reflecting the stone ceiling above. The chamber is eerily quiet except for the occasional drip of water.",
+          "exits": {
+            "south": "narrow_passage"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {
+            "dark": true
+          }
+        }
+      }
+    }
+  },
+  "npcs": {
+    "npc_tavern_keeper": {
+      "npc_id": "npc_tavern_keeper",
+      "name": "Barlin the Tavern Keeper",
+      "description": "A robust man with a thick beard and friendly eyes. He keeps his tavern in good order and knows all the local gossip.",
+      "health": 100,
+      "max_health": 100,
+      "friendly": true,
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          {
+            "item": {
+              "type": "Consumable",
+              "item_id": "item_ale",
+              "name": "Tankard of Ale",
+              "description": "A foaming tankard of locally brewed ale. It smells of hops and barley.",
+              "weight": 1.0,
+              "value": 2,
+              "stackable": true,
+              "properties": {
+                "uses": 1,
+                "max_uses": 1,
+                "effect_value": 2,
+                "effect_type": "heal"
+              }
+            },
+            "quantity": 10
+          }
+        ]
+      },
+      "current_region_id": "town",
+      "current_room_id": "tavern",
+      "home_region_id": "town",
+      "home_room_id": "tavern",
+      "behavior_type": "stationary",
+      "patrol_points": [],
+      "patrol_index": 0,
+      "follow_target": null,
+      "wander_chance": 0.3,
+      "schedule": {},
+      "move_cooldown": 10,
+      "dialog": {
+        "greeting": "Welcome to the Drunken Dragon! Can I get you a drink or a hot meal?",
+        "drink": "I've got ale, mead, and wine. The ale's brewed right here in town.",
+        "food": "Our cook makes a mean venison stew, and the bread's fresh from the baker this morning.",
+        "rumors": "Have you heard about the missing supplies? The last merchant caravan lost an entire wagon's worth of goods. Some say it was bandits, others blame forest creatures.",
+        "town": "Riverside's a peaceful place, most of the time. We get travelers passing through on their way upriver to the city.",
+        "forest": "I wouldn't venture too deep into those woods alone. Strange things happen there, especially at night."
+      },
+      "default_dialog": "The {name} is busy wiping down the bar."
+    },
+    "npc_blacksmith": {
+      "npc_id": "npc_blacksmith",
+      "name": "Grenda the Blacksmith",
+      "description": "A tall, muscular woman with her hair tied back and soot-stained arms. Her steady hands and keen eye produce some of the finest metalwork in the region.",
+      "health": 120,
+      "max_health": 120,
+      "friendly": true,
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": []
+      },
+      "current_region_id": "town",
+      "current_room_id": "blacksmith",
+      "home_region_id": "town",
+      "home_room_id": "blacksmith",
+      "behavior_type": "stationary",
+      "patrol_points": [],
+      "patrol_index": 0,
+      "follow_target": null,
+      "wander_chance": 0.3,
+      "schedule": {},
+      "move_cooldown": 10,
+      "dialog": {
+        "greeting": "Welcome to my forge. Need something repaired or looking to buy?",
+        "weapons": "I can make you a fine sword or axe if you've got the coin. Quality steel, properly tempered.",
+        "armor": "I've got leather and chainmail available. Full plate's a special order, takes time to get right.",
+        "repair": "I can fix that up for you. Just leave it with me and come back tomorrow.",
+        "business": "Business is steady enough. Always need for good tools and weapons.",
+        "missing_supplies": "Aye, there was good steel on that caravan. I was expecting a shipment that never arrived."
+      },
+      "default_dialog": "The {name} nods but continues working at the forge."
+    },
+    "npc_village_elder": {
+      "npc_id": "npc_village_elder",
+      "name": "Elder Thorne",
+      "description": "An elderly person with silver hair and a dignified bearing. Despite their age, there's a sharp intelligence in their eyes and a commanding presence in their manner.",
+      "health": 70,
+      "max_health": 70,
+      "friendly": true,
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": []
+      },
+      "current_region_id": "town",
+      "current_room_id": "town_square",
+      "home_region_id": "town",
+      "home_room_id": "town_square",
+      "behavior_type": "scheduled",
+      "patrol_points": [],
+      "patrol_index": 0,
+      "follow_target": null,
+      "wander_chance": 0.3,
+      "schedule": {
+        "8": "town_square",
+        "12": "tavern",
+        "14": "town_square",
+        "20": "tavern_rooms"
+      },
+      "move_cooldown": 10,
+      "dialog": {
+        "greeting": "Greetings, traveler. What brings you to our humble village?",
+        "village": "Riverside has stood here for five generations. We're simple folk, making our living from the river and the land.",
+        "history": "Our village was founded by refugees from the great war to the north. They sought peace, and found it here by the river.",
+        "missing_supplies": "Yes, it's quite troubling. A whole wagon of supplies vanished between here and the crossroads. We need those supplies for winter. If you could investigate, the village would be most grateful.",
+        "reward": "Find our missing supplies, and you'll be well compensated. The merchants' guild has offered a bounty, and I can add a personal reward as well.",
+        "forest": "The Whispering Woods have always held secrets. Our ancestors knew to respect its boundaries. Some say there are ancient ruins deep within."
+      },
+      "default_dialog": "The {name} considers your words carefully before responding."
+    },
+    "npc_merchant": {
+      "npc_id": "npc_merchant",
+      "name": "Talia the Merchant",
+      "description": "A well-dressed woman with a quick smile and shrewd eyes. She travels between villages with her wagon of goods, bringing news as well as merchandise.",
+      "health": 80,
+      "max_health": 80,
+      "friendly": true,
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": []
+      },
+      "current_region_id": "town",
+      "current_room_id": "market",
+      "home_region_id": "town",
+      "home_room_id": "market",
+      "behavior_type": "wanderer",
+      "patrol_points": [],
+      "patrol_index": 0,
+      "follow_target": null,
+      "wander_chance": 0.4,
+      "schedule": {},
+      "move_cooldown": 10,
+      "dialog": {
+        "greeting": "Well met! Looking to buy or sell? I've got wares from up and down the river.",
+        "goods": "I've got cloth from the city, spices from the eastern lands, tools, trinkets, and more. Take a look!",
+        "buy": "Show me what you're selling, and I'll give you a fair price.",
+        "news": "News from the city? The new tax on river trade has everyone in an uproar. The merchants' guild is petitioning the king.",
+        "bandits": "There's been more bandit activity on the north road. I hired guards for this trip, cost me a pretty coin.",
+        "missing_supplies": "I heard about that. Bad business, that. Makes all of us merchants nervous. Who's to say our goods won't be next?"
+      },
+      "default_dialog": "The {name} is busy arranging her wares."
+    },
+    "npc_forest_hermit": {
+      "npc_id": "npc_forest_hermit",
+      "name": "Old Bryn",
+      "description": "A hunched figure in tattered clothes with a wild beard and hair. Despite his unkempt appearance, his eyes are clear and knowing.",
+      "health": 60,
+      "max_health": 60,
+      "friendly": true,
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": []
+      },
+      "current_region_id": "forest",
+      "current_room_id": "ancient_tree",
+      "home_region_id": "forest",
+      "home_room_id": "ancient_tree",
+      "behavior_type": "wanderer",
+      "patrol_points": [],
+      "patrol_index": 0,
+      "follow_target": null,
+      "wander_chance": 0.2,
+      "schedule": {},
+      "move_cooldown": 10,
+      "dialog": {
+        "greeting": "Eh? Who's there? Don't get many visitors out this way.",
+        "forest": "These woods have a spirit to them, if you know how to listen. Been living here for twenty years, and they still surprise me.",
+        "village": "Bah, too many people in that village. Too much noise. I prefer the company of trees.",
+        "missing_supplies": "Supplies? Hrmph. Saw something strange a few nights back. Lights moving through the trees, deeper in than most dare to go. Not natural, those lights.",
+        "cave": "There's caves in the hills yonder. Old caves, deep ones. Folk say they're haunted, but it's just echoes playing tricks. Still, wouldn't go too deep if I were you.",
+        "ruins": "The old ruins? Aye, they're real enough. Hidden in the deepest part of the woods. Built by who? Not men, I'd wager. The stones are too perfectly fit, and the markings... not like any writing I've seen."
+      },
+      "default_dialog": "The {name} mutters to himself and doesn't seem to hear you."
+    }
+  }
+}
