@@ -345,33 +345,26 @@ def register_plugin_command(plugin_id: str, name: str, handler: Callable,
                           help_text: str = "No help available.") -> bool:
     """
     Register a command for a plugin.
-    
-    Args:
-        plugin_id: The ID of the plugin registering the command.
-        name: The name of the command.
-        handler: The function that handles the command.
-        aliases: Alternative names for the command.
-        category: The category of the command.
-        help_text: Help text for the command.
-        
-    Returns:
-        True if the command was registered, False otherwise.
     """
+    # Import from command_system to ensure we're using the right structure
+    from commands.command_system import command, command_groups, registered_commands
+    
     # Check if command already exists
     if name in registered_commands and registered_commands[name].get("plugin_id") != plugin_id:
         # Command exists and is owned by a different plugin or the core system
         return False
     
-    # Wrap the handler in the command decorator
+    # Use the command decorator directly
+    wrapped_handler = wrap_plugin_command_handler(plugin_id, handler)
     decorated_handler = command(
         name=name,
         aliases=aliases or [],
         category=category,
         help_text=help_text,
         plugin_id=plugin_id
-    )(handler)
+    )(wrapped_handler)
     
-    # The command decorator automatically registers the command
+    # The command is now registered through the decorator
     return True
 
 def get_plugin_commands(plugin_id: str) -> List[Dict[str, Any]]:

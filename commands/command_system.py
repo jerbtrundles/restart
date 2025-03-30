@@ -9,7 +9,7 @@ import inspect
 
 # Dictionary to store all registered commands
 registered_commands: Dict[str, Dict[str, Any]] = {}
-command_categories: Dict[str, List[Dict[str, Any]]] = {
+command_groups: Dict[str, List[Dict[str, Any]]] = {
     "movement": [],
     "interaction": [],
     "inventory": [],
@@ -29,16 +29,6 @@ def command(name: str, aliases: List[str] = None, category: str = "other",
            help_text: str = "No help available.", plugin_id: str = None):
     """
     Decorator for registering game commands.
-    
-    Args:
-        name: The primary name of the command.
-        aliases: Alternative names for the command.
-        category: Category to group the command under.
-        help_text: Description of the command for help system.
-        plugin_id: The ID of the plugin that registers this command (if any).
-        
-    Returns:
-        Decorated function.
     """
     def decorator(func):
         @wraps(func)
@@ -72,10 +62,10 @@ def command(name: str, aliases: List[str] = None, category: str = "other",
             registered_commands[alias] = cmd_data
             
         # Add to appropriate category
-        if category in command_categories:
-            command_categories[category].append(cmd_data)
+        if category in command_groups:
+            command_groups[category].append(cmd_data)
         else:
-            command_categories["other"].append(cmd_data)
+            command_groups["other"].append(cmd_data)
         
         return wrapper
     return decorator
@@ -89,14 +79,14 @@ def get_registered_commands() -> Dict[str, Dict[str, Any]]:
     """
     return registered_commands
 
-def get_command_categories() -> Dict[str, List[Dict[str, Any]]]:
+def get_command_groups() -> Dict[str, List[Dict[str, Any]]]:
     """
     Get commands organized by category.
     
     Returns:
         Dictionary of category name to list of commands.
     """
-    return command_categories
+    return command_groups
 
 def unregister_command(name: str) -> bool:
     """
@@ -126,8 +116,8 @@ def unregister_command(name: str) -> bool:
             registered_commands.pop(alias)
     
     # Remove from category
-    if cmd_category in command_categories:
-        command_categories[cmd_category] = [c for c in command_categories[cmd_category] 
+    if cmd_category in command_groups:
+        command_groups[cmd_category] = [c for c in command_groups[cmd_category] 
                                           if c["name"] != cmd_name]
     
     return True
@@ -164,17 +154,10 @@ class CommandProcessor:
         """Initialize the command processor."""
         # We don't need to store commands locally anymore since they're in the global registry
         pass
-    
+
     def process_input(self, text: str, context: Any = None) -> str:
         """
         Process user input and execute the corresponding command.
-        
-        Args:
-            text: The raw user input.
-            context: Any context object needed by command handlers.
-            
-        Returns:
-            The response text from the command handler.
         """
         text = text.strip().lower()
         
@@ -189,14 +172,14 @@ class CommandProcessor:
         if command_word in direction_aliases:
             command_word = direction_aliases[command_word]
         
-        # Look for matching command
+        # Look for matching command directly in registered_commands
         if command_word in registered_commands:
             cmd = registered_commands[command_word]
             return cmd["handler"](args, context)
         
         # No matching command found
         return f"Unknown command: {command_word}"
-    
+
     def get_help_text(self) -> str:
         """Generate help text for all registered commands."""
         from core.config import FORMAT_TITLE, FORMAT_CATEGORY, FORMAT_RESET
@@ -204,7 +187,7 @@ class CommandProcessor:
         help_text = f"{FORMAT_TITLE}AVAILABLE COMMANDS{FORMAT_RESET}\n\n"
         
         # List commands by category
-        for category, commands in command_categories.items():
+        for category, commands in command_groups.items():
             if not commands:
                 continue
                 
