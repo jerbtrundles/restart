@@ -1,9 +1,10 @@
 """
 player.py
-Enhanced Player module for the MUD game.
+Enhanced Player module for the MUD game with improved text formatting.
 """
 from typing import List, Dict, Optional, Any
 from items.inventory import Inventory
+from utils.text_formatter import TextFormatter
 
 
 class Player:
@@ -40,24 +41,48 @@ class Player:
         Returns:
             A formatted status string.
         """
-        status = f"Name: {self.name}\n"
-        status += f"Level: {self.level} (XP: {self.experience}/{self.experience_to_level})\n"
-        status += f"Health: {self.health}/{self.max_health}\n"
-        status += f"Stats: STR {self.stats['strength']}, "
+        # Format health with color based on percentage
+        health_percent = (self.health / self.max_health) * 100
+        health_text = f"{self.health}/{self.max_health}"
+        
+        if health_percent <= 25:
+            health_display = f"{TextFormatter.FORMAT_ERROR}{health_text}{TextFormatter.FORMAT_RESET}"
+        elif health_percent <= 50:
+            health_display = f"{TextFormatter.FORMAT_HIGHLIGHT}{health_text}{TextFormatter.FORMAT_RESET}"
+        else:
+            health_display = f"{TextFormatter.FORMAT_SUCCESS}{health_text}{TextFormatter.FORMAT_RESET}"
+        
+        # Basic status information
+        status = f"{TextFormatter.FORMAT_CATEGORY}Name:{TextFormatter.FORMAT_RESET} {self.name}\n"
+        status += f"{TextFormatter.FORMAT_CATEGORY}Level:{TextFormatter.FORMAT_RESET} {self.level} (XP: {self.experience}/{self.experience_to_level})\n"
+        status += f"{TextFormatter.FORMAT_CATEGORY}Health:{TextFormatter.FORMAT_RESET} {health_display}\n"
+        
+        # Stats with formatted title
+        status += f"{TextFormatter.FORMAT_CATEGORY}Stats:{TextFormatter.FORMAT_RESET} "
+        status += f"STR {self.stats['strength']}, "
         status += f"DEX {self.stats['dexterity']}, "
         status += f"INT {self.stats['intelligence']}\n"
         
         # Add effect information if there are any
         if self.effects:
-            status += "\nActive Effects:\n"
+            status += f"\n{TextFormatter.FORMAT_TITLE}Active Effects:{TextFormatter.FORMAT_RESET}\n"
             for effect in self.effects:
-                status += f"- {effect['name']}: {effect['description']}\n"
+                # Show duration if present
+                duration_text = ""
+                if "duration" in effect and effect["duration"] > 0:
+                    duration_text = f" ({effect['duration']} turns remaining)"
+                
+                status += f"- {effect['name']}{duration_text}: {effect['description']}\n"
         
         # Skills information if the player has any skills
         if self.skills:
-            status += "\nSkills:\n"
+            status += f"\n{TextFormatter.FORMAT_TITLE}Skills:{TextFormatter.FORMAT_RESET}\n"
             for skill, level in self.skills.items():
                 status += f"- {skill}: {level}\n"
+        
+        # Quest log summary if the player has active quests
+        if self.quest_log:
+            status += f"\n{TextFormatter.FORMAT_TITLE}Active Quests:{TextFormatter.FORMAT_RESET} {len(self.quest_log)}\n"
         
         return status
     
@@ -195,6 +220,43 @@ class Player:
         """
         return self.quest_log.get(quest_id)
     
+    def heal(self, amount: int) -> int:
+        """
+        Heal the player by the specified amount.
+        
+        Args:
+            amount: Amount of health to restore
+            
+        Returns:
+            The actual amount healed
+        """
+        old_health = self.health
+        self.health = min(self.health + amount, self.max_health)
+        return self.health - old_health
+    
+    def take_damage(self, amount: int) -> int:
+        """
+        Deal damage to the player.
+        
+        Args:
+            amount: Amount of damage to deal
+            
+        Returns:
+            The actual amount of damage taken
+        """
+        old_health = self.health
+        self.health = max(self.health - amount, 0)
+        return old_health - self.health
+    
+    def is_alive(self) -> bool:
+        """
+        Check if the player is alive.
+        
+        Returns:
+            True if player has more than 0 health, False otherwise
+        """
+        return self.health > 0
+    
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the player to a dictionary for serialization.
@@ -241,6 +303,7 @@ class Player:
         
         # Load inventory if present
         if "inventory" in data:
+            from items.inventory import Inventory
             player.inventory = Inventory.from_dict(data["inventory"])
         
         return player

@@ -5,7 +5,7 @@ Creates NPCs from templates and manages NPC instances.
 """
 from typing import Dict, List, Optional, Any
 from npcs.npc import NPC
-from items.item import ItemFactory
+from items.item_factory import ItemFactory
 
 
 class NPCFactory:
@@ -136,7 +136,7 @@ class NPCFactory:
         
         # Create the NPC
         npc = NPC(
-            npc_id=template.get("npc_id"),
+            obj_id=template.get("obj_id"),
             name=template.get("name", "Unknown NPC"),
             description=template.get("description", "No description"),
             health=template.get("health", 100),

@@ -6,64 +6,47 @@ Defines non-player characters and their behavior.
 from typing import Dict, List, Optional, Any, Tuple, Callable
 import random
 import time
+from game_object import GameObject
 from items.inventory import Inventory
 from items.item import Item
 
 
-class NPC:
+class NPC(GameObject):
     """Base class for all non-player characters."""
-    
-    def __init__(self, npc_id: str = None, name: str = "Unknown NPC", 
+
+    def __init__(self, obj_id: str = None, name: str = "Unknown NPC", 
                  description: str = "No description", health: int = 100,
                  friendly: bool = True):
-        """
-        Initialize an NPC.
-        
-        Args:
-            npc_id: Unique ID for the NPC.
-            name: The display name of the NPC.
-            description: A textual description of the NPC.
-            health: The current health of the NPC.
-            friendly: Whether the NPC is friendly to the player.
-        """
-        self.npc_id = npc_id if npc_id else f"npc_{random.randint(1000, 9999)}"
-        self.name = name
-        self.description = description
+        super().__init__(obj_id if obj_id else f"npc_{random.randint(1000, 9999)}", name, description)        
         self.health = health
         self.max_health = health
         self.friendly = friendly
         self.inventory = Inventory(max_slots=10, max_weight=50.0)
-        
-        # Movement and location data
         self.current_region_id = None
         self.current_room_id = None
         self.home_region_id = None
         self.home_room_id = None
-
         self.current_activity = None
-        
-        # Behavior data
-        self.behavior_type = "stationary"  # 'stationary', 'wanderer', 'patrol', 'follower'
-        self.patrol_points = []  # List of room IDs for patrol routes
+        self.behavior_type = "stationary"
+        self.patrol_points = []
         self.patrol_index = 0
-        self.follow_target = None  # ID of entity to follow
-        self.wander_chance = 0.3  # Chance to wander each update
-        self.schedule = {}  # Time-based schedule of room IDs
-        self.last_moved = 0  # Time of last movement
-        self.move_cooldown = 10  # Seconds between movements
-        
-        # Interaction data
-        self.dialog = {}  # Mapping of keywords to responses
+        self.follow_target = None
+        self.wander_chance = 0.3
+        self.schedule = {}
+        self.last_moved = 0
+        self.move_cooldown = 10
+        self.dialog = {}
         self.default_dialog = "The {name} doesn't respond."
-        self.ai_state = {}  # Custom state for NPC behavior
-    
+        self.ai_state = {}
+        self.update_property("health", health)
+        self.update_property("max_health", health)
+        self.update_property("friendly", friendly)
+        self.update_property("behavior_type", self.behavior_type)
+        self.update_property("wander_chance", self.wander_chance)
+        self.update_property("move_cooldown", self.move_cooldown)    
+
     def get_description(self) -> str:
-        """
-        Get a description of the NPC.
-        
-        Returns:
-            A formatted description.
-        """
+        """Override the base get_description method with NPC-specific info."""
         health_percent = self.health / self.max_health * 100
         health_desc = ""
         
@@ -81,38 +64,26 @@ class NPC:
     def talk(self, topic: str = None) -> str:
         """
         Get dialog from the NPC based on a topic.
-        
-        Args:
-            topic: The topic to discuss, or None for default greeting.
-            
-        Returns:
-            The NPC's response.
         """
         # Check if NPC is busy with an activity
         if hasattr(self, "ai_state"):
-            # Check for activity-specific responses
+            # Activity-specific responses
             if self.ai_state.get("is_sleeping", False):
-                # NPC is sleeping
                 responses = self.ai_state.get("sleeping_responses", [])
                 if responses:
-                    import random
                     return random.choice(responses).format(name=self.name)
             
             elif self.ai_state.get("is_eating", False):
-                # NPC is eating
                 responses = self.ai_state.get("eating_responses", [])
                 if responses:
-                    import random
                     return random.choice(responses).format(name=self.name)
             
             elif self.ai_state.get("is_working", False) and topic != "work":
-                # NPC is working but might respond to work-related topics
                 responses = self.ai_state.get("working_responses", [])
                 if responses:
-                    import random
                     return random.choice(responses).format(name=self.name)
         
-        # Normal dialog processing for NPCs not engaged in busy activities
+        # Normal dialog processing
         if not topic:
             # Default greeting
             if "greeting" in self.dialog:
@@ -129,7 +100,7 @@ class NPC:
             if topic in key:
                 return self.dialog[key].format(name=self.name)
         
-        # If NPC is engaged in an activity, reference it in default response
+        # Activity reference
         if hasattr(self, "ai_state") and "current_activity" in self.ai_state:
             activity = self.ai_state["current_activity"]
             return f"The {self.name} continues {activity} and doesn't respond about that topic."
@@ -140,47 +111,51 @@ class NPC:
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the NPC to a dictionary for serialization.
-        
-        Returns:
-            A dictionary representation of the NPC.
         """
-        return {
-            "npc_id": self.npc_id,
-            "name": self.name,
-            "description": self.description,
-            "health": self.health,
-            "max_health": self.max_health,
-            "friendly": self.friendly,
-            "inventory": self.inventory.to_dict(),
-            "current_region_id": self.current_region_id,
-            "current_room_id": self.current_room_id,
-            "home_region_id": self.home_region_id,
-            "home_room_id": self.home_room_id,
-            "behavior_type": self.behavior_type,
-            "patrol_points": self.patrol_points,
-            "patrol_index": self.patrol_index,
-            "follow_target": self.follow_target,
-            "wander_chance": self.wander_chance,
-            "schedule": self.schedule,
-            "move_cooldown": self.move_cooldown,
-            "dialog": self.dialog,
-            "default_dialog": self.default_dialog,
-            "ai_state": self.ai_state
-        }
-    
+        # Start with the base implementation
+        data = super().to_dict()
+        
+        # Add NPC-specific fields for backward compatibility
+        data["obj_id"] = self.obj_id
+        data["health"] = self.health
+        data["max_health"] = self.max_health
+        data["friendly"] = self.friendly
+        
+        # Add location data
+        data["current_region_id"] = self.current_region_id
+        data["current_room_id"] = self.current_room_id
+        data["home_region_id"] = self.home_region_id
+        data["home_room_id"] = self.home_room_id
+        
+        # Add behavior data
+        data["behavior_type"] = self.behavior_type
+        data["patrol_points"] = self.patrol_points
+        data["patrol_index"] = self.patrol_index
+        data["follow_target"] = self.follow_target
+        data["wander_chance"] = self.wander_chance
+        data["schedule"] = self.schedule
+        data["move_cooldown"] = self.move_cooldown
+        
+        # Add interaction data
+        data["dialog"] = self.dialog
+        data["default_dialog"] = self.default_dialog
+        data["ai_state"] = self.ai_state
+        
+        # Add inventory
+        data["inventory"] = self.inventory.to_dict()
+        
+        return data
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'NPC':
         """
         Create an NPC from a dictionary.
-        
-        Args:
-            data: Dictionary data to convert.
-            
-        Returns:
-            An NPC instance.
         """
+        # Get the ID (handle backward compatibility)
+        obj_id = data.get("id") or data.get("obj_id")
+        
         npc = cls(
-            npc_id=data.get("npc_id"),
+            obj_id=obj_id,
             name=data.get("name", "Unknown NPC"),
             description=data.get("description", "No description"),
             health=data.get("health", 100),
@@ -210,9 +185,19 @@ class NPC:
         
         # Set inventory if present
         if "inventory" in data:
-            npc.inventory = Inventory.from_dict(data["inventory"])
-            
-        return npc
+            try:
+                npc.inventory = Inventory.from_dict(data["inventory"])
+            except Exception as e:
+                print(f"Error loading inventory for NPC {npc.name}: {e}")
+                npc.inventory = Inventory(max_slots=10, max_weight=50.0)
+        else:
+            npc.inventory = Inventory(max_slots=10, max_weight=50.0)
+        
+        # Set properties
+        if "properties" in data:
+            npc.properties = data["properties"]
+        
+        return npc   
         
     def update(self, world, current_time: float) -> Optional[str]:
         """
@@ -455,49 +440,43 @@ class NPC:
         return self._wander_behavior(world, current_time)
     
     def _follower_behavior(self, world, current_time: float) -> Optional[str]:
-        """Implement follower behavior."""
+        """Improved follower behavior with pathfinding."""
         if not self.follow_target:
             return None
             
-        # For now, we'll just assume the follow target is the player
+        # For now, assume the follow target is the player
         if self.follow_target == "player":
             # Check if we're already in the same room as the player
             if (self.current_region_id == world.current_region_id and
                 self.current_room_id == world.current_room_id):
                 return None
                 
-            # We need to find a path to the player (simplified)
-            # In a full implementation, you'd want proper pathfinding
+            # Find path to player
+            path = world.find_path(self.current_region_id,
+                            self.current_room_id,
+                            world.current_region_id,
+                            world.current_room_id)
             
-            # Get current room
-            region = world.get_region(self.current_region_id)
-            if not region:
-                return None
+            if path and len(path) > 0:
+                # Get the first step in the path
+                direction = path[0]
                 
-            room = region.get_room(self.current_room_id)
-            if not room:
-                return None
+                # Get current room
+                region = world.get_region(self.current_region_id)
+                if not region:
+                    return None
+                    
+                room = region.get_room(self.current_room_id)
+                if not room:
+                    return None
                 
-            # Try to move toward the player by picking an exit that feels right
-            # This is a very simplified approach
-            best_direction = None
-            
-            # If in the same region, try to find a direct path
-            if self.current_region_id == world.current_region_id:
-                for direction, destination in room.exits.items():
-                    if destination == world.current_room_id:
-                        best_direction = direction
-                        break
-            
-            # If no direct path or different region, just pick a random exit
-            if not best_direction:
-                exits = list(room.exits.keys())
-                if exits:
-                    best_direction = random.choice(exits)
-            
-            # Move in the chosen direction
-            if best_direction:
-                destination = room.exits[best_direction]
+                # Get destination
+                destination = room.exits.get(direction)
+                if not destination:
+                    return None
+                    
+                # Save old location
+                old_region_id = self.current_region_id
                 old_room_id = self.current_room_id
                 
                 # Handle region transitions
@@ -507,19 +486,17 @@ class NPC:
                     self.current_room_id = new_room_id
                 else:
                     self.current_room_id = destination
-                    
-                # Check if the player is in the room to see the NPC leave
-                if (world.current_region_id == self.current_region_id and 
-                    world.current_room_id == old_room_id):
-                    message = f"{self.name} leaves to the {best_direction}."
-                    return message
-                    
-                # Check if the player is in the destination room to see the NPC arrive
-                if (world.current_region_id == self.current_region_id and 
-                    world.current_room_id == destination):
-                    message = f"{self.name} arrives from the {self._reverse_direction(best_direction)}."
-                    return message
                 
+                # Update last moved
                 self.last_moved = current_time
                 
+                # Return message if player can see
+                if (world.current_region_id == old_region_id and 
+                    world.current_room_id == old_room_id):
+                    return f"{self.name} leaves to the {direction}."
+                    
+                if (world.current_region_id == self.current_region_id and 
+                    world.current_room_id == self.current_room_id):
+                    return f"{self.name} arrives from the {self._reverse_direction(direction)}."
+        
         return None

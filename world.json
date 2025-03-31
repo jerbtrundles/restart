@@ -10,7 +10,7 @@
         {
           "item": {
             "type": "Weapon",
-            "item_id": "item_starter_dagger",
+            "obj_id": "item_starter_dagger",
             "name": "Rusty Dagger",
             "description": "A simple dagger with a rusty blade, but it's better than nothing.",
             "weight": 1.0,
@@ -27,7 +27,7 @@
         {
           "item": {
             "type": "Consumable",
-            "item_id": "item_healing_potion_small",
+            "obj_id": "item_healing_potion_small",
             "name": "Small Healing Potion",
             "description": "A small vial containing a red liquid that can heal minor wounds.",
             "weight": 0.5,
@@ -45,7 +45,7 @@
         {
           "item": {
             "type": "Key",
-            "item_id": "item_tavern_cellar_key",
+            "obj_id": "item_tavern_cellar_key",
             "name": "Tavern Cellar Key",
             "description": "A small iron key that opens the cellar of the Drunken Dragon tavern.",
             "weight": 0.1,
@@ -98,7 +98,7 @@
           "items": [
             {
               "type": "Item",
-              "item_id": "item_town_notice",
+              "obj_id": "item_town_notice",
               "name": "Town Notice",
               "description": "A notice posted on the town bulletin board. It reads: 'MISSING: Supplies from the last merchant caravan. Anyone with information please speak to the Town Elder.'",
               "weight": 0.1,
@@ -132,7 +132,7 @@
           "items": [
             {
               "type": "Item",
-              "item_id": "item_traveler_journal",
+              "obj_id": "item_traveler_journal",
               "name": "Traveler's Journal",
               "description": "A leather-bound journal with entries from a merchant who passed through the village. The last entry mentions strange noises in the forest at night and missing supplies.",
               "weight": 0.5,
@@ -174,7 +174,7 @@
           "items": [
             {
               "type": "Weapon",
-              "item_id": "item_iron_sword",
+              "obj_id": "item_iron_sword",
               "name": "Iron Sword",
               "description": "A well-crafted iron sword with a leather-wrapped hilt. The blade is sharp and balanced.",
               "weight": 3.0,
@@ -214,7 +214,7 @@
           "items": [
             {
               "type": "Consumable",
-              "item_id": "item_fresh_fish",
+              "obj_id": "item_fresh_fish",
               "name": "Fresh Fish",
               "description": "A recently caught fish, still fresh and glistening. It would make a good meal.",
               "weight": 1.0,
@@ -250,7 +250,7 @@
           "items": [
             {
               "type": "Consumable",
-              "item_id": "item_forest_berries",
+              "obj_id": "item_forest_berries",
               "name": "Forest Berries",
               "description": "A handful of wild berries growing along the path. They look edible.",
               "weight": 0.2,
@@ -301,7 +301,7 @@
           "items": [
             {
               "type": "Treasure",
-              "item_id": "item_old_coin",
+              "obj_id": "item_old_coin",
               "name": "Ancient Coin",
               "description": "A tarnished silver coin bearing unfamiliar markings. It appears to be very old and might be valuable to a collector.",
               "weight": 0.1,
@@ -324,7 +324,7 @@
           "items": [
             {
               "type": "Item",
-              "item_id": "item_torn_map",
+              "obj_id": "item_torn_map",
               "name": "Torn Map",
               "description": "A torn piece of parchment showing a partial map of the region. There appears to be a marked location deep in the forest, but part of the map is missing.",
               "weight": 0.1,
@@ -391,7 +391,7 @@
           "items": [
             {
               "type": "Treasure",
-              "item_id": "item_glowing_crystal",
+              "obj_id": "item_glowing_crystal",
               "name": "Glowing Crystal",
               "description": "A fist-sized crystal that emits a faint blue glow. It feels warm to the touch and seems to pulse with an inner light.",
               "weight": 1.0,
@@ -422,7 +422,7 @@
   },
   "npcs": {
     "npc_tavern_keeper": {
-      "npc_id": "npc_tavern_keeper",
+      "obj_id": "npc_tavern_keeper",
       "name": "Barlin the Tavern Keeper",
       "description": "A robust man with a thick beard and friendly eyes. He keeps his tavern in good order and knows all the local gossip.",
       "health": 100,
@@ -435,7 +435,7 @@
           {
             "item": {
               "type": "Consumable",
-              "item_id": "item_ale",
+              "obj_id": "item_ale",
               "name": "Tankard of Ale",
               "description": "A foaming tankard of locally brewed ale. It smells of hops and barley.",
               "weight": 1.0,
@@ -474,7 +474,7 @@
       "default_dialog": "The {name} is busy wiping down the bar."
     },
     "npc_blacksmith": {
-      "npc_id": "npc_blacksmith",
+      "obj_id": "npc_blacksmith",
       "name": "Grenda the Blacksmith",
       "description": "A tall, muscular woman with her hair tied back and soot-stained arms. Her steady hands and keen eye produce some of the finest metalwork in the region.",
       "health": 120,
@@ -507,7 +507,7 @@
       "default_dialog": "The {name} nods but continues working at the forge."
     },
     "npc_village_elder": {
-      "npc_id": "npc_village_elder",
+      "obj_id": "npc_village_elder",
       "name": "Elder Thorne",
       "description": "An elderly person with silver hair and a dignified bearing. Despite their age, there's a sharp intelligence in their eyes and a commanding presence in their manner.",
       "health": 70,
@@ -545,7 +545,7 @@
       "default_dialog": "The {name} considers your words carefully before responding."
     },
     "npc_merchant": {
-      "npc_id": "npc_merchant",
+      "obj_id": "npc_merchant",
       "name": "Talia the Merchant",
       "description": "A well-dressed woman with a quick smile and shrewd eyes. She travels between villages with her wagon of goods, bringing news as well as merchandise.",
       "health": 80,
@@ -578,7 +578,7 @@
       "default_dialog": "The {name} is busy arranging her wares."
     },
     "npc_forest_hermit": {
-      "npc_id": "npc_forest_hermit",
+      "obj_id": "npc_forest_hermit",
       "name": "Old Bryn",
       "description": "A hunched figure in tattered clothes with a wild beard and hair. Despite his unkempt appearance, his eyes are clear and knowing.",
       "health": 60,

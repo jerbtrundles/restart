@@ -367,7 +367,7 @@ def register_commands(plugin):
                     return f"No NPCs found in region '{region_id}'"
                 result = f"NPCs in region '{region_id}':\n"
                 for npc in npcs:
-                    result += f"- {npc.npc_id}: {npc.name} (Room: {npc.current_room_id})\n"
+                    result += f"- {npc.obj_id}: {npc.name} (Room: {npc.current_room_id})\n"
                 return result
             elif len(args) == 2:
                 region_id, room_id = args
@@ -376,11 +376,11 @@ def register_commands(plugin):
                     return f"No NPCs found in room '{room_id}' of region '{region_id}'"
                 result = f"NPCs in room '{room_id}' of region '{region_id}':\n"
                 for npc in npcs:
-                    result += f"- {npc.npc_id}: {npc.name} (Health: {npc.health}/{npc.max_health})\n"
+                    result += f"- {npc.obj_id}: {npc.name} (Health: {npc.health}/{npc.max_health})\n"
                 return result
         result = "All NPCs in the world:\n"
-        for npc_id, npc in plugin.world.npcs.items():
-            result += f"- {npc_id}: {npc.name} (Location: {npc.current_region_id}:{npc.current_room_id})\n"
+        for obj_id, npc in plugin.world.npcs.items():
+            result += f"- {obj_id}: {npc.name} (Location: {npc.current_region_id}:{npc.current_room_id})\n"
         return result
     
     @command("listitems", ["items"], "debug", "List items in a location.\n\nUsage: listitems [player|<region_id> <room_id>]")
@@ -393,7 +393,7 @@ def register_commands(plugin):
                 return "No items in current room"
             result = "Items in current room:\n"
             for item in items:
-                result += f"- {item.item_id}: {item.name}\n"
+                result += f"- {item.obj_id}: {item.name}\n"
             return result
         if args[0] == "player":
             if not plugin.world.player.inventory:
@@ -406,7 +406,7 @@ def register_commands(plugin):
                 return f"No items in room '{room_id}' of region '{region_id}'"
             result = f"Items in room '{room_id}' of region '{region_id}':\n"
             for item in items:
-                result += f"- {item.item_id}: {item.name}\n"
+                result += f"- {item.obj_id}: {item.name}\n"
             return result
         return "Usage: listitems [player|<region_id> <room_id>]"
     

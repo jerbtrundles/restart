@@ -1,10 +1,12 @@
 """
 items/inventory.py
-Inventory system for the MUD game.
+Enhanced inventory system for the MUD game with improved text formatting.
 Handles storage and management of items.
 """
 from typing import Dict, List, Optional, Tuple, Any
-from items.item import Item, ItemFactory
+from items.item import Item
+from items.item_factory import ItemFactory
+from utils.text_formatter import TextFormatter
 
 
 class InventorySlot:
@@ -39,7 +41,7 @@ class InventorySlot:
             return quantity
         
         # If slot has same item and is stackable, can add more
-        if self.item.item_id == item.item_id and self.item.stackable:
+        if self.item.obj_id == item.obj_id and self.item.stackable:
             self.quantity += quantity
             return quantity
             
@@ -135,7 +137,7 @@ class Inventory:
         # First, try to add to existing stacks
         if item.stackable:
             for slot in self.slots:
-                if slot.item and slot.item.item_id == item.item_id:
+                if slot.item and slot.item.obj_id == item.obj_id:
                     added = slot.add(item, quantity)
                     quantity -= added
                     if quantity <= 0:
@@ -160,12 +162,12 @@ class Inventory:
         
         return True, f"Added {item.name} to inventory."
     
-    def remove_item(self, item_id: str, quantity: int = 1) -> Tuple[Optional[Item], int, str]:
+    def remove_item(self, obj_id: str, quantity: int = 1) -> Tuple[Optional[Item], int, str]:
         """
         Remove an item from the inventory.
         
         Args:
-            item_id: The ID of the item to remove.
+            obj_id: The ID of the item to remove.
             quantity: The quantity to remove.
             
         Returns:
@@ -173,7 +175,7 @@ class Inventory:
         """
         # First, count how many of this item we have
         total_available = sum(slot.quantity for slot in self.slots 
-                             if slot.item and slot.item.item_id == item_id)
+                             if slot.item and slot.item.obj_id == obj_id)
         
         if total_available == 0:
             return None, 0, f"You don't have that item."
@@ -186,7 +188,7 @@ class Inventory:
         removed_item = None
         
         for slot in self.slots:
-            if slot.item and slot.item.item_id == item_id and remaining > 0:
+            if slot.item and slot.item.obj_id == obj_id and remaining > 0:
                 item, removed = slot.remove(remaining)
                 if not removed_item and item:
                     removed_item = item
@@ -197,18 +199,18 @@ class Inventory:
         
         return removed_item, quantity, f"Removed {quantity} {removed_item.name if removed_item else 'unknown item'} from inventory."
     
-    def get_item(self, item_id: str) -> Optional[Item]:
+    def get_item(self, obj_id: str) -> Optional[Item]:
         """
         Get an item from the inventory without removing it.
         
         Args:
-            item_id: The ID of the item to get.
+            obj_id: The ID of the item to get.
             
         Returns:
             The item, or None if not found.
         """
         for slot in self.slots:
-            if slot.item and slot.item.item_id == item_id:
+            if slot.item and slot.item.obj_id == obj_id:
                 return slot.item
         return None
     
@@ -238,21 +240,47 @@ class Inventory:
             A string listing the inventory contents.
         """
         if all(not slot.item for slot in self.slots):
-            return "Your inventory is empty."
+            return f"{TextFormatter.FORMAT_CATEGORY}Your inventory is empty.{TextFormatter.FORMAT_RESET}"
         
         result = []
         for i, slot in enumerate(self.slots):
             if slot.item:
                 if slot.quantity > 1:
-                    result.append(f"[{i+1}] {slot.item.name} (x{slot.quantity}) - {slot.quantity * slot.item.weight:.1f} weight")
+                    item_text = f"[{i+1}] {TextFormatter.FORMAT_HIGHLIGHT}{slot.item.name}{TextFormatter.FORMAT_RESET} (x{slot.quantity}) - {slot.quantity * slot.item.weight:.1f} weight"
                 else:
-                    result.append(f"[{i+1}] {slot.item.name} - {slot.item.weight:.1f} weight")
+                    item_text = f"[{i+1}] {TextFormatter.FORMAT_HIGHLIGHT}{slot.item.name}{TextFormatter.FORMAT_RESET} - {slot.item.weight:.1f} weight"
+                result.append(item_text)
         
+        # Weight information
         total_weight = self.get_total_weight()
-        result.append(f"\nTotal weight: {total_weight:.1f}/{self.max_weight:.1f}")
-        result.append(f"Slots used: {self.max_slots - self.get_empty_slots()}/{self.max_slots}")
+        weight_percent = (total_weight / self.max_weight) * 100
         
-        return "\n".join(result)
+        # Color-code weight based on percentage of capacity
+        if weight_percent >= 90:
+            weight_text = f"{TextFormatter.FORMAT_ERROR}{total_weight:.1f}/{self.max_weight:.1f}{TextFormatter.FORMAT_RESET}"
+        elif weight_percent >= 75:
+            weight_text = f"{TextFormatter.FORMAT_HIGHLIGHT}{total_weight:.1f}/{self.max_weight:.1f}{TextFormatter.FORMAT_RESET}"
+        else:
+            weight_text = f"{total_weight:.1f}/{self.max_weight:.1f}"
+            
+        weight_info = f"{TextFormatter.FORMAT_CATEGORY}Total weight:{TextFormatter.FORMAT_RESET} {weight_text}"
+        
+        # Slot information
+        used_slots = self.max_slots - self.get_empty_slots()
+        slot_percent = (used_slots / self.max_slots) * 100
+        
+        # Color-code slots based on percentage of capacity
+        if slot_percent >= 90:
+            slot_text = f"{TextFormatter.FORMAT_ERROR}{used_slots}/{self.max_slots}{TextFormatter.FORMAT_RESET}"
+        elif slot_percent >= 75:
+            slot_text = f"{TextFormatter.FORMAT_HIGHLIGHT}{used_slots}/{self.max_slots}{TextFormatter.FORMAT_RESET}"
+        else:
+            slot_text = f"{used_slots}/{self.max_slots}"
+            
+        slot_info = f"{TextFormatter.FORMAT_CATEGORY}Slots used:{TextFormatter.FORMAT_RESET} {slot_text}"
+        
+        # Combine everything
+        return "\n".join(result) + f"\n\n{weight_info}\n{slot_info}"
     
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -292,3 +320,43 @@ class Inventory:
             inventory.slots.append(InventorySlot())
             
         return inventory
+
+    def find_item_by_name(self, name: str, partial: bool = True) -> Optional[Item]:
+        """
+        Find an item in the inventory by name.
+        
+        Args:
+            name: The name or partial name to search for
+            partial: Whether to allow partial name matches
+            
+        Returns:
+            The first matching item, or None if not found
+        """
+        name_lower = name.lower()
+        
+        for slot in self.slots:
+            if slot.item:
+                if partial and name_lower in slot.item.name.lower():
+                    return slot.item
+                elif not partial and name_lower == slot.item.name.lower():
+                    return slot.item
+                    
+        return None
+        
+    def sort_items(self) -> None:
+        """
+        Sort inventory items for better organization.
+        Puts items of the same type together and moves empty slots to the end.
+        """
+        # Group items by type
+        item_slots = [slot for slot in self.slots if slot.item]
+        empty_slots = [slot for slot in self.slots if not slot.item]
+        
+        # Sort item slots by item type and name
+        item_slots.sort(key=lambda slot: (
+            type(slot.item).__name__,
+            slot.item.name
+        ))
+        
+        # Reconstruct the slots list
+        self.slots = item_slots + empty_slots

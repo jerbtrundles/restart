@@ -165,7 +165,7 @@ def take_handler(args, context):
         if item_name in item.name.lower():
             success, message = world.player.inventory.add_item(item)
             if success:
-                world.remove_item_from_room(current_region_id, current_room_id, item.item_id)
+                world.remove_item_from_room(current_region_id, current_room_id, item.obj_id)
                 return f"{FORMAT_SUCCESS}You take the {item.name}.{FORMAT_RESET}\n\n{message}"
             else:
                 return f"{FORMAT_ERROR}{message}{FORMAT_RESET}"
@@ -179,7 +179,7 @@ def drop_handler(args, context):
     item_name = " ".join(args).lower()
     for slot in world.player.inventory.slots:
         if slot.item and item_name in slot.item.name.lower():
-            item, quantity, message = world.player.inventory.remove_item(slot.item.item_id)
+            item, quantity, message = world.player.inventory.remove_item(slot.item.obj_id)
             if item:
                 world.add_item_to_room(world.current_region_id, world.current_room_id, item)
                 return f"{FORMAT_SUCCESS}You drop the {item.name}.{FORMAT_RESET}"
@@ -198,7 +198,7 @@ def use_handler(args, context):
             result = slot.item.use(world.player)
             if hasattr(slot.item, "properties") and "uses" in slot.item.properties:
                 if slot.item.properties["uses"] <= 0:
-                    world.player.inventory.remove_item(slot.item.item_id)
+                    world.player.inventory.remove_item(slot.item.obj_id)
             return f"{FORMAT_HIGHLIGHT}{result}{FORMAT_RESET}"
     return f"{FORMAT_ERROR}You don't have a {item_name} to use.{FORMAT_RESET}"
 

@@ -27,7 +27,7 @@ def create_example_schedules(plugin):
             plugin.event_system.publish("display_message", debug_msg)
         
     # Find existing NPCs and create schedules based on their types
-    for npc_id, npc in plugin.world.npcs.items():
+    for obj_id, npc in plugin.world.npcs.items():
         # Store original behavior
         if not hasattr(npc, "ai_state"):
             npc.ai_state = {}
@@ -37,26 +37,26 @@ def create_example_schedules(plugin):
             npc.ai_state["original_behavior_type"] = getattr(npc, "behavior_type", "wanderer")
         
         # Create schedules based on NPC type
-        if "guard" in npc_id.lower() or "guard" in npc.name.lower():
-            create_guard_schedule(plugin, npc_id, town_spaces)
-        elif "shopkeeper" in npc_id.lower() or "merchant" in npc.name.lower():
-            create_merchant_schedule(plugin, npc_id, town_spaces)
-        elif "elder" in npc_id.lower() or "elder" in npc.name.lower():
-            create_elder_schedule(plugin, npc_id, town_spaces)
-        elif "bartender" in npc_id.lower() or "bartender" in npc.name.lower():
-            create_bartender_schedule(plugin, npc_id, town_spaces)
-        elif "villager" in npc_id.lower() or "villager" in npc.name.lower():
-            create_villager_schedule(plugin, npc_id, town_spaces)
+        if "guard" in obj_id.lower() or "guard" in npc.name.lower():
+            create_guard_schedule(plugin, obj_id, town_spaces)
+        elif "shopkeeper" in obj_id.lower() or "merchant" in npc.name.lower():
+            create_merchant_schedule(plugin, obj_id, town_spaces)
+        elif "elder" in obj_id.lower() or "elder" in npc.name.lower():
+            create_elder_schedule(plugin, obj_id, town_spaces)
+        elif "bartender" in obj_id.lower() or "bartender" in npc.name.lower():
+            create_bartender_schedule(plugin, obj_id, town_spaces)
+        elif "villager" in obj_id.lower() or "villager" in npc.name.lower():
+            create_villager_schedule(plugin, obj_id, town_spaces)
         # Default schedule for other NPCs
         else:
-            create_default_schedule(plugin, npc_id, town_spaces)
+            create_default_schedule(plugin, obj_id, town_spaces)
         
         # Now that the NPC has a schedule, set behavior type to scheduled
         npc.behavior_type = "scheduled"
         
         # Initialize current activity
         current_hour = plugin.current_hour if hasattr(plugin, "current_hour") else 12
-        schedule = plugin.get_npc_schedule(npc_id)
+        schedule = plugin.get_npc_schedule(obj_id)
         
         if current_hour in schedule:
             activity = schedule[current_hour].get("activity", "idle")
@@ -184,9 +184,9 @@ def get_random_location(locations, exclude_region=None, exclude_room=None):
     else:
         return None
 
-def create_default_schedule(plugin, npc_id, town_spaces):
+def create_default_schedule(plugin, obj_id, town_spaces):
     """Create a default dynamic schedule for an NPC."""
-    npc = plugin.world.get_npc(npc_id)
+    npc = plugin.world.get_npc(obj_id)
     if not npc:
         return
     
@@ -248,11 +248,11 @@ def create_default_schedule(plugin, npc_id, town_spaces):
     ]
     
     # Register the schedule
-    plugin.add_npc_schedule(npc_id, schedule)
+    plugin.add_npc_schedule(obj_id, schedule)
 
-def create_guard_schedule(plugin, npc_id, town_spaces):
+def create_guard_schedule(plugin, obj_id, town_spaces):
     """Create a dynamic guard schedule."""
-    npc = plugin.world.get_npc(npc_id)
+    npc = plugin.world.get_npc(obj_id)
     if not npc:
         return
     
@@ -356,11 +356,11 @@ def create_guard_schedule(plugin, npc_id, town_spaces):
     ]
     
     # Register the schedule
-    plugin.add_npc_schedule(npc_id, schedule)
+    plugin.add_npc_schedule(obj_id, schedule)
 
-def create_merchant_schedule(plugin, npc_id, town_spaces):
+def create_merchant_schedule(plugin, obj_id, town_spaces):
     """Create a dynamic merchant schedule."""
-    npc = plugin.world.get_npc(npc_id)
+    npc = plugin.world.get_npc(obj_id)
     if not npc:
         return
     
@@ -408,11 +408,11 @@ def create_merchant_schedule(plugin, npc_id, town_spaces):
     ]
     
     # Register the schedule
-    plugin.add_npc_schedule(npc_id, schedule)
+    plugin.add_npc_schedule(obj_id, schedule)
 
-def create_elder_schedule(plugin, npc_id, town_spaces):
+def create_elder_schedule(plugin, obj_id, town_spaces):
     """Create a dynamic elder schedule."""
-    npc = plugin.world.get_npc(npc_id)
+    npc = plugin.world.get_npc(obj_id)
     if not npc:
         return
     
@@ -451,11 +451,11 @@ def create_elder_schedule(plugin, npc_id, town_spaces):
     }
     
     # Register the schedule
-    plugin.add_npc_schedule(npc_id, schedule)
+    plugin.add_npc_schedule(obj_id, schedule)
 
-def create_villager_schedule(plugin, npc_id, town_spaces):
+def create_villager_schedule(plugin, obj_id, town_spaces):
     """Create a dynamic villager schedule with varied activities."""
-    npc = plugin.world.get_npc(npc_id)
+    npc = plugin.world.get_npc(obj_id)
     if not npc:
         return
     
@@ -528,11 +528,11 @@ def create_villager_schedule(plugin, npc_id, town_spaces):
         schedule[16] = {"activity": "taking a walk", "region_id": square["region_id"], "room_id": square["room_id"]}
     
     # Register the schedule
-    plugin.add_npc_schedule(npc_id, schedule)
+    plugin.add_npc_schedule(obj_id, schedule)
 
-def create_bartender_schedule(plugin, npc_id, town_spaces):
+def create_bartender_schedule(plugin, obj_id, town_spaces):
     """Create a dynamic bartender schedule."""
-    npc = plugin.world.get_npc(npc_id)
+    npc = plugin.world.get_npc(obj_id)
     if not npc:
         return
     
@@ -574,7 +574,7 @@ def create_bartender_schedule(plugin, npc_id, town_spaces):
     ]
     
     # Register the schedule
-    plugin.add_npc_schedule(npc_id, schedule)
+    plugin.add_npc_schedule(obj_id, schedule)
 
 def create_town_activity(plugin, town_spaces):
     """
@@ -587,7 +587,7 @@ def create_town_activity(plugin, town_spaces):
         return
     
     # Get all NPCs with schedules
-    scheduled_npcs = [npc_id for npc_id in plugin.npc_schedules.keys()]
+    scheduled_npcs = [obj_id for obj_id in plugin.npc_schedules.keys()]
     
     # If not enough NPCs, do nothing
     if len(scheduled_npcs) < 2:
@@ -622,9 +622,9 @@ def create_town_activity(plugin, town_spaces):
     if market_location:
         # Select random NPCs to visit the market
         market_visitors = random.sample(scheduled_npcs, min(3, len(scheduled_npcs)))
-        for npc_id in market_visitors:
-            if npc_id in plugin.npc_schedules:
-                schedule = plugin.npc_schedules[npc_id]
+        for obj_id in market_visitors:
+            if obj_id in plugin.npc_schedules:
+                schedule = plugin.npc_schedules[obj_id]
                 # Only override if they're not already doing something critical
                 if morning_market_hour not in schedule or "working" not in schedule[morning_market_hour].get("activity", ""):
                     schedule[morning_market_hour] = {
@@ -633,14 +633,14 @@ def create_town_activity(plugin, town_spaces):
                         "room_id": market_location["room_id"]
                     }
                     # Update the NPC's schedule
-                    plugin.add_npc_schedule(npc_id, schedule)
+                    plugin.add_npc_schedule(obj_id, schedule)
     
     if tavern_location:
         # Select random NPCs to visit the tavern
         tavern_visitors = random.sample(scheduled_npcs, min(5, len(scheduled_npcs)))
-        for npc_id in tavern_visitors:
-            if npc_id in plugin.npc_schedules:
-                schedule = plugin.npc_schedules[npc_id]
+        for obj_id in tavern_visitors:
+            if obj_id in plugin.npc_schedules:
+                schedule = plugin.npc_schedules[obj_id]
                 # Only override if they're not already doing something critical
                 if evening_tavern_hour not in schedule or "sleeping" not in schedule[evening_tavern_hour].get("activity", ""):
                     schedule[evening_tavern_hour] = {
@@ -649,14 +649,14 @@ def create_town_activity(plugin, town_spaces):
                         "room_id": tavern_location["room_id"]
                     }
                     # Update the NPC's schedule
-                    plugin.add_npc_schedule(npc_id, schedule)
+                    plugin.add_npc_schedule(obj_id, schedule)
     
     if meeting_location:
         # Select random NPCs for afternoon gathering
         meeting_attendees = random.sample(scheduled_npcs, min(4, len(scheduled_npcs)))
-        for npc_id in meeting_attendees:
-            if npc_id in plugin.npc_schedules:
-                schedule = plugin.npc_schedules[npc_id]
+        for obj_id in meeting_attendees:
+            if obj_id in plugin.npc_schedules:
+                schedule = plugin.npc_schedules[obj_id]
                 # Only override if they're not already doing something critical
                 if afternoon_meeting_hour not in schedule or "working" not in schedule[afternoon_meeting_hour].get("activity", ""):
                     schedule[afternoon_meeting_hour] = {
@@ -665,4 +665,4 @@ def create_town_activity(plugin, town_spaces):
                         "room_id": meeting_location["room_id"]
                     }
                     # Update the NPC's schedule
-                    plugin.add_npc_schedule(npc_id, schedule)
+                    plugin.add_npc_schedule(obj_id, schedule)

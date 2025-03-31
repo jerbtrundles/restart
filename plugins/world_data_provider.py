@@ -94,12 +94,12 @@ class WorldDataProvider:
         items = self.world.get_items_in_current_room()
         return [self._item_to_dict(item) for item in items]
     
-    def get_npc_by_id(self, npc_id: str) -> Optional[Dict[str, Any]]:
+    def get_npc_by_id(self, obj_id: str) -> Optional[Dict[str, Any]]:
         """
         Get NPC data by ID.
         
         Args:
-            npc_id: The ID of the NPC.
+            obj_id: The ID of the NPC.
             
         Returns:
             NPC data dictionary, or None if not found.
@@ -107,7 +107,7 @@ class WorldDataProvider:
         if not self.world:
             return None
             
-        npc = self.world.get_npc(npc_id)
+        npc = self.world.get_npc(obj_id)
         if not npc:
             return None
             
@@ -136,7 +136,7 @@ class WorldDataProvider:
             A dictionary representation of the NPC.
         """
         return {
-            "id": npc.npc_id,
+            "id": npc.obj_id,
             "name": npc.name,
             "description": npc.description,
             "region_id": npc.current_region_id,
@@ -157,7 +157,7 @@ class WorldDataProvider:
             A dictionary representation of the item.
         """
         return {
-            "id": item.item_id,
+            "id": item.obj_id,
             "name": item.name,
             "description": item.description,
             "weight": getattr(item, "weight", 0),

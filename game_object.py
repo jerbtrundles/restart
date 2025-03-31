@@ -29,7 +29,7 @@ class GameObject:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'GameObject':
         obj = cls(
-            obj_id=data.get("id"),
+            obj_id=data.get("obj_id") or data.get("id"),
             name=data.get("name", "Unknown"),
             description=data.get("description", "No description")
         )

@@ -149,7 +149,7 @@ class NPCSchedulePlugin(PluginBase):
         if not self.world:
             return
         
-        for npc_id, npc in self.world.npcs.items():
+        for obj_id, npc in self.world.npcs.items():
             # Store original behavior
             if not hasattr(npc, "ai_state"):
                 npc.ai_state = {}
@@ -162,7 +162,7 @@ class NPCSchedulePlugin(PluginBase):
             npc.behavior_type = "wanderer"
             
             # Store current home location
-            self.home_locations[npc_id] = {
+            self.home_locations[obj_id] = {
                 "region_id": npc.current_region_id,
                 "room_id": npc.current_room_id
             }
@@ -181,7 +181,7 @@ class NPCSchedulePlugin(PluginBase):
                 activity = random.choice(self.config["day_activities"]) if self.current_period == "day" else random.choice(self.config["night_activities"])
                 npc.ai_state["current_activity"] = activity
     
-    def _get_night_destination(self, npc_id):
+    def _get_night_destination(self, obj_id):
         """Get a destination for an NPC at night (tavern or social area)."""
         # Try to find a tavern
         if self.taverns:
@@ -192,8 +192,8 @@ class NPCSchedulePlugin(PluginBase):
             return random.choice(self.social_areas)
         
         # Last resort - use home location
-        elif npc_id in self.home_locations:
-            return self.home_locations[npc_id]
+        elif obj_id in self.home_locations:
+            return self.home_locations[obj_id]
         
         # No suitable destination found
         return None
@@ -212,7 +212,7 @@ class NPCSchedulePlugin(PluginBase):
         self.last_update_time = current_time
         
         # Loop through all NPCs and update their behavior
-        for npc_id, npc in self.world.npcs.items():
+        for obj_id, npc in self.world.npcs.items():
             # Skip NPCs that are busy with activities
             if npc.ai_state.get("is_sleeping") or npc.ai_state.get("is_busy"):
                 continue
@@ -234,7 +234,7 @@ class NPCSchedulePlugin(PluginBase):
             # At night: head to tavern or social area
             else:
                 # First approach: try to use their built-in movement
-                destination = self._get_night_destination(npc_id)
+                destination = self._get_night_destination(obj_id)
                 if destination:
                     # Set the destination
                     target_region = destination["region_id"]
@@ -279,7 +279,7 @@ class NPCSchedulePlugin(PluginBase):
         """Clean up plugin resources."""
         # Restore original behaviors
         if self.world:
-            for npc_id, npc in self.world.npcs.items():
+            for obj_id, npc in self.world.npcs.items():
                 if hasattr(npc, "ai_state") and "original_behavior_type" in npc.ai_state:
                     npc.behavior_type = npc.ai_state["original_behavior_type"]
         
