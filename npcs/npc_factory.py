@@ -19,8 +19,10 @@ class NPCFactory:
             "health": 100,
             "friendly": True,
             "behavior_type": "stationary",
+            "properties": { "is_vendor": True }, # <<< ADD is_vendor property
             "dialog": {
                 "greeting": "Welcome to my shop! What can I help you with?",
+                "trade": "Looking to buy or sell?", # <<< ADD specific trade dialog key
                 "buy": "I have many items for sale. What would you like to buy?",
                 "sell": "I'll give you a fair price for your items.",
                 "goods": "I have various goods for sale. Take a look!",
@@ -85,8 +87,10 @@ class NPCFactory:
             "health": 90,
             "friendly": True,
             "behavior_type": "stationary",
+            "properties": { "is_vendor": True }, # <<< ADD is_vendor property
             "dialog": {
                 "greeting": "Welcome to my tavern! What'll it be?",
+                "trade": "Need a drink, or perhaps selling something?", # <<< ADD specific trade dialog key
                 "drink": "I've got ale, wine, and mead. What's your poison?",
                 "rumors": "I hear all sorts of things in this place. Like just yesterday...",
                 "news": "News? Well, they say the mountain pass has been having trouble with bandits.",
@@ -142,6 +146,10 @@ class NPCFactory:
             health=template.get("health", 100),
             friendly=template.get("friendly", True)
         )
+
+        template_properties = template.get("properties", {})
+        for key, value in template_properties.items():
+            npc.update_property(key, value) # Use the update_property method
         
         # Set behavior properties
         npc.behavior_type = template.get("behavior_type", "stationary")
