@@ -85,6 +85,7 @@
     "town": {
       "name": "Riverside Village",
       "description": "A peaceful village nestled by the Silver River. The buildings are made of sturdy timber with thatched roofs, and the villagers are known for their hospitality.",
+      "properties": { "safe_zone": true },
       "rooms": {
         "town_square": {
           "name": "Town Square",
@@ -942,6 +943,7 @@
     "farmland": {
         "name": "Rolling Hills Farmland",
         "description": "Fertile fields stretch out under an open sky, tended by hardworking farmers. The air smells of crops and earth. The Silver River lies to the west.",
+        "properties": { "safe_zone": true },
         "rooms": {
             "farm_bridge": {
                 "name": "Old Stone Bridge",
@@ -1178,6 +1180,7 @@
     "portbridge": {
         "name": "Portbridge",
         "description": "A bustling port town built where the Silver River meets the sea. Its docks teem with sailors and merchants, and the smell of salt and fish hangs heavy in the air.",
+        "properties": { "safe_zone": true },
         "rooms": {
             "town_gate_south": {
                 "name": "Portbridge South Gate",

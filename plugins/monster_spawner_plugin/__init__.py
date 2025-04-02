@@ -1,4 +1,5 @@
 """
+plugins/monster_spawner_plugin/__init__.py
 Monster spawner plugin for the MUD game.
 Periodically spawns monsters in the world.
 """
@@ -158,8 +159,17 @@ class MonsterSpawnerPlugin(PluginBase):
             region_id: The ID of the region
             region: The Region object
         """
+        if self.world.is_location_safe(region_id):
+             if self.config.get("debug", False) and self.event_system:
+                 self.event_system.publish("display_message", f"[Debug Spawner] Skipping spawn in safe region: {region_id}")
+             return # Do not spawn in safe regions
+        
         # Check if we've reached the maximum for this region
+        # (Ensure you have a reliable way to count monsters, _count_monsters_in_region might need adjustment
+        # if monsters can move between regions easily)
         if self._count_monsters_in_region(region_id) >= self.config["max_monsters_per_region"]:
+            if self.config.get("debug", False) and self.event_system:
+                self.event_system.publish("display_message", f"[Debug Spawner] Max monsters reached in region: {region_id}")
             return
         
         # Only spawn with the configured chance
@@ -181,6 +191,8 @@ class MonsterSpawnerPlugin(PluginBase):
             suitable_rooms.append(room_id)
         
         if not suitable_rooms:
+            if self.config.get("debug", False) and self.event_system:
+                self.event_system.publish("display_message", f"[Debug Spawner] No suitable spawn rooms found in region: {region_id}")
             return
             
         # Pick a random room
@@ -191,6 +203,10 @@ class MonsterSpawnerPlugin(PluginBase):
             region_id, 
             self.config["region_monsters"]["default"]
         )
+        if not monster_types: # Ensure we have monster types to choose from
+             if self.config.get("debug", False) and self.event_system:
+                 self.event_system.publish("display_message", f"[Debug Spawner] No monster types defined for region: {region_id}")
+             return
         
         # Get level range for this region
         level_range = self.config["region_levels"].get(
@@ -200,7 +216,11 @@ class MonsterSpawnerPlugin(PluginBase):
         
         # Choose a monster type based on weights
         monster_type = self._weighted_choice(monster_types)
-        
+        if not monster_type: # Handle case where weighted choice fails (e.g., empty dict)
+            if self.config.get("debug", False) and self.event_system:
+                self.event_system.publish("display_message", f"[Debug Spawner] Could not choose monster type for region: {region_id}")
+            return
+
         # Create and add the monster
         monster = MonsterFactory.create_monster(monster_type)
         if monster:
@@ -228,28 +248,24 @@ class MonsterSpawnerPlugin(PluginBase):
                 self.active_monsters[region_id] = 0
             self.active_monsters[region_id] += 1
             
-            # Debug message
-            if self.config["debug"] and self.event_system:
+            if self.config.get("debug", False) and self.event_system:
                 self.event_system.publish(
-                    "display_message", 
-                    f"[Debug] Spawned {monster.name} in {region_id}:{room_id}"
+                    "display_message",
+                    f"[Debug Spawner] Spawned {monster.name} (Lvl {level}) in {region_id}:{room_id}"
                 )
-    
+        elif self.config.get("debug", False) and self.event_system:
+             self.event_system.publish("display_message", f"[Debug Spawner] Failed to create monster of type: {monster_type}")
+
     def _count_monsters_in_region(self, region_id):
-        """
-        Count monsters in a region.
-        
-        Args:
-            region_id: The region ID to check
-            
-        Returns:
-            The number of monsters in the region
-        """
+        """Count monsters in a region."""
+        # This check is okay, but be aware monsters might wander out.
+        # A more complex system might track spawns per region rather than current location.
         count = 0
         for npc in self.world.npcs.values():
-            if (npc.current_region_id == region_id and 
-                npc.faction == "hostile" and 
-                npc.is_alive):
+            # Count only hostile, alive NPCs currently in the specified region
+            if (npc.current_region_id == region_id and
+                npc.faction == "hostile" and # Assuming monsters are 'hostile'
+                hasattr(npc, 'is_alive') and npc.is_alive):
                 count += 1
         return count
     

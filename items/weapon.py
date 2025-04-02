@@ -1,36 +1,26 @@
+# items/weapon.py
 from items.item import Item
 from typing import List, Optional # Import List, Optional
 
 class Weapon(Item):
-    """A weapon item that can be used in combat."""
-
     def __init__(self, obj_id: str = None, name: str = "Unknown Weapon",
                  description: str = "No description", weight: float = 2.0,
                  value: int = 10, damage: int = 5, durability: int = 100,
-                 equip_slot: Optional[List[str]] = None, # <-- Pass equip_slot
+                 equip_slot: Optional[List[str]] = None,
                  **kwargs):
-        """
-        Initialize a weapon.
-        """
-        # --- MODIFIED: Default equip_slot if not provided ---
         if equip_slot is None:
              equip_slot = ["main_hand", "off_hand"]
-        # --- END MODIFIED ---
 
+        # Call super without stackable, but include other kwargs
         super().__init__(
-            obj_id=obj_id,
-            name=name,
-            description=description,
-            weight=weight,
-            value=value,
-            stackable=False,
-            equip_slot=equip_slot, # Pass to base class
-            damage=damage, # Will be stored in properties by base class
-            durability=durability, # Will be stored in properties
-            max_durability=durability, # Will be stored in properties
-            **kwargs # Pass extra kwargs
+            obj_id=obj_id, name=name, description=description, weight=weight,
+            value=value, equip_slot=equip_slot,
+            damage=damage, durability=durability, max_durability=durability,
+            **kwargs
         )
-        # Properties 'damage', 'durability', 'max_durability' are set by the base __init__ via **kwargs
+        # Set stackable after super init
+        self.stackable = False
+        self.update_property("stackable", self.stackable)
 
     def use(self, user, **kwargs) -> str:
         """Use the weapon (e.g., to equip it if not equipped)."""

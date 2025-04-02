@@ -1,28 +1,21 @@
+# items/consumable.py
 from items.item import Item
 
-
 class Consumable(Item):
-    """A consumable item like food or potion."""
-    
-    def __init__(self, obj_id: str = None, name: str = "Unknown Consumable", 
+    def __init__(self, obj_id: str = None, name: str = "Unknown Consumable",
                  description: str = "No description", weight: float = 0.5,
-                 value: int = 5, uses: int = 1, effect_value: int = 10, 
+                 value: int = 5, uses: int = 1, effect_value: int = 10,
                  effect_type: str = "heal"):
-        """
-        Initialize a consumable.
-        """
+        # Call super without stackable
         super().__init__(
-            obj_id=obj_id, 
-            name=name, 
-            description=description, 
-            weight=weight, 
-            value=value, 
-            stackable=(uses == 1),
-            uses=uses,
-            max_uses=uses,
-            effect_value=effect_value,
-            effect_type=effect_type
+            obj_id=obj_id, name=name, description=description, weight=weight,
+            value=value, # Pass weight and value
+            # Pass other kwargs specific to this subclass for properties
+            uses=uses, max_uses=uses, effect_value=effect_value, effect_type=effect_type
         )
+        # Set stackable based on uses *after* super init
+        self.stackable = (uses == 1)
+        self.update_property("stackable", self.stackable)
     
     def use(self, user) -> str:
         """Use the consumable item."""

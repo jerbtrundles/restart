@@ -1,3 +1,4 @@
+# core/game_manager.py
 import time
 import pygame
 import sys
@@ -12,18 +13,17 @@ from commands.commands import register_movement_commands
 
 class GameManager:
     def __init__(self, world_file: str = config.DEFAULT_WORLD_FILE):
-        # ... (pygame init, screen, font, clock - unchanged) ...
         pygame.init()
         self.screen = pygame.display.set_mode((config.SCREEN_WIDTH, config.SCREEN_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Pygame MUD")
         self.font = pygame.font.SysFont("monospace", config.FONT_SIZE)
         self.clock = pygame.time.Clock()
 
-        self.text_formatter = TextFormatter( # ... (text formatter init - unchanged) ...
+        self.text_formatter = TextFormatter(
             font=self.font, screen_width=config.SCREEN_WIDTH,
             colors=config.FORMAT_COLORS, margin=10, line_spacing=config.LINE_SPACING
         )
-        self.world = World() # ... (world init - unchanged) ...
+        self.world = World()
         self.world.start_time = time.time(); self.world.game = self
         if not self.world.load_from_json(world_file):
             print(f"Failed to load world from {world_file}. Creating test world.")

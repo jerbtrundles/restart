@@ -1,5 +1,5 @@
 """
-monster_factory.py
+npcs/monster_factory.py
 Factory for creating monster NPCs with predefined templates
 """
 from typing import Dict, List, Optional, Any, Tuple

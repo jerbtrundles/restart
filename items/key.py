@@ -1,23 +1,18 @@
+# items/key.py
 from typing import Container, Optional
 
 from items.item import Item
 
 
 class Key(Item):
-    """A key that can unlock containers or doors."""
-
     def __init__(self, obj_id: str = None, name: str = "Unknown Key",
                  description: str = "No description", weight: float = 0.1,
-                 value: int = 15, target_id: Optional[str] = None): # Use Optional
-        """
-        Initialize a key.
-
-        Args:
-            target_id: The ID of the container or door this key unlocks.
-                       Can be None if it's a generic key opened by obj_id.
-        """
-        super().__init__(obj_id, name, description, weight, value, stackable=False)
-        self.properties["target_id"] = target_id
+                 value: int = 15, target_id: Optional[str] = None):
+        # Call super without stackable
+        super().__init__(obj_id, name, description, weight, value, target_id=target_id)
+        # Set stackable after super init
+        self.stackable = False
+        self.update_property("stackable", self.stackable)
 
     # MODIFY use method for Key
     def use(self, user, target_item: Optional[Item] = None) -> str:

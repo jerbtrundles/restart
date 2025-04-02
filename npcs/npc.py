@@ -1,5 +1,5 @@
 """
-npc.py
+npcs/npc.py
 Enhanced NPC module with integrated combat capabilities
 """
 from typing import Dict, List, Optional, Any, Tuple, Callable
@@ -691,169 +691,201 @@ class NPC(GameObject):
         return None
 
     def _wander_behavior(self, world, current_time: float) -> Optional[str]:
-        """Implement wandering behavior."""
+        """Implement wandering behavior, avoiding safe zones for hostile NPCs."""
         # Only wander sometimes
         if random.random() > self.wander_chance:
             return None
-            
+
         # Get current room and its exits
         region = world.get_region(self.current_region_id)
-        if not region:
-            return None
-            
+        if not region: return None
         room = region.get_room(self.current_room_id)
-        if not room:
-            return None
-            
-        exits = list(room.exits.keys())
-        if not exits:
-            return None
-            
-        # Choose a random exit and move through it
-        direction = random.choice(exits)
-        destination = room.exits[direction]
-        
+        if not room or not room.exits: return None
+
+        # --- MODIFIED: Consider only valid exits ---
+        valid_exits = {}
+        is_hostile = (self.faction == "hostile") # Check if this NPC is hostile
+
+        for direction, destination in room.exits.items():
+            next_region_id = self.current_region_id
+            next_room_id = destination
+            if ":" in destination:
+                next_region_id, next_room_id = destination.split(":")
+
+            # Check if the destination is safe
+            destination_is_safe = world.is_location_safe(next_region_id, next_room_id)
+
+            # Hostile NPCs avoid entering safe zones
+            if is_hostile and destination_is_safe:
+                continue # Skip this exit
+
+            # Optional: Non-hostile NPCs might also avoid certain dangerous zones? (Not implemented here)
+
+            valid_exits[direction] = destination
+        # --- END MODIFICATION ---
+
+        if not valid_exits:
+            return None # No valid places to wander to
+
+        # Choose a random *valid* exit and move through it
+        direction = random.choice(list(valid_exits.keys()))
+        destination = valid_exits[direction]
+
         # Save old location info
         old_region_id = self.current_region_id
         old_room_id = self.current_room_id
-        
+
         # Handle region transitions
         if ":" in destination:
             new_region_id, new_room_id = destination.split(":")
-            
-            # Update location
             self.current_region_id = new_region_id
             self.current_room_id = new_room_id
-            
         else:
-            # Same region, different room
             self.current_room_id = destination
-        
-        # Note: We no longer update self.last_moved here
-        # It will be updated in the main update method
-        
-        # Check if the player is in the room to see the NPC leave
-        if (world.current_region_id == old_region_id and 
-            world.current_room_id == old_room_id):
+
+        # Update last_moved in the main update() loop after the behavior returns a message
+
+        # Return message if player can see the movement
+        if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
             return f"{self.name} leaves to the {direction}."
-            
-        # Check if the player is in the destination room to see the NPC arrive
-        if (world.current_region_id == self.current_region_id and 
-            world.current_room_id == self.current_room_id):
+        if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
             return f"{self.name} arrives from the {self._reverse_direction(direction)}."
-        
-        return None
+
+        return None # Return None if player didn't see the movement directly
 
     def _patrol_behavior(self, world, current_time: float) -> Optional[str]:
-        """Implement patrol behavior."""
+        """Implement patrol behavior, avoiding moving *into* safe zones for hostile NPCs."""
         if not self.patrol_points:
             return None
-            
+
         # Get next patrol point
-        next_point = self.patrol_points[self.patrol_index]
-        
+        next_point_room_id = self.patrol_points[self.patrol_index]
+        # Assume patrol points are within the same region for simplicity here
+        next_point_region_id = self.current_region_id # Adjust if patrol points can cross regions
+
+        # Check if the target patrol point itself is in a safe zone (hostile patrols shouldn't target safe zones)
+        is_hostile = (self.faction == "hostile")
+        if is_hostile and world.is_location_safe(next_point_region_id, next_point_room_id):
+            # Skip this patrol point or the whole patrol? Let's skip the point for now.
+            self.patrol_index = (self.patrol_index + 1) % len(self.patrol_points)
+            return None # Re-evaluate next tick
+
         # If we're already there, move to the next point in the list
-        if next_point == self.current_room_id:
+        if next_point_room_id == self.current_room_id:
             self.patrol_index = (self.patrol_index + 1) % len(self.patrol_points)
             return None
-            
-        # Find a path to the next patrol point (simplified version)
-        # In a real implementation, you'd want a proper pathfinding algorithm
-        
-        # Get current room
+
+        # Find a path (simplified: find direct exit)
         region = world.get_region(self.current_region_id)
-        if not region:
-            return None
-            
+        if not region: return None
         room = region.get_room(self.current_room_id)
-        if not room:
-            return None
-            
+        if not room: return None
+
+        chosen_direction = None
+        chosen_destination = None
+
         # Look for a direct path first
         for direction, destination in room.exits.items():
-            if destination == next_point:
-                old_room_id = self.current_room_id
-                self.current_room_id = destination
-                
-                # Check if the player is in the room to see the NPC leave
-                if (world.current_region_id == self.current_region_id and 
-                    world.current_room_id == old_room_id):
-                    message = f"{self.name} leaves to the {direction}."
-                    return message
-                    
-                # Check if the player is in the destination room to see the NPC arrive
-                if (world.current_region_id == self.current_region_id and 
-                    world.current_room_id == destination):
-                    message = f"{self.name} arrives from the {self._reverse_direction(direction)}."
-                    return message
-                
-                self.last_moved = current_time
-                return None
-        
-        # If no direct path, just pick a random exit (this is a simplification)
-        return self._wander_behavior(world, current_time)
+            if destination == next_point_room_id: # Assuming same region for now
+                 # *** ADD SAFETY CHECK ***
+                 next_region_id = self.current_region_id
+                 next_room_id = destination
+                 if ":" in destination:
+                     next_region_id, next_room_id = destination.split(":")
+
+                 if is_hostile and world.is_location_safe(next_region_id, next_room_id):
+                     continue # Don't choose this path if it leads directly into a safe zone
+
+                 chosen_direction = direction
+                 chosen_destination = destination
+                 break # Found a direct, valid path
+
+
+        # If no direct path found OR direct path was into safe zone, maybe wander?
+        if not chosen_direction:
+             # Fallback to wandering *away* from safe zones if possible
+             return self._wander_behavior(world, current_time)
+
+        # --- Move using the chosen direction ---
+        old_region_id = self.current_region_id # Save before changing
+        old_room_id = self.current_room_id
+
+        # Handle region transitions if destination format includes it
+        if ":" in chosen_destination:
+            new_region_id, new_room_id = chosen_destination.split(":")
+            self.current_region_id = new_region_id
+            self.current_room_id = new_room_id
+        else:
+            self.current_room_id = chosen_destination
+
+
+        # Return message if player can see
+        if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
+            return f"{self.name} leaves to the {chosen_direction}."
+        if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
+            return f"{self.name} arrives from the {self._reverse_direction(chosen_direction)}."
+
+        return None
+
 
     def _follower_behavior(self, world, current_time: float) -> Optional[str]:
-        """Improved follower behavior with pathfinding."""
+        """Follower behavior, avoiding moving *into* safe zones for hostile NPCs."""
         if not self.follow_target:
             return None
-            
-        # For now, assume the follow target is the player
+
+        # Simplified: Assume target is player
         if self.follow_target == "player":
-            # Check if we're already in the same room as the player
-            if (self.current_region_id == world.current_region_id and
-                self.current_room_id == world.current_room_id):
+            player_region_id = world.current_region_id
+            player_room_id = world.current_room_id
+
+            # If already in the same room, do nothing
+            if (self.current_region_id == player_region_id and
+                self.current_room_id == player_room_id):
                 return None
-                
+
             # Find path to player
-            path = world.find_path(self.current_region_id,
-                            self.current_room_id,
-                            world.current_region_id,
-                            world.current_room_id)
-            
+            path = world.find_path(self.current_region_id, self.current_room_id,
+                                   player_region_id, player_room_id)
+
             if path and len(path) > 0:
-                # Get the first step in the path
+                # Get the first step (direction)
                 direction = path[0]
-                
-                # Get current room
+
+                # Get current room and the exit destination
                 region = world.get_region(self.current_region_id)
-                if not region:
-                    return None
-                    
+                if not region: return None
                 room = region.get_room(self.current_room_id)
-                if not room:
-                    return None
-                
-                # Get destination
-                destination = room.exits.get(direction)
-                if not destination:
-                    return None
-                    
-                # Save old location
+                if not room or direction not in room.exits: return None
+                destination = room.exits[direction]
+
+                # Determine next location
+                next_region_id = self.current_region_id
+                next_room_id = destination
+                if ":" in destination:
+                    next_region_id, next_room_id = destination.split(":")
+
+                # *** ADD SAFETY CHECK ***
+                is_hostile = (self.faction == "hostile")
+                if is_hostile and world.is_location_safe(next_region_id, next_room_id):
+                    # Hostile NPC stops following if the next step is into a safe zone
+                    # Optionally, could clear self.follow_target here
+                    # print(f"{self.name} stops following into safe zone {next_region_id}:{next_room_id}") # Debug
+                    return None # Don't take the step
+
+                # --- If not entering a safe zone, proceed with movement ---
                 old_region_id = self.current_region_id
                 old_room_id = self.current_room_id
-                
-                # Handle region transitions
-                if ":" in destination:
-                    new_region_id, new_room_id = destination.split(":")
-                    self.current_region_id = new_region_id
-                    self.current_room_id = new_room_id
-                else:
-                    self.current_room_id = destination
-                
-                # Update last moved
-                self.last_moved = current_time
-                
+
+                self.current_region_id = next_region_id
+                self.current_room_id = next_room_id
+
                 # Return message if player can see
-                if (world.current_region_id == old_region_id and 
-                    world.current_room_id == old_room_id):
+                if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
                     return f"{self.name} leaves to the {direction}."
-                    
-                if (world.current_region_id == self.current_region_id and 
-                    world.current_room_id == self.current_room_id):
+                if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
                     return f"{self.name} arrives from the {self._reverse_direction(direction)}."
-        
-        return None
+
+        return None # No path or other issue
 
     def enter_combat(self, target) -> None:
         """

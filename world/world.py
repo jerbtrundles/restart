@@ -1,4 +1,4 @@
-# ... (imports - add Container if not already there) ...
+# world/world.py
 from typing import Dict, List, Optional, Any, Tuple
 import time
 import json
@@ -17,7 +17,6 @@ from utils.text_formatter import TextFormatter
 
 
 class World:
-    # ... (__init__, add_region, get_region, get_current_region, get_current_room - unchanged) ...
     def __init__(self):
         self.regions: Dict[str, Region] = {}
         self.current_region_id: Optional[str] = None
@@ -218,46 +217,47 @@ class World:
             self.plugin_data = world_data.get("plugin_data", {})
 
             if "player" in world_data:
-                self.player = Player.from_dict(world_data["player"]) # Player loading now includes equipment
-            else: self.player = Player("Adventurer") # Default player
+                self.player = Player.from_dict(world_data["player"])
+            else: self.player = Player("Adventurer")
 
-            # Ensure player inventory and equipment are initialized if missing in save
             if not hasattr(self.player, "inventory") or self.player.inventory is None:
                  self.player.inventory = Inventory()
             if not hasattr(self.player, "equipment") or self.player.equipment is None:
                  self.player.equipment = { "main_hand": None, "off_hand": None, "body": None, "head": None, "feet": None, "hands": None, "neck": None }
 
-
+            # *** Use Region.from_dict ***
             for region_id, region_data in world_data.get("regions", {}).items():
-                region = Region(region_data["name"], region_data["description"])
-                for room_id, room_data in region_data.get("rooms", {}).items():
-                    room = Room.from_dict(room_data)
-                    # Explicitly load items using factory
-                    room.items = [ItemFactory.from_dict(item_data) for item_data in room_data.get("items", []) if item_data] # Filter out None items
-                    room.items = [item for item in room.items if item is not None] # Ensure list only contains valid items
-                    region.add_room(room_id, room)
-                self.add_region(region_id, region)
+                try:
+                    # Pass region_id as obj_id hint for Region.from_dict
+                    region_data['obj_id'] = region_data.get('obj_id', region_id)
+                    region = Region.from_dict(region_data)
+                    self.add_region(region_id, region) # Use the original key for the world dict
+                except Exception as region_load_error:
+                    print(f"Warning: Failed to load region '{region_data.get('name', region_id)}': {region_load_error}")
+                    import traceback
+                    traceback.print_exc() # Print traceback for region loading errors
+            # *** End Change ***
 
             current_time = time.time() - self.start_time
             for npc_id, npc_data in world_data.get("npcs", {}).items():
                  try:
+                      # Pass npc_id as obj_id hint
+                      npc_data['obj_id'] = npc_data.get('obj_id', npc_id)
                       npc = NPC.from_dict(npc_data)
-                      npc.last_moved = current_time # Reset last_moved on load
-                      # Ensure inventory exists
+                      npc.last_moved = current_time
                       if not hasattr(npc, "inventory") or npc.inventory is None:
                            npc.inventory = Inventory(max_slots=10, max_weight=50.0)
-                      self.npcs[npc_id] = npc
+                      self.npcs[npc.obj_id] = npc # Use npc.obj_id as key now
                  except Exception as npc_load_error:
                       print(f"Warning: Failed to load NPC '{npc_data.get('name', npc_id)}': {npc_load_error}")
-
+                      import traceback
+                      traceback.print_exc() # Print traceback for NPC loading errors
 
             self.current_region_id = world_data.get("current_region_id")
             self.current_room_id = world_data.get("current_room_id")
 
-            # Validate current location exists after loading
             if not self.get_current_room():
                  print(f"Warning: Loaded location {self.current_region_id}:{self.current_room_id} is invalid. Resetting.")
-                 # Find a valid starting point
                  if self.regions:
                       first_region_id = next(iter(self.regions))
                       first_region = self.regions[first_region_id]
@@ -265,11 +265,14 @@ class World:
                            self.current_region_id = first_region_id
                            self.current_room_id = next(iter(first_region.rooms))
                            print(f"Reset location to {self.current_region_id}:{self.current_room_id}")
-                      else: self.current_region_id = self.current_room_id = None # No valid rooms anywhere
+                      else: self.current_region_id = self.current_room_id = None
                  else: self.current_region_id = self.current_room_id = None
 
             print(f"World loaded from {file_path}. Location: {self.current_region_id}:{self.current_room_id}")
             return True
+        except json.JSONDecodeError as json_err:
+             print(f"FATAL: Error decoding JSON from {file_path}: {json_err}")
+             return False
         except Exception as e:
             print(f"Error loading world: {e}"); import traceback; traceback.print_exc(); return False
 
@@ -387,3 +390,21 @@ class World:
         if npcs_text: full_description += "\n\n" + "\n".join(npcs_text)
         if items_text: full_description += "\n\n" + "\n".join(items_text)
         return full_description
+
+    def is_location_safe(self, region_id: str, room_id: Optional[str] = None) -> bool:
+        """
+        Check if a given region (and optionally room) is considered safe
+        from hostile monster spawns and entry.
+        """
+        region = self.get_region(region_id)
+        if not region:
+            return False # Unknown regions are not considered safe
+
+        # Check the region's safe_zone property
+        if region.get_property("safe_zone", False):
+            return True
+
+        # Optional: Add specific room checks here if needed later
+        # e.g., if room_id in config.SAFE_ROOMS_EVEN_IN_DANGEROUS_REGIONS: return True
+
+        return False # Default to not safe if region isn't marked
