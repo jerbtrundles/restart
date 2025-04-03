@@ -4,16 +4,14 @@ import time
 import json
 import os
 
+from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
 from player import Player
 from world.region import Region
 from world.room import Room
 from items.item import Item # Import base Item
-from items.container import Container # Import Container
-from items.item_factory import ItemFactory
 from items.inventory import Inventory
 from npcs.npc import NPC
-from npcs.npc_factory import NPCFactory
-from utils.text_formatter import TextFormatter
+from utils.text_formatter import format_target_name
 
 
 class World:
@@ -77,16 +75,16 @@ class World:
     def change_room(self, direction: str) -> str:
         old_region_id = self.current_region_id; old_room_id = self.current_room_id
         current_room = self.get_current_room()
-        if not current_room: return f"{TextFormatter.FORMAT_ERROR}You are lost in the void.{TextFormatter.FORMAT_RESET}"
+        if not current_room: return f"{FORMAT_ERROR}You are lost in the void.{FORMAT_RESET}"
         destination_id = current_room.get_exit(direction)
-        if not destination_id: return f"{TextFormatter.FORMAT_ERROR}You cannot go {direction}.{TextFormatter.FORMAT_RESET}"
+        if not destination_id: return f"{FORMAT_ERROR}You cannot go {direction}.{FORMAT_RESET}"
 
         new_region_id = self.current_region_id
         new_room_id = destination_id
 
         # Check for complex exit (e.g., requires key, condition) - Placeholder
         # if isinstance(exit_info, ExitObject) and not exit_info.can_pass(self.player):
-        #     return f"{TextFormatter.FORMAT_ERROR}{exit_info.fail_message}{TextFormatter.FORMAT_RESET}"
+        #     return f"{FORMAT_ERROR}{exit_info.fail_message}{FORMAT_RESET}"
 
         # Handle region transition
         if ":" in destination_id:
@@ -94,7 +92,7 @@ class World:
 
         target_region = self.get_region(new_region_id)
         if not target_region or not target_region.get_room(new_room_id):
-             return f"{TextFormatter.FORMAT_ERROR}That path leads to an unknown place.{TextFormatter.FORMAT_RESET}"
+             return f"{FORMAT_ERROR}That path leads to an unknown place.{FORMAT_RESET}"
 
         # Successfully moving
         self.current_region_id = new_region_id
@@ -110,7 +108,7 @@ class World:
         # Announce region change
         region_change_msg = ""
         if new_region_id != old_region_id:
-             region_change_msg = f"{TextFormatter.FORMAT_HIGHLIGHT}You have entered {target_region.name}.{TextFormatter.FORMAT_RESET}\n\n"
+             region_change_msg = f"{FORMAT_HIGHLIGHT}You have entered {target_region.name}.{FORMAT_RESET}\n\n"
 
         return region_change_msg + self.look() # Return description of new location
 
@@ -373,7 +371,7 @@ class World:
     # ... (get_room_description_for_display - unchanged) ...
     def get_room_description_for_display(self) -> str:
         current_room = self.get_current_room()
-        if not current_room: return f"{TextFormatter.FORMAT_ERROR}You are nowhere.{TextFormatter.FORMAT_RESET}"
+        if not current_room: return f"{FORMAT_ERROR}You are nowhere.{FORMAT_RESET}"
         time_period = self.get_plugin_data("time_plugin", "time_period")
         weather = self.get_plugin_data("weather_plugin", "current_weather")
         room_desc = current_room.get_full_description(time_period, weather)
@@ -381,11 +379,16 @@ class World:
         npcs_text = []
         if npcs_in_room:
             for npc in npcs_in_room:
+                formatted_name = format_target_name(self.player, npc) # <<< USE FORMATTER
                 activity = f" ({npc.ai_state['current_activity']})" if hasattr(npc, "ai_state") and "current_activity" in npc.ai_state else ""
-                combat_status = f" {TextFormatter.FORMAT_ERROR}(Fighting!){TextFormatter.FORMAT_RESET}" if npc.in_combat else ""
-                npcs_text.append(f"{TextFormatter.FORMAT_HIGHLIGHT}{npc.name}{TextFormatter.FORMAT_RESET} is here{activity}{combat_status}.")
+                combat_status = f" {FORMAT_ERROR}(Fighting!){FORMAT_RESET}" if npc.in_combat else ""
+                # Use formatted_name in the message
+                npcs_text.append(f"{formatted_name} is here{activity}{combat_status}.")
+
         items_in_room = self.get_items_in_current_room()
-        items_text = [f"There is {TextFormatter.FORMAT_CATEGORY}{item.name}{TextFormatter.FORMAT_RESET} here." for item in items_in_room]
+        # *** Optional: Color items based on rarity/value? For now, keep as is ***
+        items_text = [f"There is {FORMAT_CATEGORY}{item.name}{FORMAT_RESET} here." for item in items_in_room]
+
         full_description = room_desc
         if npcs_text: full_description += "\n\n" + "\n".join(npcs_text)
         if items_text: full_description += "\n\n" + "\n".join(items_text)

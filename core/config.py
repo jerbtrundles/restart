@@ -15,22 +15,52 @@ TEXT_COLOR = (255, 255, 255)  # White
 BG_COLOR = (0, 0, 0)  # Black
 INPUT_BG_COLOR = (50, 50, 50)  # Dark gray
 
-# Text formatting codes
-FORMAT_TITLE = "[[TITLE]]"       # Yellow, for headings
-FORMAT_CATEGORY = "[[CAT]]"      # Cyan, for categories and labels
-FORMAT_HIGHLIGHT = "[[HI]]"      # Green, for important information
-FORMAT_SUCCESS = "[[OK]]"        # Green, for success messages
-FORMAT_ERROR = "[[ERR]]"         # Red, for error messages
-FORMAT_RESET = "[[/]]"           # Reset to default text color
+COLOR_RED = (255, 0, 0)
+COLOR_ORANGE = (255, 165, 0)
+COLOR_YELLOW = (255, 255, 0)
+COLOR_GREEN = (0, 255, 0)
+COLOR_BLUE = (0, 0, 255)
+COLOR_CYAN = (0, 255, 255)
+COLOR_WHITE = (255, 255, 255)
+COLOR_DEFAULT = COLOR_WHITE # Explicit default
 
-# Color values for formatting codes
-FORMAT_COLORS = {
-    FORMAT_TITLE: (255, 255, 0),      # Yellow
-    FORMAT_CATEGORY: (0, 255, 255),   # Cyan
-    FORMAT_HIGHLIGHT: (0, 255, 0),    # Green
-    FORMAT_SUCCESS: (0, 255, 0),      # Green
-    FORMAT_ERROR: (255, 0, 0),        # Red
-    FORMAT_RESET: TEXT_COLOR          # Default text color
+FORMAT_RED = "[[RED]]"
+FORMAT_ORANGE = "[[ORANGE]]"
+FORMAT_YELLOW = "[[YELLOW]]"
+FORMAT_GREEN = "[[GREEN]]"
+FORMAT_BLUE = "[[BLUE]]"
+FORMAT_CYAN = "[[CYAN]]"
+FORMAT_WHITE = "[[WHITE]]"
+# Keep FORMAT_RESET for resetting to default, makes semantic sense
+FORMAT_RESET = "[[/]]"
+
+FORMAT_ERROR = FORMAT_RED
+FORMAT_TITLE = FORMAT_YELLOW
+FORMAT_HIGHLIGHT = FORMAT_GREEN
+FORMAT_SUCCESS = FORMAT_GREEN
+FORMAT_CATEGORY = FORMAT_CYAN
+
+# Default color values for format codes (RGB)
+DEFAULT_COLORS = {
+    FORMAT_RESET: (255, 255, 255),     # White (default)
+    FORMAT_RED: COLOR_RED,
+    FORMAT_ORANGE: COLOR_ORANGE,
+    FORMAT_YELLOW: COLOR_YELLOW,
+    FORMAT_GREEN: COLOR_GREEN,
+    FORMAT_BLUE: COLOR_CYAN,
+    FORMAT_CYAN: COLOR_CYAN,
+    FORMAT_WHITE: COLOR_WHITE,
+    FORMAT_RESET: COLOR_DEFAULT, # Reset goes to the default color
+}
+
+SEMANTIC_FORMAT = {
+    "TITLE": FORMAT_ORANGE,     # Titles will be Orange
+    "CATEGORY": FORMAT_BLUE,      # Category labels will be Blue
+    "HIGHLIGHT": FORMAT_CYAN,     # Highlights will be Cyan
+    "SUCCESS": FORMAT_GREEN,      # Success messages will be Green
+    "ERROR": FORMAT_RED,        # Error messages will be Red
+    "NEUTRAL": FORMAT_YELLOW,     # Neutral/near-level mobs will be Yellow
+    "DEFAULT": FORMAT_RESET       # Default text reset
 }
 
 # Scrolling settings

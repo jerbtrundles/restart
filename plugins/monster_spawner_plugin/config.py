@@ -5,13 +5,13 @@ Default configuration for the Monster Spawner plugin.
 
 DEFAULT_CONFIG = {
     # How often to attempt spawns (in seconds)
-    "spawn_interval": 120,
+    "spawn_interval": 1,
     
     # Maximum monsters per region
     "max_monsters_per_region": 10,
     
     # Chance to spawn a monster on each attempt (0.0-1.0)
-    "spawn_chance": 0.3,
+    "spawn_chance": 1.0,
     
     # Specific rooms that shouldn't have monsters spawn, even in unsafe regions
     "no_spawn_rooms": [

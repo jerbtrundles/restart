@@ -1,13 +1,16 @@
-"""
-npcs/npc.py
-Enhanced NPC module with integrated combat capabilities
-"""
-from typing import Dict, List, Optional, Any, Tuple, Callable
+# npcs/npc.py
+from typing import Dict, List, Optional, Any, Tuple, Callable, Set # Added Set
 import random
 import time
 from game_object import GameObject
 from items.inventory import Inventory
 from items.item import Item
+from items.item_factory import ItemFactory
+from magic.spell import Spell # Import Spell
+from magic.spell_registry import get_spell # Import registry access
+from magic.effects import apply_spell_effect
+from player import Player
+from utils.text_formatter import TextFormatter, format_target_name
 
 
 class NPC(GameObject):
@@ -15,11 +18,12 @@ class NPC(GameObject):
 
     def __init__(self, obj_id: str = None, name: str = "Unknown NPC", 
                  description: str = "No description", health: int = 100,
-                 friendly: bool = True):
+                 friendly: bool = True, level: int = 1):
         super().__init__(obj_id if obj_id else f"npc_{random.randint(1000, 9999)}", name, description)        
         self.health = health
         self.max_health = health
         self.friendly = friendly
+        self.level = level # <<< ADD level attribute
         self.inventory = Inventory(max_slots=10, max_weight=50.0)
         self.current_region_id = None
         self.current_room_id = None
@@ -64,11 +68,17 @@ class NPC(GameObject):
             "neutral": 0,
             "hostile": -100
         }
-        
+
+        self.usable_spells: List[str] = [] # List of spell IDs the NPC can cast
+        self.spell_cast_chance: float = 0.3 # Chance to cast a spell instead of attacking (if available)
+        self.spell_cooldowns: Dict[str, float] = {} # spell_id -> time when cooldown ends
+        # NPCs generally don't use mana in simple systems
+
         # Store in properties
         self.update_property("health", health)
         self.update_property("max_health", health)
         self.update_property("friendly", friendly)
+        self.update_property("level", self.level) # <<< ADD level to properties
         self.update_property("behavior_type", self.behavior_type)
         self.update_property("wander_chance", self.wander_chance)
         self.update_property("move_cooldown", self.move_cooldown)
@@ -77,6 +87,7 @@ class NPC(GameObject):
         self.update_property("defense", self.defense)
         self.update_property("is_alive", self.is_alive)
         self.update_property("faction", self.faction)
+        self.update_property("usable_spells", self.usable_spells) # Add new property
 
     def get_description(self) -> str:
         """Override the base get_description method with NPC-specific info."""
@@ -161,6 +172,32 @@ class NPC(GameObject):
 
         Returns: Dict with attack details or miss info
         """
+        # *** Determine the viewer (usually the player if they are the target) ***
+        # We assume the formatting is always from the Player's perspective
+        # If the target is the player, the player is the viewer.
+        # If the target is another NPC, the player is still the viewer observing.
+        # We need access to the player object here. How?
+        # Option 1: Pass player into NPC.attack (adds coupling)
+        # Option 2: Get player from world (requires world access)
+        # Option 3: Format the message OUTSIDE this method (better)
+
+        # Let's stick to Option 3 conceptually, but implement simply for now:
+        # We won't format the target name *inside* NPC.attack's returned message string.
+        # The formatting will happen when the message is *displayed* or logged *by the player*.
+        # However, the Player._add_combat_message needs the already formatted string.
+        # --> Modify Player._add_combat_message? No, that's complex.
+        # --> Decision: Format inside NPC.attack for simplicity, ASSUMING world.player exists.
+
+        viewer = None
+        if hasattr(self, 'world') and hasattr(self.world, 'player'): # Need to ensure NPC has world access
+            viewer = self.world.player
+        elif isinstance(target, Player): # If target is player, they are the viewer
+            viewer = target
+
+        formatted_target_name = target.name # Default if no viewer
+        if viewer:
+            formatted_target_name = format_target_name(viewer, target)
+
         # --- HIT CHANCE CALCULATION ---
         base_hit_chance = 0.80  # NPCs might be slightly less accurate by default
         attacker_dex = getattr(self, "stats", {}).get("dexterity", 8) # NPC default dex
@@ -172,7 +209,7 @@ class NPC(GameObject):
         import random
         if random.random() > hit_chance:
             # --- MISS ---
-            miss_message = f"{self.name} attacks {getattr(target, 'name', 'target')} but misses!"
+            miss_message = f"{format_target_name(viewer, self)} attacks {formatted_target_name} but misses!"
             # Note: We don't add to NPC's combat log here, maybe player's if target is player?
             # Or handle message display in the calling code (NPC update loop / game manager)
             return {
@@ -221,7 +258,7 @@ class NPC(GameObject):
             if target.health <= 0 and hasattr(target, 'is_alive'):
                 target.is_alive = False # Ensure dead state if simple health attribute
 
-        hit_message = f"{self.name} attacks {getattr(target, 'name', 'target')} for {actual_damage} damage!"
+        hit_message = f"{format_target_name(viewer, self)} attacks {formatted_target_name} for {actual_damage} damage!"
 
         # Return attack results
         return {
@@ -238,28 +275,20 @@ class NPC(GameObject):
         
         Returns: Actual damage taken
         """
-        # Calculate damage reduction from defense (minimum 0)
+        # Add basic magic resist?
+        magic_resist = getattr(self, 'stats', {}).get('magic_resist', 0) # Check if NPC has stats and resist
+        # How to know if damage is magic? Needs more info passed to take_damage potentially.
+        # For now, just use physical defense.
         reduced_damage = max(0, amount - self.defense)
-        
-        # Minimum 1 damage if attack hits
-        if amount > 0:
-            actual_damage = max(1, reduced_damage)
-        else:
-            actual_damage = 0
-        
-        # Apply damage
+        actual_damage = max(1, reduced_damage) if amount > 0 else 0
+
         old_health = self.health
         self.health = max(0, self.health - actual_damage)
-        
-        # Enter combat state when damaged
-        self.in_combat = True
-        
-        # Check for death
+        self.in_combat = True # Enter combat when damaged
         if self.health <= 0:
             self.is_alive = False
             self.update_property("is_alive", False)
             self.health = 0
-            
         return old_health - self.health
     
     def heal(self, amount: int) -> int:
@@ -373,11 +402,11 @@ class NPC(GameObject):
                             
                             # Exit combat
                             self.exit_combat()
-                            
+
                             # Message if player is in the room
                             if (world.current_region_id == old_region_id and 
                                 world.current_room_id == old_room_id):
-                                return combat_message or f"{self.name} flees to the {direction}!"
+                                return combat_message or f"{format_target_name(world.player, self)} flees to the {direction}!"
                             
                             return None
         
@@ -395,7 +424,7 @@ class NPC(GameObject):
                     combat_message = self.try_attack(world, current_time)
                 else:
                     # Just show threat message
-                    combat_message = f"{self.name} prepares to attack you!"
+                    combat_message = f"{format_target_name(world.player, self)} prepares to attack you!"
         
         # If in combat, prioritize combat over movement
         if self.in_combat:
@@ -442,7 +471,7 @@ class NPC(GameObject):
                                 old_room_id = self.current_room_id
                                 self.current_room_id = destination
                                 self.last_moved = current_time
-                                return f"{self.name} enters from the {self._reverse_direction(direction)}!"
+                                return f"{format_target_name(world.player, self)} enters from the {self._reverse_direction(direction)}!"
             
             # If player not found nearby, wander randomly
             message = self._wander_behavior(world, current_time)
@@ -469,29 +498,53 @@ class NPC(GameObject):
         self.spawn_time = time.time() - world.start_time
         
         # Generate loot from loot table
-        dropped_items = []
+        dropped_items: List[Item] = []
         if self.loot_table:
-            from items.item_factory import ItemFactory
-            
-            for item_id, chance in self.loot_table.items():
-                if random.random() < chance:
+            # *** UPDATED Loot Table Logic ***
+            for item_name, loot_data in self.loot_table.items():
+                # Check for chance
+                if isinstance(loot_data, dict) and random.random() < loot_data.get("chance", 0):
                     try:
-                        # Create item from loot table
-                        item = ItemFactory.create_item(item_id)
-                        
-                        # Add to room
-                        if world.add_item_to_room(self.current_region_id, self.current_room_id, item):
-                            dropped_items.append(item)
+                        # Get item type, default to Junk if not specified
+                        item_type = loot_data.get("type", "Junk")
+                        # Prepare arguments for the factory
+                        item_args = {
+                            "item_type": item_type,
+                            "name": item_name, # Use the key as the name
+                            "obj_id": f"loot_{self.obj_id}_{item_name.lower().replace(' ', '_')}_{random.randint(1000,9999)}",
+                            # Pass other properties from loot_data if they exist
+                            **{k: v for k, v in loot_data.items() if k not in ["chance", "type"]}
+                        }
+                        # Add a default description if none provided in loot_data
+                        if "description" not in item_args:
+                            item_args["description"] = f"A {item_name.lower()} dropped by a {self.name}."
+
+                        item = ItemFactory.create_item(**item_args)
+
+                        if item:
+                            if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
+                                dropped_items.append(item)
+                            elif not world:
+                                 print(f"Warning: World object missing in die() for {self.name}, cannot drop {item.name}")
+                        else:
+                             print(f"Warning: ItemFactory failed to create item '{item_name}' for {self.name}.")
+
                     except Exception as e:
-                        print(f"Error creating loot item {item_id}: {e}")
-        
-        # Also drop inventory items with 50% chance per item
-        for slot in self.inventory.slots:
-            if slot.item and random.random() < 0.5:
-                item = slot.item
-                world.add_item_to_room(self.current_region_id, self.current_room_id, item)
-                dropped_items.append(item)
-        
+                        print(f"Error processing loot item '{item_name}' for {self.name}: {e}")
+                        import traceback
+                        traceback.print_exc()
+            # *** END UPDATED Loot Table Logic ***
+
+        # Drop inventory items (same as before, check world)
+        if hasattr(self, 'inventory'):
+             for slot in self.inventory.slots:
+                 if slot.item and random.random() < 0.5:
+                     item = slot.item
+                     if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
+                         dropped_items.append(item)
+                     elif not world:
+                         print(f"Warning: World object missing in die() for {self.name}, cannot drop inventory item {item.name}")
+
         return dropped_items
     
     def to_dict(self) -> Dict[str, Any]:
@@ -506,7 +559,9 @@ class NPC(GameObject):
         data["health"] = self.health
         data["max_health"] = self.max_health
         data["friendly"] = self.friendly
-        
+
+        data["level"] = self.level # <<< ADD level
+
         # Add location data
         data["current_region_id"] = self.current_region_id
         data["current_room_id"] = self.current_room_id
@@ -539,6 +594,11 @@ class NPC(GameObject):
         
         # Add inventory
         data["inventory"] = self.inventory.to_dict()
+        data["faction"] = self.faction
+
+        data["usable_spells"] = self.usable_spells
+        data["spell_cooldowns"] = self.spell_cooldowns
+        data["spell_cast_chance"] = self.spell_cast_chance
         
         return data
 
@@ -547,23 +607,16 @@ class NPC(GameObject):
         """
         Create an NPC from a dictionary.
         """
-        # Get the ID (handle backward compatibility)
-        obj_id = data.get("id") or data.get("obj_id")
-        
-        npc = cls(
-            obj_id=obj_id,
-            name=data.get("name", "Unknown NPC"),
-            description=data.get("description", "No description"),
-            health=data.get("health", 100),
-            friendly=data.get("friendly", True)
-        )
-        
+        npc = super(NPC, cls).from_dict(data) # Use GameObject.from_dict
+
         # Set basic properties
         npc.max_health = data.get("max_health", 100)
         npc.current_region_id = data.get("current_region_id")
         npc.current_room_id = data.get("current_room_id")
         npc.home_region_id = data.get("home_region_id")
         npc.home_room_id = data.get("home_room_id")
+
+        npc.level = data.get("level", 1)
         
         # Set behavior properties
         npc.behavior_type = data.get("behavior_type", "stationary")
@@ -578,6 +631,10 @@ class NPC(GameObject):
         npc.dialog = data.get("dialog", {})
         npc.default_dialog = data.get("default_dialog", "The {name} doesn't respond.")
         npc.ai_state = data.get("ai_state", {})
+
+        npc.usable_spells = data.get("usable_spells", [])
+        npc.spell_cooldowns = data.get("spell_cooldowns", {})
+        npc.spell_cast_chance = data.get("spell_cast_chance", 0.3)
         
         # Set combat properties
         npc.is_alive = data.get("is_alive", True)
@@ -588,7 +645,7 @@ class NPC(GameObject):
         npc.respawn_cooldown = data.get("respawn_cooldown", 600)
         npc.loot_table = data.get("loot_table", {})
         npc.faction = data.get("faction", "neutral")
-        
+
         # Set inventory if present
         if "inventory" in data:
             try:
@@ -682,11 +739,11 @@ class NPC(GameObject):
             # Only return a message if the player is in either the old or new room
             if (world.current_region_id == old_region_id and 
                 world.current_room_id == old_room_id):
-                return f"{self.name} leaves{activity_msg}."
+                return f"{format_target_name(world.player, self)} leaves{activity_msg}."
                 
             if (world.current_region_id == self.current_region_id and 
                 world.current_room_id == self.current_room_id):
-                return f"{self.name} arrives{activity_msg}."
+                return f"{format_target_name(world.player, self)} arrives{activity_msg}."
         
         return None
 
@@ -747,9 +804,9 @@ class NPC(GameObject):
 
         # Return message if player can see the movement
         if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
-            return f"{self.name} leaves to the {direction}."
+            return f"{format_target_name(world.player, self)} leaves to the {direction}."
         if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-            return f"{self.name} arrives from the {self._reverse_direction(direction)}."
+            return f"{format_target_name(world.player, self)} arrives from the {self._reverse_direction(direction)}."
 
         return None # Return None if player didn't see the movement directly
 
@@ -941,82 +998,104 @@ class NPC(GameObject):
         """
         return current_time - self.last_attack_time >= self.attack_cooldown
 
+    # Modify try_attack to incorporate spellcasting chance
     def try_attack(self, world, current_time: float) -> Optional[str]:
         """
-        Try to attack a target based on cooldown. Handles misses.
-
-        Args:
-            world: Game world object (should be the main World instance)
-            current_time: Current game time
-
-        Returns:
-            Attack message if attack happened and player is present, None otherwise
+        Try to perform a combat action (attack or spell) based on cooldowns and chance.
         """
-        if not self.can_attack(current_time):
-            return None
+        # General action cooldown check
+        if current_time - self.last_combat_action < self.combat_cooldown:
+             return None
 
-        # Filter out invalid targets (ensure world and player exist for checks)
+        # Filter out invalid targets
         player = getattr(world, 'player', None)
         valid_targets = [t for t in self.combat_targets
-                        if hasattr(t, "is_alive") and t.is_alive
-                        and hasattr(t, "health") and t.health > 0
-                        ]
-
+                         if hasattr(t, "is_alive") and t.is_alive
+                         and hasattr(t, "health") and t.health > 0]
         if not valid_targets:
             self.exit_combat()
             return None
 
-        # Choose target (prioritize player if player is a valid target)
-        target = None
-        if player in valid_targets:
-            target = player
-        else:
-            target = random.choice(valid_targets) # Choose randomly among others
+        # Choose target (prioritize player)
+        target = player if player in valid_targets else random.choice(valid_targets)
 
-        # Check if target is in same room
+        # Check if target is in the same room
         target_in_room = False
+        # ... (same room check logic as before) ...
         if target == player:
-            # Check if the player's world location matches NPC's location
-            if world and world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-                target_in_room = True
+             if world and world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
+                  target_in_room = True
         elif (hasattr(target, "current_region_id") and hasattr(target, "current_room_id") and
-              target.current_region_id == self.current_region_id and
-              target.current_room_id == self.current_room_id):
-             # Check for other NPCs in the room
-            target_in_room = True
+               target.current_region_id == self.current_region_id and
+               target.current_room_id == self.current_room_id):
+             target_in_room = True
 
+        if not target_in_room:
+             self.exit_combat(target)
+             return None # Target not here
 
-        if target_in_room:
-            # Perform attack
-            attack_result = self.attack(target)
-            self.last_attack_time = current_time # Update time even on miss
+        # --- Spellcasting Logic ---
+        chosen_spell = None
+        if self.usable_spells and random.random() < self.spell_cast_chance:
+            # Try to cast a spell
+            available_spells = []
+            for spell_id in self.usable_spells:
+                 spell = get_spell(spell_id)
+                 cooldown_end = self.spell_cooldowns.get(spell_id, 0)
+                 if spell and current_time >= cooldown_end:
+                      # Basic target type check
+                      is_enemy = (hasattr(target, 'faction') and target.faction != self.faction) # Simple enemy check
+                      is_friendly = (target == self or (hasattr(target, 'faction') and target.faction == self.faction))
 
-            # Only process hit messages further
-            if not attack_result.get("missed", False):
-                self._add_combat_message(attack_result["message"]) # Add hit message to NPC log
+                      if spell.target_type == "enemy" and is_enemy:
+                           available_spells.append(spell)
+                      elif spell.target_type == "friendly" and is_friendly:
+                           available_spells.append(spell)
+                      elif spell.target_type == "self":
+                           # Allow casting self-targeted spell if any valid spell is available
+                           available_spells.append(spell) # NPC casts on self
 
-                # Check if target died from the hit
-                if hasattr(target, "health") and target.health <= 0:
-                    # Ensure target state is updated if needed
-                    if hasattr(target, 'is_alive'): target.is_alive = False
+            if available_spells:
+                 chosen_spell = random.choice(available_spells)
 
-                    self.exit_combat(target)
-                    death_message = f"{target.name} has been defeated!"
-                    self._add_combat_message(death_message)
-                    if not self.combat_targets:
-                        self.in_combat = False # Exit combat if no targets left
+        # --- Perform Action ---
+        action_message = None
+        if chosen_spell:
+            # Cast the spell
+            spell_target = target if chosen_spell.target_type != "self" else self # Target self if needed
+            cast_result = self.cast_spell(chosen_spell, spell_target, current_time)
+            action_message = cast_result.get("message")
+            # Apply general combat cooldown
+            self.last_combat_action = current_time
 
-            # --- CORRECTION IS HERE ---
-            # Return the message (hit or miss) only if the *world's current location*
-            # (where the player is) matches the NPC's location.
+        else:
+            # Perform physical attack if spell wasn't chosen or available
+            if self.can_attack(current_time): # Check specific attack cooldown
+                attack_result = self.attack(target)
+                action_message = attack_result.get("message")
+                self.last_attack_time = current_time # Update attack cooldown time
+                # Apply general combat cooldown
+                self.last_combat_action = current_time
+            # Else: No action possible this tick (both attack and spells on CD)
+
+        # --- Process Message and Target Death ---
+        if action_message:
+            self._add_combat_message(action_message) # Log action
+
+            # Check if target died (check needed for both attack and damaging spells)
+            if hasattr(target, "health") and target.health <= 0:
+                if hasattr(target, 'is_alive'): target.is_alive = False
+                self.exit_combat(target)
+                formatted_target_name = format_target_name(world.player, target)
+                death_message = f"{formatted_target_name} has been defeated!"
+                self._add_combat_message(death_message)
+                if not self.combat_targets: self.in_combat = False
+
+            # Return message ONLY if the player is in the room to see it
             if world and world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-                return attack_result["message"] # Return hit or miss message for the player to see
-            # --- END CORRECTION ---
+                return action_message
 
-        else: # Target not in room
-            self.exit_combat(target)
-
-        return None # No message if player not present or target not in room
+        return None # No visible action or message generated for the player
 
     def _add_combat_message(self, message: str) -> None:
         """
@@ -1030,3 +1109,28 @@ class NPC(GameObject):
         # Trim to max size
         while len(self.combat_messages) > self.max_combat_messages:
             self.combat_messages.pop(0)
+
+    # *** NEW: NPC Spell Cast Method ***
+    def cast_spell(self, spell: Spell, target, current_time: float) -> Dict[str, Any]:
+         """Applies spell effect and sets cooldown. NPCs don't use mana."""
+
+         # Set cooldown
+         self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
+
+         # Apply effect
+         value, effect_message = apply_spell_effect(self, target, spell) # Use central function
+
+         # Format messages
+         cast_message = spell.format_cast_message(self)
+         full_message = cast_message + "\n" + effect_message
+
+         return {
+              "success": True,
+              "message": full_message,
+              "cast_message": cast_message,
+              "effect_message": effect_message,
+              "target": getattr(target, 'name', 'target'),
+              "value": value,
+              "spell": spell.name
+         }
+    # *** END NEW ***

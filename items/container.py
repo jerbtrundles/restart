@@ -2,7 +2,6 @@
 from typing import Any, Dict, Optional, List, Tuple # Added List
 from items.item import Item
 from items.key import Key
-from items.item_factory import ItemFactory # Import ItemFactory
 from utils.text_formatter import TextFormatter
 
 
@@ -12,25 +11,16 @@ class Container(Item):
     def __init__(self, obj_id: str = None, name: str = "Unknown Container",
                  description: str = "No description", weight: float = 2.0,
                  value: int = 20, capacity: float = 50.0, locked: bool = False,
-                 key_id: Optional[str] = None, is_open: bool = False, # Added is_open default
+                 key_id: Optional[str] = None, is_open: bool = False,
                  **kwargs):
-        """
-        Initialize a container.
-
-        Args:
-            capacity: The maximum weight the container can hold.
-            locked: Initial lock state.
-            key_id: ID of the key that opens this container.
-            is_open: Initial open state.
-        """
         super().__init__(obj_id, name, description, weight, value, stackable=False, **kwargs)
         self.properties["capacity"] = capacity
-        # --- MODIFIED: Initialize with empty list for Item objects ---
-        self.properties["contains"] = [] # Store Item objects directly at runtime
-        # --- END MODIFIED ---
+        # Initialize 'contains' properly in __init__ if not already done
+        self.properties.setdefault("contains", [])
         self.properties["locked"] = locked
         self.properties["key_id"] = key_id
-        self.properties["is_open"] = is_open # Use provided or default
+        self.properties["is_open"] = is_open
+
 
     def get_current_weight(self) -> float:
         """Calculate the current weight of items inside."""
@@ -39,8 +29,8 @@ class Container(Item):
     def examine(self) -> str:
         """Get a detailed description of the container."""
         base_desc = super().examine()
-        lock_status = f"[{TextFormatter.FORMAT_ERROR}Locked{TextFormatter.FORMAT_RESET}]" if self.properties["locked"] else f"[{TextFormatter.FORMAT_SUCCESS}Unlocked{TextFormatter.FORMAT_RESET}]"
-        open_status = f"({TextFormatter.FORMAT_HIGHLIGHT}Open{TextFormatter.FORMAT_RESET})" if self.properties["is_open"] else "(Closed)"
+        lock_status = f"[{FORMAT_ERROR}Locked{FORMAT_RESET}]" if self.properties["locked"] else f"[{FORMAT_SUCCESS}Unlocked{FORMAT_RESET}]"
+        open_status = f"({FORMAT_HIGHLIGHT}Open{FORMAT_RESET})" if self.properties["is_open"] else "(Closed)"
 
         # --- MODIFIED: Use list_contents ---
         contents_desc = self.list_contents() if self.properties["is_open"] else "It's closed."
@@ -53,7 +43,7 @@ class Container(Item):
 
         desc = f"{base_desc}\n\nStatus: {lock_status} {open_status}\nCapacity: {current_weight:.1f} / {capacity:.1f} weight units."
         if not self.properties["locked"] and self.properties["is_open"]:
-             desc += f"\n\n{TextFormatter.FORMAT_CATEGORY}Contents:{TextFormatter.FORMAT_RESET}\n{contents_desc}"
+             desc += f"\n\n{FORMAT_CATEGORY}Contents:{FORMAT_RESET}\n{contents_desc}"
 
         return desc
 
@@ -95,7 +85,7 @@ class Container(Item):
 
          self.properties["is_open"] = True
          contents_desc = self.list_contents()
-         return f"You open the {self.name}.\n\n{TextFormatter.FORMAT_CATEGORY}Contents:{TextFormatter.FORMAT_RESET}\n{contents_desc}"
+         return f"You open the {self.name}.\n\n{FORMAT_CATEGORY}Contents:{FORMAT_RESET}\n{contents_desc}"
 
     def close(self) -> str:
          """Close the container."""
@@ -181,14 +171,11 @@ class Container(Item):
 
     def to_dict(self) -> Dict[str, Any]:
          data = super().to_dict()
-         # --- MODIFIED: Serialize items within contains ---
-         contained_items: List[Item] = self.properties.get("contains", [])
          # Ensure properties dict exists in data
          if "properties" not in data: data["properties"] = {}
-         data["properties"]["contains"] = [item.to_dict() for item in contained_items]
-         # --- END MODIFIED ---
-         # Other properties (capacity, locked, key_id, is_open) are already in self.properties
-         # and included by super().to_dict()
+         # Ensure contains list exists in properties before accessing
+         contained_items: List[Item] = self.properties.get("contains", [])
+         data["properties"]["contains"] = [item.to_dict() for item in contained_items if item] # Added safety check for item
          return data
 
     @classmethod
@@ -196,14 +183,24 @@ class Container(Item):
          # Use base class from_dict first
          container = super(Container, cls).from_dict(data)
 
-         # --- MODIFIED: Deserialize items within contains ---
+         # *** Import ItemFactory LOCALLY inside the method ***
+         from items.item_factory import ItemFactory
+         # *** End Local Import ***
+
+         # Deserialize items within contains
          if "properties" in data and "contains" in data["properties"]:
               items_data = data["properties"]["contains"]
               loaded_items: List[Item] = []
               for item_data in items_data:
-                   item = ItemFactory.from_dict(item_data)
-                   if item:
-                       loaded_items.append(item)
+                   if item_data: # Check item_data is not None
+                       # *** Call the locally imported factory ***
+                       item = ItemFactory.from_dict(item_data)
+                       if item:
+                           loaded_items.append(item)
+                       else:
+                           # Log error if item creation failed
+                           item_name = item_data.get('name', 'Unknown Item')
+                           print(f"Warning: Failed to deserialize item '{item_name}' inside container '{container.name}'. Skipping item.")
               # Ensure properties dict exists on container
               if not hasattr(container, 'properties'): container.properties = {}
               container.properties["contains"] = loaded_items # Store Item objects
@@ -211,7 +208,6 @@ class Container(Item):
              # Ensure properties and contains exist even if not in save data
              if not hasattr(container, 'properties'): container.properties = {}
              container.properties.setdefault("contains", [])
-         # --- END MODIFIED ---
 
          # Ensure other properties have defaults if missing
          container.properties.setdefault("capacity", 50.0)

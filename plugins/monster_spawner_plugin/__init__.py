@@ -6,6 +6,7 @@ Periodically spawns monsters in the world.
 from typing import Dict, List, Any, Optional, Tuple
 import random
 import time
+from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE
 from plugins.plugin_system import PluginBase
 from npcs.npc import NPC
 from npcs.monster_factory import MonsterFactory
@@ -27,10 +28,10 @@ class MonsterSpawnerPlugin(PluginBase):
         # Spawn configuration
         self.config = {
             # How often to attempt spawns (in seconds)
-            "spawn_interval": 120,
+            "spawn_interval": 30,
             
             # Maximum monsters per region
-            "max_monsters_per_region": 10,
+            "max_monsters_per_region": 3,
             
             # Chance to spawn a monster on each attempt (0.0-1.0)
             "spawn_chance": 0.3,
@@ -148,7 +149,7 @@ class MonsterSpawnerPlugin(PluginBase):
             # Notify player about monsters
             if monsters and self.event_system:
                 for monster in monsters:
-                    message = f"{TextFormatter.FORMAT_ERROR}{monster.name} is here and looks hostile!{TextFormatter.FORMAT_RESET}"
+                    message = f"{FORMAT_ERROR}{monster.name} is here and looks hostile!{FORMAT_RESET}"
                     self.event_system.publish("display_message", message)
     
     def _spawn_monsters_in_region(self, region_id, region):
@@ -229,15 +230,15 @@ class MonsterSpawnerPlugin(PluginBase):
             monster.current_room_id = room_id
             monster.spawn_region_id = region_id
             monster.spawn_room_id = room_id
-            
-            # Scale stats based on level
+
             level = random.randint(level_range[0], level_range[1])
+            monster.level = level # <<< EXPLICITLY SET LEVEL ATTRIBUTE
+            
             if level > 1:
                 monster.health = monster.health * level
                 monster.max_health = monster.health
                 monster.attack_power = monster.attack_power + level - 1
                 monster.defense = monster.defense + (level // 2)
-                monster.name = f"{monster.name} (Level {level})"
             
             # Add to world
             self.world.add_npc(monster)
@@ -350,6 +351,8 @@ class MonsterSpawnerPlugin(PluginBase):
         monster.current_room_id = self.world.current_room_id
         monster.spawn_region_id = self.world.current_region_id
         monster.spawn_room_id = self.world.current_room_id
+
+        monster.level = level
         
         # Scale stats based on level
         if level > 1:
@@ -357,12 +360,11 @@ class MonsterSpawnerPlugin(PluginBase):
             monster.max_health = monster.health
             monster.attack_power = monster.attack_power + level - 1
             monster.defense = monster.defense + (level // 2)
-            monster.name = f"{monster.name} (Level {level})"
         
         # Add to world
         self.world.add_npc(monster)
         
-        return f"{TextFormatter.FORMAT_SUCCESS}{monster.name} appears!{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_SUCCESS}{monster.name} appears!{FORMAT_RESET}"
     
     def _monsters_command_handler(self, args, context):
         """
@@ -394,7 +396,7 @@ class MonsterSpawnerPlugin(PluginBase):
             return "No monsters found in the world."
             
         # Format the response
-        result = f"{TextFormatter.FORMAT_TITLE}ACTIVE MONSTERS ({total_monsters}){TextFormatter.FORMAT_RESET}\n\n"
+        result = f"{FORMAT_TITLE}ACTIVE MONSTERS ({total_monsters}){FORMAT_RESET}\n\n"
         
         # Check for region argument
         if args and args[0] in monsters_by_region:
@@ -406,7 +408,7 @@ class MonsterSpawnerPlugin(PluginBase):
         else:
             # Show summary by region
             for region_id, monsters in monsters_by_region.items():
-                result += f"{TextFormatter.FORMAT_CATEGORY}Region: {region_id}{TextFormatter.FORMAT_RESET} ({len(monsters)} monsters)\n"
+                result += f"{FORMAT_CATEGORY}Region: {region_id}{FORMAT_RESET} ({len(monsters)} monsters)\n"
                 for monster in monsters:
                     result += f"- {monster.name} (HP: {monster.health}/{monster.max_health})\n"
                 result += "\n"

@@ -4,10 +4,9 @@ Enhanced inventory system for the MUD game with improved text formatting.
 Handles storage and management of items.
 """
 from typing import Dict, List, Optional, Tuple, Any
+from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
 from items.item import Item
 from items.item_factory import ItemFactory
-from utils.text_formatter import TextFormatter
-
 
 class InventorySlot:
     """Represents a slot in an inventory that can hold items."""
@@ -193,8 +192,10 @@ class Inventory:
 
     def list_items(self) -> str:
         """Get a formatted list of items."""
+        from utils.text_formatter import TextFormatter
+
         if all(not slot.item for slot in self.slots):
-            return f"{TextFormatter.FORMAT_CATEGORY}Your inventory is empty.{TextFormatter.FORMAT_RESET}"
+            return f"{FORMAT_CATEGORY}Your inventory is empty.{FORMAT_RESET}"
 
         result = []
         items_found = False
@@ -204,29 +205,29 @@ class Inventory:
                 # Use obj_id for potentially more unique lookup if needed later
                 # item_ref = f"({slot.item.obj_id})" # Optional: Show obj_id
                 if slot.item.stackable and slot.quantity > 1:
-                    item_text = f"- {TextFormatter.FORMAT_HIGHLIGHT}{slot.item.name}{TextFormatter.FORMAT_RESET} (x{slot.quantity})"
+                    item_text = f"- {FORMAT_HIGHLIGHT}{slot.item.name}{FORMAT_RESET} (x{slot.quantity})"
                 else:
-                    item_text = f"- {TextFormatter.FORMAT_HIGHLIGHT}{slot.item.name}{TextFormatter.FORMAT_RESET}"
+                    item_text = f"- {FORMAT_HIGHLIGHT}{slot.item.name}{FORMAT_RESET}"
                 # Add weight info per item/stack
                 item_text += f" [{slot.item.weight * slot.quantity:.1f} wt]"
                 result.append(item_text)
 
-        if not items_found: return f"{TextFormatter.FORMAT_CATEGORY}Your inventory is empty.{TextFormatter.FORMAT_RESET}"
+        if not items_found: return f"{FORMAT_CATEGORY}Your inventory is empty.{FORMAT_RESET}"
 
         # Weight and Slot info (with color coding)
         total_weight = self.get_total_weight()
         weight_percent = (total_weight / self.max_weight) * 100 if self.max_weight > 0 else 0
-        if weight_percent >= 90: weight_text = f"{TextFormatter.FORMAT_ERROR}{total_weight:.1f}/{self.max_weight:.1f}{TextFormatter.FORMAT_RESET}"
-        elif weight_percent >= 75: weight_text = f"{TextFormatter.FORMAT_HIGHLIGHT}{total_weight:.1f}/{self.max_weight:.1f}{TextFormatter.FORMAT_RESET}"
+        if weight_percent >= 90: weight_text = f"{FORMAT_ERROR}{total_weight:.1f}/{self.max_weight:.1f}{FORMAT_RESET}"
+        elif weight_percent >= 75: weight_text = f"{FORMAT_HIGHLIGHT}{total_weight:.1f}/{self.max_weight:.1f}{FORMAT_RESET}"
         else: weight_text = f"{total_weight:.1f}/{self.max_weight:.1f}"
-        weight_info = f"{TextFormatter.FORMAT_CATEGORY}Total weight:{TextFormatter.FORMAT_RESET} {weight_text}"
+        weight_info = f"{FORMAT_CATEGORY}Total weight:{FORMAT_RESET} {weight_text}"
 
         used_slots = self.max_slots - self.get_empty_slots()
         slot_percent = (used_slots / self.max_slots) * 100 if self.max_slots > 0 else 0
-        if slot_percent >= 90: slot_text = f"{TextFormatter.FORMAT_ERROR}{used_slots}/{self.max_slots}{TextFormatter.FORMAT_RESET}"
-        elif slot_percent >= 75: slot_text = f"{TextFormatter.FORMAT_HIGHLIGHT}{used_slots}/{self.max_slots}{TextFormatter.FORMAT_RESET}"
+        if slot_percent >= 90: slot_text = f"{FORMAT_ERROR}{used_slots}/{self.max_slots}{FORMAT_RESET}"
+        elif slot_percent >= 75: slot_text = f"{FORMAT_HIGHLIGHT}{used_slots}/{self.max_slots}{FORMAT_RESET}"
         else: slot_text = f"{used_slots}/{self.max_slots}"
-        slot_info = f"{TextFormatter.FORMAT_CATEGORY}Slots used:{TextFormatter.FORMAT_RESET} {slot_text}"
+        slot_info = f"{FORMAT_CATEGORY}Slots used:{FORMAT_RESET} {slot_text}"
 
         return "\n".join(result) + f"\n\n{weight_info}\n{slot_info}"
 

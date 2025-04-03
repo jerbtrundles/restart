@@ -3,6 +3,7 @@ world/room.py
 Enhanced Room class with improved text descriptions.
 """
 from typing import Dict, List, Optional, Any
+from core.config import FORMAT_CATEGORY, FORMAT_RESET, FORMAT_TITLE
 from game_object import GameObject
 from items.item import Item
 from utils.text_formatter import TextFormatter
@@ -42,7 +43,7 @@ class Room(GameObject):
             Formatted room description
         """
         # Format the room name as a title
-        desc = f"{TextFormatter.FORMAT_TITLE}{self.name.upper()}{TextFormatter.FORMAT_RESET}\n\n"
+        desc = f"{FORMAT_TITLE}{self.name.upper()}{FORMAT_RESET}\n\n"
 
         # Add the base description
         desc += self.description
@@ -85,7 +86,7 @@ class Room(GameObject):
         exits_list = list(self.exits.keys())
         exits_list.sort()
         exit_desc = ", ".join(exits_list) if exits_list else "none"
-        desc += f"\n\n{TextFormatter.FORMAT_CATEGORY}Exits:{TextFormatter.FORMAT_RESET} {exit_desc}"
+        desc += f"\n\n{FORMAT_CATEGORY}Exits:{FORMAT_RESET} {exit_desc}"
 
         return desc
     

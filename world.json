@@ -94,7 +94,9 @@
             "north": "tavern",
             "east": "market",
             "south": "river_road",
-            "west": "blacksmith"
+            "west": "blacksmith",
+            "northeast": "east_lane",
+            "southwest": "west_lane"
           },
           "items": [
             {
@@ -117,7 +119,8 @@
           "exits": {
             "south": "town_square",
             "up": "tavern_rooms",
-            "behind_bar": "tavern_cellar"
+            "behind_bar": "tavern_cellar",
+            "east": "tavern_kitchen"
           },
           "items": [],
           "visited": false,
@@ -125,11 +128,38 @@
             "noisy": true
           }
         },
+        "tavern_kitchen": {
+          "name": "Tavern Kitchen",
+          "description": "A bustling kitchen filled with the clatter of pots and pans. The air is thick with steam and the aroma of cooking food. A large oven dominates one wall.",
+          "exits": {
+            "west": "tavern"
+          },
+          "items": [
+             {
+              "type": "Consumable",
+              "obj_id": "item_hunk_bread",
+              "name": "Hunk of Bread",
+              "description": "A thick slice of fresh, crusty bread.",
+              "weight": 0.3,
+              "value": 1,
+              "stackable": true,
+              "properties": {
+                "uses": 1, "max_uses": 1, "effect_value": 3, "effect_type": "heal"
+              }
+            }
+          ],
+          "visited": false,
+          "properties": {
+            "noisy": true, "smell": "cooking food"
+          }
+        },
         "tavern_rooms": {
           "name": "Tavern Upper Floor",
           "description": "A narrow hallway with several doors leading to guest rooms. The floor creaks underfoot, and you can hear the muffled sounds of conversation from below.",
           "exits": {
-            "down": "tavern"
+            "down": "tavern",
+            "north": "guest_room_1",
+            "south": "guest_room_2"
           },
           "items": [
             {
@@ -145,6 +175,37 @@
           ],
           "visited": false,
           "properties": {}
+        },
+        "guest_room_1": {
+            "name": "Guest Room (North)",
+            "description": "A simple but clean guest room containing a bed, a small table, and a washbasin. The window looks out over the tavern's back alley.",
+            "exits": {
+                "south": "tavern_rooms"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "guest_room_2": {
+            "name": "Guest Room (South)",
+            "description": "This guest room is slightly larger, with a sturdy chest at the foot of the bed. A faded tapestry hangs on one wall.",
+            "exits": {
+                "north": "tavern_rooms"
+            },
+            "items": [
+                 {
+                    "type": "Treasure",
+                    "obj_id": "item_lost_earring",
+                    "name": "Lost Earring",
+                    "description": "A small silver earring, likely forgotten by a previous guest.",
+                    "weight": 0.1,
+                    "value": 10,
+                    "stackable": false,
+                    "properties": {"treasure_type": "jewelry"}
+                 }
+            ],
+            "visited": false,
+            "properties": {}
         },
         "tavern_cellar": {
           "name": "Tavern Cellar",
@@ -176,7 +237,8 @@
           "description": "The busy market area where villagers trade goods. Stalls sell everything from fresh produce to handcrafted goods. The air is filled with the shouts of merchants and the scent of spices.",
           "exits": {
             "west": "town_square",
-            "north": "general_store"
+            "north": "general_store",
+            "east": "east_lane"
           },
           "items": [],
           "visited": false,
@@ -186,17 +248,40 @@
           "name": "General Store",
           "description": "A well-stocked shop with goods of all kinds. Shelves line the walls, filled with tools, preserved foods, clothing, and sundries. The shopkeeper keeps a careful eye on all the merchandise.",
           "exits": {
-            "south": "market"
+            "south": "market",
+            "east": "storage_room"
           },
           "items": [],
           "visited": false,
           "properties": {}
         },
+        "storage_room": {
+          "name": "Store Storage Room",
+          "description": "A cramped storage room behind the general store, filled with crates, sacks, and barrels. Dust motes dance in the dim light filtering through a small window.",
+          "exits": {
+            "west": "general_store"
+          },
+          "items": [
+            {
+              "type": "Junk",
+              "obj_id": "item_empty_crate",
+              "name": "Empty Crate",
+              "description": "A sturdy wooden crate, currently empty.",
+              "weight": 5.0,
+              "value": 1,
+              "stackable": false,
+              "properties": {}
+            }
+          ],
+          "visited": false,
+          "properties": {"dark": true}
+        },
         "blacksmith": {
           "name": "Blacksmith's Forge",
           "description": "The heat from the forge hits you as you enter. The rhythmic sound of hammer on anvil rings through the air. Weapons and tools hang on the walls, and the blacksmith works tirelessly at their craft.",
           "exits": {
-            "east": "town_square"
+            "east": "town_square",
+            "west": "west_lane"
           },
           "items": [
             {
@@ -220,6 +305,50 @@
             "smell": "smoky"
           }
         },
+        "east_lane": {
+          "name": "East Lane",
+          "description": "A narrow lane running behind the market and tavern. Laundry lines stretch between windows, and stray cats dart through the shadows.",
+          "exits": {
+            "west": "market",
+            "southwest": "town_square"
+          },
+          "items": [
+            {
+              "type": "Junk",
+              "obj_id": "item_bent_coin",
+              "name": "Bent Coin",
+              "description": "A copper coin, bent almost in half. Worthless now.",
+              "weight": 0.1,
+              "value": 0,
+              "stackable": false,
+              "properties": {}
+            }
+          ],
+          "visited": false,
+          "properties": {}
+        },
+        "west_lane": {
+          "name": "West Lane",
+          "description": "A quiet lane bordering the blacksmith's forge and leading towards the residential part of town. Children's chalk drawings mark the cobblestones.",
+          "exits": {
+            "east": "blacksmith",
+            "northeast": "town_square",
+            "south": "small_house"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "small_house": {
+            "name": "Small House",
+            "description": "A modest timber-framed house with a small garden out front. The door is slightly ajar.",
+            "exits": {
+                "north": "west_lane"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
         "river_road": {
           "name": "River Road",
           "description": "A wide dirt road that runs parallel to the Silver River. The sound of flowing water is louder here, and you can see boats moving along the river. Trees provide shade along the path.",
@@ -227,18 +356,41 @@
             "north": "town_square",
             "south": "riverside",
             "east": "forest:forest_path",
-            "downstream": "swamp:marsh_edge"
+            "downstream": "swamp:marsh_edge",
+            "west": "old_mill_path"
           },
           "items": [],
           "visited": false,
           "properties": {}
+        },
+        "old_mill_path": {
+          "name": "Path to Old Mill",
+          "description": "A less-used path branching off the main road, heading towards the sound of rushing water near an old structure.",
+          "exits": {
+            "east": "river_road",
+            "west": "old_mill"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "old_mill": {
+          "name": "Abandoned Mill",
+          "description": "An old water mill stands silently beside the river, its large wheel still and covered in moss. The building looks structurally sound but unused.",
+          "exits": {
+            "east": "old_mill_path"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"smell": "damp wood"}
         },
         "riverside": {
           "name": "Riverside Dock",
           "description": "A wooden dock extends into the river. Fishing boats are tied up, gently bobbing in the current. Fishermen sort their catches or repair nets, while river traders load and unload cargo. A sturdy stone bridge crosses the river to the east.",
           "exits": {
             "north": "river_road",
-            "east": "farmland:farm_bridge"
+            "east": "farmland:farm_bridge",
+            "south": "fishing_hut"
           },
           "items": [
             {
@@ -261,6 +413,27 @@
           "properties": {
             "smell": "fishy"
           }
+        },
+        "fishing_hut": {
+            "name": "Fishing Hut",
+            "description": "A small wooden hut near the docks, smelling strongly of fish. Nets hang drying outside, and fishing rods lean against the wall.",
+            "exits": {
+                "north": "riverside"
+            },
+            "items": [
+                 {
+                    "type": "Item",
+                    "obj_id": "item_fishing_net",
+                    "name": "Fishing Net",
+                    "description": "A sturdy net used for catching fish.",
+                    "weight": 2.0,
+                    "value": 15,
+                    "stackable": false,
+                    "properties": {}
+                 }
+            ],
+            "visited": false,
+            "properties": {"smell": "fishy"}
         }
       }
     },
@@ -275,7 +448,8 @@
             "west": "town:river_road",
             "east": "clearing",
             "north": "dense_woods",
-            "south": "wolf_den"
+            "south": "wolf_den",
+            "northeast": "stream_crossing"
           },
           "items": [
             {
@@ -297,12 +471,34 @@
           "visited": false,
           "properties": {}
         },
+        "stream_crossing": {
+          "name": "Stream Crossing",
+          "description": "A shallow stream bubbles over smooth stones, crossing the forest floor. Stepping stones offer a way across.",
+          "exits": {
+            "southwest": "forest_path",
+            "northeast": "deep_forest_1"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"noisy": true}
+        },
         "clearing": {
           "name": "Forest Clearing",
           "description": "A peaceful clearing where the trees thin out. Wildflowers grow in the grassy area, and the sky is visible overhead. The clearing feels strangely serene compared to the rest of the forest.",
           "exits": {
             "west": "forest_path",
-            "south": "abandoned_cabin"
+            "south": "abandoned_cabin",
+            "east": "thorny_thicket"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {}
+        },
+        "thorny_thicket": {
+          "name": "Thorny Thicket",
+          "description": "A dense thicket of thorny bushes blocks easy passage eastward. It looks difficult to push through.",
+          "exits": {
+            "west": "clearing"
           },
           "items": [],
           "visited": false,
@@ -314,7 +510,8 @@
           "exits": {
             "south": "forest_path",
             "east": "ancient_tree",
-            "northwest": "ruins:ruins_approach"
+            "northwest": "ruins:ruins_approach",
+            "north": "deep_forest_1"
           },
           "items": [],
           "visited": false,
@@ -322,11 +519,46 @@
             "dark": true
           }
         },
+         "deep_forest_1": {
+          "name": "Deep Forest",
+          "description": "You are deep within the Whispering Woods. Ancient trees loom overhead, and the ground is covered in thick moss. The way forward is unclear.",
+          "exits": {
+            "south": "dense_woods",
+            "southwest": "stream_crossing",
+            "east": "ancient_tree",
+            "north": "deep_forest_2"
+          },
+          "items": [
+            {
+                "type": "Junk",
+                "obj_id": "item_strange_feather",
+                "name": "Strange Feather",
+                "description": "A large, iridescent feather unlike any bird you know.",
+                "weight": 0.1,
+                "value": 5,
+                "stackable": true,
+                "properties": {}
+            }
+          ],
+          "visited": false,
+          "properties": {"dark": true}
+        },
+        "deep_forest_2": {
+          "name": "Deeper Forest",
+          "description": "The forest feels ancient and slightly menacing here. Twisted roots cross the path, and shadows seem to dance at the edge of your vision.",
+          "exits": {
+            "south": "deep_forest_1",
+            "west": "ruins:ruins_approach"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"dark": true, "smell": "damp earth"}
+        },
         "ancient_tree": {
           "name": "Ancient Oak",
           "description": "A massive oak tree dominates this area, its trunk wider than several people standing together. Its roots spread out across the ground, and its branches reach high into the sky. There's a hollow at the base of the trunk.",
           "exits": {
-            "west": "dense_woods",
+            "west": "deep_forest_1",
             "east": "caves:cave_entrance"
           },
           "items": [
@@ -362,6 +594,16 @@
               "value": 5,
               "stackable": false,
               "properties": {}
+            },
+             {
+              "type": "Junk",
+              "obj_id": "item_rusty_lantern",
+              "name": "Rusty Lantern",
+              "description": "An old iron lantern, rusted and without fuel.",
+              "weight": 1.5,
+              "value": 2,
+              "stackable": false,
+              "properties": {}
             }
           ],
           "visited": false,
@@ -386,7 +628,8 @@
           "name": "Wolf Den Cave",
           "description": "A cramped, foul-smelling cave. Bones and scraps of fur cover the floor. It serves as a den for a pack of forest wolves.",
           "exits": {
-            "out": "wolf_den"
+            "out": "wolf_den",
+            "east": "wolf_cave_back"
           },
           "items": [],
           "visited": false,
@@ -394,6 +637,27 @@
             "dark": true,
             "smell": "rank"
           }
+        },
+        "wolf_cave_back": {
+            "name": "Back of the Wolf Den",
+            "description": "The rear of the den is slightly larger, containing makeshift nests of leaves and fur. More bones are scattered about.",
+            "exits": {
+                "west": "wolf_cave"
+            },
+            "items": [
+                {
+                    "type": "Junk",
+                    "obj_id": "item_chewed_bone",
+                    "name": "Chewed Bone",
+                    "description": "A large bone, thoroughly chewed.",
+                    "weight": 0.8,
+                    "value": 1,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {"dark": true, "smell": "very rank"}
         }
       }
     },
@@ -420,20 +684,43 @@
             "north": "narrow_passage",
             "east": "crystal_room",
             "down": "deep_tunnel",
-            "southeast": "hidden_passage"
+            "southeast": "hidden_passage",
+            "west": "bat_cave"
           },
           "items": [],
           "visited": false,
           "properties": {
             "dark": true
           }
+        },
+        "bat_cave": {
+          "name": "Bat Cave",
+          "description": "The ceiling here is high and lost in shadow. The air is filled with the leathery flapping of wings and high-pitched squeaks. Guano covers the floor.",
+          "exits": {
+            "east": "main_cavern"
+          },
+          "items": [
+            {
+                "type": "Junk",
+                "obj_id": "item_guano",
+                "name": "Pile of Guano",
+                "description": "A large pile of bat droppings. Smells awful, but might be useful as fertilizer.",
+                "weight": 2.0,
+                "value": 1,
+                "stackable": true,
+                "properties": {}
+            }
+          ],
+          "visited": false,
+          "properties": {"dark": true, "smell": "ammonia"}
         },
         "narrow_passage": {
           "name": "Narrow Passage",
           "description": "A tight corridor that winds between stone walls. You have to duck in places to avoid hitting your head. The passage feels claustrophobic, and the air is stale.",
           "exits": {
             "south": "main_cavern",
-            "north": "underground_pool"
+            "north": "underground_pool",
+            "west": "crawl_space"
           },
           "items": [],
           "visited": false,
@@ -441,11 +728,22 @@
             "dark": true
           }
         },
+        "crawl_space": {
+            "name": "Tight Crawl Space",
+            "description": "The passage becomes so narrow you must crawl on your hands and knees. Loose pebbles shift beneath you.",
+            "exits": {
+                "east": "narrow_passage"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true}
+        },
         "crystal_room": {
           "name": "Crystal Chamber",
           "description": "This chamber is filled with crystalline formations that catch and reflect light in dazzling patterns. The crystals vary in color from clear to amethyst, creating an otherworldly beauty.",
           "exits": {
-            "west": "main_cavern"
+            "west": "main_cavern",
+            "north": "geode_cluster"
           },
           "items": [
             {
@@ -463,6 +761,27 @@
           ],
           "visited": false,
           "properties": {}
+        },
+        "geode_cluster": {
+            "name": "Geode Cluster",
+            "description": "Several large, cracked-open geodes line the walls of this small alcove. Their hollow interiors sparkle with thousands of tiny crystals.",
+            "exits": {
+                "south": "crystal_room"
+            },
+            "items": [
+                 {
+                    "type": "Treasure",
+                    "obj_id": "item_crystal_shard",
+                    "name": "Crystal Shard",
+                    "description": "A sharp shard broken off from a larger crystal formation.",
+                    "weight": 0.2,
+                    "value": 10,
+                    "stackable": true,
+                    "properties": {"treasure_type": "gem"}
+                 }
+            ],
+            "visited": false,
+            "properties": {}
         },
         "underground_pool": {
           "name": "Underground Pool",
@@ -482,13 +801,46 @@
           "description": "This rough-hewn tunnel slopes steeply downwards into the earth. The air grows colder, and the silence is profound. Loose scree makes the footing treacherous.",
           "exits": {
             "up": "main_cavern",
-            "south": "forgotten_mine"
+            "south": "forgotten_mine",
+            "west": "lava_tube_entrance"
           },
           "items": [],
           "visited": false,
           "properties": {
             "dark": true
           }
+        },
+        "lava_tube_entrance": {
+            "name": "Lava Tube Entrance",
+            "description": "The rock here changes, becoming darker and smoother, resembling solidified lava. A tunnel leads deeper into this volcanic rock.",
+            "exits": {
+                "east": "deep_tunnel",
+                "west": "lava_tube"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true}
+        },
+        "lava_tube": {
+            "name": "Lava Tube",
+            "description": "A smooth, cylindrical tunnel formed by ancient lava flows. The air is still and surprisingly warm.",
+            "exits": {
+                "east": "lava_tube_entrance"
+            },
+            "items": [
+                 {
+                    "type": "Treasure",
+                    "obj_id": "item_obsidian_chunk",
+                    "name": "Obsidian Chunk",
+                    "description": "A piece of sharp, black volcanic glass.",
+                    "weight": 0.5,
+                    "value": 15,
+                    "stackable": true,
+                    "properties": {"treasure_type": "rock"}
+                 }
+            ],
+            "visited": false,
+            "properties": {"dark": true}
         },
         "flooded_passage": {
           "name": "Flooded Passage",
@@ -532,7 +884,8 @@
           "description": "The tunnel opens into an old mine shaft, supported by rotting wooden beams. Pickaxes and discarded tools lie rusting on the ground. A rickety ladder ascends upwards into darkness.",
           "exits": {
             "north": "deep_tunnel",
-            "up": "mountains:mine_exit"
+            "up": "mountains:mine_exit",
+            "south": "collapsed_tunnel"
           },
           "items": [
              {
@@ -552,6 +905,16 @@
           "properties": {
             "dark": true
           }
+        },
+        "collapsed_tunnel": {
+            "name": "Collapsed Tunnel",
+            "description": "This section of the mine has suffered a cave-in. Massive rocks block the way further south. Dust hangs heavy in the air.",
+            "exits": {
+                "north": "forgotten_mine"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true}
         },
         "hidden_passage": {
           "name": "Hidden Passage",
@@ -576,8 +939,9 @@
           "name": "Approach to the Ruins",
           "description": "The trees thin slightly, revealing scattered, moss-covered stones - the first signs of ancient construction. The air feels heavy and still.",
           "exits": {
-            "southeast": "forest:dense_woods",
-            "north": "crumbling_wall"
+            "southeast": "forest:deep_forest_2",
+            "north": "crumbling_wall",
+            "east": "deep_forest_1"
           },
           "items": [],
           "visited": false,
@@ -589,9 +953,31 @@
           "exits": {
             "south": "ruins_approach",
             "north": "central_plaza",
-            "east": "guard_tower_base"
+            "east": "guard_tower_base",
+            "west": "overgrown_courtyard"
           },
           "items": [],
+          "visited": false,
+          "properties": {}
+        },
+         "overgrown_courtyard": {
+          "name": "Overgrown Courtyard",
+          "description": "Once perhaps a garden or courtyard, this area is now choked with weeds, vines, and small trees growing between cracked paving stones.",
+          "exits": {
+            "east": "crumbling_wall"
+          },
+          "items": [
+             {
+                "type": "Junk",
+                "obj_id": "item_stone_fragment",
+                "name": "Carved Stone Fragment",
+                "description": "A piece of stone broken from a larger structure, bearing part of an intricate carving.",
+                "weight": 3.0,
+                "value": 2,
+                "stackable": false,
+                "properties": {}
+            }
+          ],
           "visited": false,
           "properties": {}
         },
@@ -601,11 +987,22 @@
           "exits": {
             "south": "crumbling_wall",
             "west": "shadowy_crypt",
-            "east": "library_ruins"
+            "east": "library_ruins",
+            "north": "ritual_chamber"
           },
           "items": [],
           "visited": false,
           "properties": {}
+        },
+        "ritual_chamber": {
+            "name": "Ritual Chamber",
+            "description": "This circular chamber has a large stone altar at its center, stained with something dark. Symbols are etched into the floor and walls.",
+            "exits": {
+                "south": "central_plaza"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true, "smell": "dusty"}
         },
         "shadowy_crypt": {
           "name": "Shadowy Crypt Entrance",
@@ -625,7 +1022,8 @@
           "description": "Stone sarcophagi line the walls of this underground chamber. Some are broken open, others remain sealed. Intricate patterns cover every surface. A faint draft suggests a hidden passage to the northwest.",
           "exits": {
             "up": "shadowy_crypt",
-            "northwest": "caves:hidden_passage"
+            "northwest": "caves:hidden_passage",
+            "south": "flooded_tomb"
           },
           "items": [
              {
@@ -645,6 +1043,16 @@
           "properties": {
               "dark": true
           }
+        },
+        "flooded_tomb": {
+            "name": "Flooded Tomb",
+            "description": "This section of the crypt is partially flooded with stagnant, murky water. Sarcophagi jut out of the water like islands. The air is heavy with the smell of mildew.",
+            "exits": {
+                "north": "crypt_lower_level"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true, "smell": "mildew"}
         },
         "guard_tower_base": {
           "name": "Guard Tower Base",
@@ -671,7 +1079,8 @@
           "name": "Library Ruins",
           "description": "This collapsed building might have once been a repository of knowledge. Scraps of decayed parchment and broken shelves litter the floor amidst the rubble.",
           "exits": {
-            "west": "central_plaza"
+            "west": "central_plaza",
+            "north": "scriptorium"
           },
           "items": [
              {
@@ -689,6 +1098,27 @@
           "properties": {
              "dark": true
           }
+        },
+        "scriptorium": {
+            "name": "Ruined Scriptorium",
+            "description": "A smaller room adjoining the library, likely where scribes worked. Stone desks are overturned, and dried inkwells lie scattered among the debris.",
+            "exits": {
+                "south": "library_ruins"
+            },
+            "items": [
+                 {
+                    "type": "Item",
+                    "obj_id": "item_broken_stylus",
+                    "name": "Broken Stylus",
+                    "description": "An intricate stylus made of bone, now broken in two.",
+                    "weight": 0.1,
+                    "value": 1,
+                    "stackable": false,
+                    "properties": {}
+                 }
+            ],
+            "visited": false,
+            "properties": {"dark": true}
         }
       }
     },
@@ -702,7 +1132,18 @@
                 "exits": {
                     "down": "caves:forgotten_mine",
                     "up": "high_pass",
-                    "east": "frozen_waterfall"
+                    "east": "frozen_waterfall",
+                    "west": "rocky_ledge"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
+            "rocky_ledge": {
+                "name": "Rocky Ledge",
+                "description": "A narrow ledge clings to the mountainside, offering a dizzying view of the valley below. Loose rocks make footing uncertain.",
+                "exits": {
+                    "east": "mine_exit"
                 },
                 "items": [],
                 "visited": false,
@@ -713,13 +1154,24 @@
                 "description": "A narrow pass winds between towering peaks. The wind howls fiercely here, biting through your clothes. The path continues precariously upwards.",
                 "exits": {
                     "down": "mine_exit",
-                    "up": "summit"
+                    "up": "summit",
+                    "north": "crevasse_edge"
                 },
                 "items": [],
                 "visited": false,
                 "properties": {
                     "weather": "windy"
                 }
+            },
+            "crevasse_edge": {
+                "name": "Edge of a Crevasse",
+                "description": "The path skirts the edge of a deep, icy crevasse. A blast of freezing air rises from the depths.",
+                "exits": {
+                    "south": "high_pass"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"weather": "windy"}
             },
             "summit": {
                 "name": "Frostpeak Summit",
@@ -771,13 +1223,24 @@
                 "name": "Glacial Cave",
                 "description": "Inside the ice cave, the temperature plummets. The air is still and silent. Elaborate formations of ice resemble frozen sculptures.",
                 "exits": {
-                    "out": "ice_cave_entrance"
+                    "out": "ice_cave_entrance",
+                    "deeper": "ice_cave_chamber"
                 },
                 "items": [],
                 "visited": false,
                 "properties": {
                     "dark": true
                 }
+            },
+            "ice_cave_chamber": {
+                "name": "Inner Ice Chamber",
+                "description": "Deeper within the ice cave, the ice walls seem older and thicker. Something large appears to be frozen within the ice in the center of the chamber.",
+                "exits": {
+                    "out": "ice_cave"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"dark": true}
             },
             "hidden_valley_entrance": {
                 "name": "Hidden Valley Entrance",
@@ -794,7 +1257,8 @@
                 "name": "Verdant Hidden Valley",
                 "description": "Surprisingly sheltered from the harsh mountain weather, this small valley is lush and green. A clear stream runs through it, and unusual alpine flowers bloom.",
                 "exits": {
-                    "up": "hidden_valley_entrance"
+                    "up": "hidden_valley_entrance",
+                    "north": "valley_cave"
                 },
                 "items": [
                    {
@@ -815,6 +1279,27 @@
                 ],
                 "visited": false,
                 "properties": {}
+            },
+            "valley_cave": {
+                "name": "Small Valley Cave",
+                "description": "A small, dry cave at the northern end of the hidden valley. Looks like it might have been used as a shelter recently.",
+                "exits": {
+                    "south": "hidden_valley"
+                },
+                "items": [
+                    {
+                        "type": "Junk",
+                        "obj_id": "item_old_campfire",
+                        "name": "Old Campfire Ashes",
+                        "description": "The cold ashes of a small campfire.",
+                        "weight": 0.1,
+                        "value": 0,
+                        "stackable": false,
+                        "properties": {}
+                    }
+                ],
+                "visited": false,
+                "properties": {"dark": true}
             }
         }
     },
@@ -827,7 +1312,8 @@
                 "description": "The firm ground of the riverbank gives way to soggy marshland. The air grows heavy and humid, filled with the croaking of frogs and the buzzing of insects. A narrow, muddy path leads deeper in.",
                 "exits": {
                     "upstream": "town:river_road",
-                    "south": "stagnant_pool"
+                    "south": "stagnant_pool",
+                    "west": "willow_grove"
                 },
                 "items": [],
                 "visited": false,
@@ -835,12 +1321,23 @@
                     "smell": "damp earth"
                 }
             },
+            "willow_grove": {
+                "name": "Weeping Willow Grove",
+                "description": "A grove of weeping willow trees stands near the marsh edge, their long branches trailing into the water.",
+                "exits": {
+                    "east": "marsh_edge"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
             "stagnant_pool": {
                 "name": "Stagnant Pool",
                 "description": "A large pool of dark, unmoving water blocks the path. Bubbles occasionally rise to the surface with a soft 'plop'. Strange, pale roots twist through the muck.",
                 "exits": {
                     "north": "marsh_edge",
-                    "east": "mangrove_thicket"
+                    "east": "mangrove_thicket",
+                    "south": "muddy_trail"
                 },
                 "items": [],
                 "visited": false,
@@ -848,12 +1345,25 @@
                     "smell": "stagnant water"
                 }
             },
+            "muddy_trail": {
+                "name": "Muddy Trail",
+                "description": "A slippery trail of thick mud winds southwards. It's difficult to keep your footing.",
+                "exits": {
+                    "north": "stagnant_pool",
+                    "south": "mangrove_thicket"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
             "mangrove_thicket": {
                 "name": "Mangrove Thicket",
                 "description": "A dense thicket of mangrove trees with tangled roots creating a maze-like environment. Progress is slow and difficult, and it's easy to get turned around.",
                 "exits": {
                     "west": "stagnant_pool",
-                    "south": "sunken_structure"
+                    "north": "muddy_trail",
+                    "south": "sunken_structure",
+                    "east": "lizard_den"
                 },
                 "items": [
                      {
@@ -875,16 +1385,48 @@
                 "visited": false,
                 "properties": {}
             },
+            "lizard_den": {
+                "name": "Giant Lizard Den",
+                "description": "A large burrow dug into a muddy bank. Large reptilian tracks lead into the opening. It smells unpleasant.",
+                "exits": {
+                    "west": "mangrove_thicket"
+                },
+                "items": [
+                     {
+                        "type": "Junk",
+                        "obj_id": "item_lizard_scale",
+                        "name": "Large Scale",
+                        "description": "A tough, greenish scale, likely shed by a large lizard.",
+                        "weight": 0.2,
+                        "value": 3,
+                        "stackable": true,
+                        "properties": {}
+                    }
+                ],
+                "visited": false,
+                "properties": {"smell": "reptilian"}
+            },
             "sunken_structure": {
                 "name": "Sunken Structure",
                 "description": "The top of an old stone structure juts out from the murky water. Most of it has sunk into the swamp, but carvings near the waterline suggest it predates the village. The path seems to continue south into deeper mire.",
                 "exits": {
                     "north": "mangrove_thicket",
-                    "south": "deep_swamp"
+                    "south": "deep_swamp",
+                    "down": "flooded_ruin"
                 },
                 "items": [],
                 "visited": false,
                 "properties": {}
+            },
+            "flooded_ruin": {
+                "name": "Flooded Ruin Interior",
+                "description": "Submerged within the sunken structure, this room is filled with murky water and debris. Visibility is extremely limited.",
+                "exits": {
+                    "up": "sunken_structure"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"dark": true, "underwater": true}
             },
             "deep_swamp": {
                 "name": "Deep Swamp Mire",
@@ -892,7 +1434,8 @@
                 "exits": {
                     "north": "sunken_structure",
                     "east": "quicksand_pit",
-                    "south": "ancient_bog"
+                    "south": "ancient_bog",
+                    "west": "whispering_reeds"
                 },
                 "items": [],
                 "visited": false,
@@ -900,6 +1443,16 @@
                     "smell": "decay",
                     "dark": true
                 }
+            },
+             "whispering_reeds": {
+                "name": "Whispering Reeds",
+                "description": "Tall reeds grow thickly here, whispering secrets as the wind sighs through them. It's hard to see far in any direction.",
+                "exits": {
+                    "east": "deep_swamp"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"noisy": true}
             },
             "quicksand_pit": {
                 "name": "Quicksand Pit",
@@ -974,9 +1527,33 @@
                 "description": "A well-trodden path leads towards a simple but sturdy farmhouse with smoke curling from its chimney.",
                 "exits": {
                     "south": "wheat_field",
-                    "north": "farmhouse_yard"
+                    "north": "farmhouse_yard",
+                    "west": "vegetable_garden"
                 },
                 "items": [],
+                "visited": false,
+                "properties": {}
+            },
+            "vegetable_garden": {
+                "name": "Vegetable Garden",
+                "description": "Neat rows of vegetables grow in this well-tended garden beside the farmhouse path. Carrots, potatoes, and greens flourish here.",
+                "exits": {
+                    "east": "farmhouse_path"
+                },
+                "items": [
+                    {
+                        "type": "Consumable",
+                        "obj_id": "item_fresh_carrot",
+                        "name": "Fresh Carrot",
+                        "description": "A crisp orange carrot, pulled fresh from the earth.",
+                        "weight": 0.3,
+                        "value": 1,
+                        "stackable": true,
+                        "properties": {
+                             "uses": 1, "max_uses": 1, "effect_value": 2, "effect_type": "heal"
+                        }
+                    }
+                ],
                 "visited": false,
                 "properties": {}
             },
@@ -984,17 +1561,51 @@
                 "name": "Farmhouse Yard",
                 "description": "A tidy yard surrounds the farmhouse. Chickens peck at the ground, and tools lean against the wall. The farmhouse door looks welcoming.",
                 "exits": {
-                    "south": "farmhouse_path"
+                    "south": "farmhouse_path",
+                    "east": "barn_entrance"
                 },
                 "items": [],
                 "visited": false,
                 "properties": {}
             },
+             "barn_entrance": {
+                "name": "Barn Entrance",
+                "description": "The large double doors of a wooden barn stand before you. The smell of hay and animals comes from within.",
+                "exits": {
+                    "west": "farmhouse_yard",
+                    "in": "barn_interior"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
+            "barn_interior": {
+                "name": "Barn Interior",
+                "description": "Inside the barn, stalls line the walls, some containing animals. Hay is piled high in a loft above. Farming equipment is stored neatly in corners.",
+                "exits": {
+                    "out": "barn_entrance"
+                },
+                "items": [
+                    {
+                        "type": "Item",
+                        "obj_id": "item_pitchfork",
+                        "name": "Pitchfork",
+                        "description": "A sturdy pitchfork used for moving hay.",
+                        "weight": 3.0,
+                        "value": 5,
+                        "stackable": false,
+                        "properties": {}
+                    }
+                ],
+                "visited": false,
+                "properties": {"smell": "hay"}
+            },
             "pumpkin_patch": {
                 "name": "Pumpkin Patch",
                 "description": "Large orange pumpkins lie scattered amongst tangled vines in this fertile patch of ground. Some look ripe for picking.",
                 "exits": {
-                    "north": "wheat_field"
+                    "north": "wheat_field",
+                    "east": "scarecrow_field"
                 },
                 "items": [
                     {
@@ -1016,6 +1627,16 @@
                 "visited": false,
                 "properties": {}
             },
+            "scarecrow_field": {
+                "name": "Field with Scarecrow",
+                "description": "A lonely scarecrow made of straw and old clothes stands guard over a patch of corn.",
+                "exits": {
+                    "west": "pumpkin_patch"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
             "orchard_edge": {
                 "name": "Edge of the Orchard",
                 "description": "Rows of apple trees begin here, stretching eastward. The scent of ripe apples hangs in the air.",
@@ -1032,7 +1653,8 @@
                 "description": "Gnarled apple trees grow in neat rows, laden with fruit. Bees buzz lazily among the branches. The ground is soft with fallen leaves. A path leads east, climbing towards rocky hills.",
                 "exits": {
                     "west": "orchard_edge",
-                    "east": "foothills:grassy_slope"
+                    "east": "foothills:grassy_slope",
+                    "north": "beekeepers_corner"
                 },
                 "items": [
                    {
@@ -1055,6 +1677,16 @@
                 "properties": {
                     "smell": "apples"
                 }
+            },
+            "beekeepers_corner": {
+                "name": "Beekeeper's Corner",
+                "description": "Several wooden beehives stand in a quiet corner of the orchard. The air hums with the sound of bees.",
+                "exits": {
+                    "south": "apple_orchard"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"noisy": true, "smell": "honey"}
             }
         }
     },
@@ -1068,7 +1700,8 @@
               "exits": {
                   "west": "farmland:apple_orchard",
                   "north": "rocky_outcrop",
-                  "east": "shepherds_hut"
+                  "east": "shepherds_hut",
+                  "up": "windy_ridge"
               },
               "items": [
                    {
@@ -1090,11 +1723,22 @@
               "visited": false,
               "properties": {}
           },
+           "windy_ridge": {
+                "name": "Windy Ridge",
+                "description": "The top of the hill forms a long, windswept ridge. The view is expansive, showing the farmlands, the river, and the distant mountains.",
+                "exits": {
+                    "down": "grassy_slope"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"weather": "windy"}
+            },
           "rocky_outcrop": {
               "name": "Rocky Outcrop",
               "description": "A cluster of large, weathered rocks juts from the hillside, offering some shelter from the wind and a good view of the surroundings.",
               "exits": {
-                  "south": "grassy_slope"
+                  "south": "grassy_slope",
+                  "north": "hilltop_cave_entrance"
               },
               "items": [
                    {
@@ -1111,16 +1755,59 @@
               "visited": false,
               "properties": {}
           },
+          "hilltop_cave_entrance": {
+                "name": "Hilltop Cave Entrance",
+                "description": "A small, dark opening is nestled amongst the rocks near the hilltop. A cool draft emerges.",
+                "exits": {
+                    "south": "rocky_outcrop",
+                    "in": "hilltop_cave"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
+            "hilltop_cave": {
+                "name": "Hilltop Cave",
+                "description": "A small, damp cave inside the hill. It doesn't seem to go very deep.",
+                "exits": {
+                    "out": "hilltop_cave_entrance"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"dark": true}
+            },
           "shepherds_hut": {
               "name": "Shepherd's Hut",
               "description": "A small, simple hut made of stone and turf, built into the hillside. A thin trail of smoke rises from a chimney hole. It looks occupied.",
               "exits": {
-                  "west": "grassy_slope"
+                  "west": "grassy_slope",
+                  "east": "sheep_pen"
               },
               "items": [],
               "visited": false,
               "properties": {}
-          }
+          },
+          "sheep_pen": {
+                "name": "Sheep Pen",
+                "description": "A fenced area next to the shepherd's hut where sheep are kept at night. The ground is well-trodden.",
+                "exits": {
+                    "west": "shepherds_hut"
+                },
+                "items": [
+                     {
+                        "type": "Junk",
+                        "obj_id": "item_wool_tuft",
+                        "name": "Tuft of Wool",
+                        "description": "A small tuft of sheep's wool caught on the fence.",
+                        "weight": 0.1,
+                        "value": 1,
+                        "stackable": true,
+                        "properties": {}
+                    }
+                ],
+                "visited": false,
+                "properties": {"smell": "sheep"}
+            }
       }
     },
     "coastal_path": {
@@ -1132,7 +1819,8 @@
               "description": "The path crosses wide mudflats exposed by the receding tide. The air smells strongly of salt and decaying seaweed. Seabirds cry overhead.",
               "exits": {
                   "north": "swamp:ancient_bog",
-                  "south": "salt_marsh"
+                  "south": "salt_marsh",
+                  "west": "shipwreck_debris"
               },
               "items": [],
               "visited": false,
@@ -1140,23 +1828,56 @@
                   "smell": "salt and mud"
               }
           },
+          "shipwreck_debris": {
+                "name": "Shipwreck Debris",
+                "description": "Fragments of a wrecked ship lie scattered across the mudflats, half-buried in the silt. Rotted timbers and rusted metal poke out.",
+                "exits": {
+                    "east": "mudflats"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+          },
           "salt_marsh": {
               "name": "Salt Marsh",
               "description": "Tough grasses and reeds grow in dense clumps, adapted to the salty, waterlogged ground. Small crabs scuttle between pools left by the tide.",
               "exits": {
                   "north": "mudflats",
-                  "south": "beach_approach"
+                  "south": "beach_approach",
+                  "east": "tidal_pool"
               },
               "items": [],
               "visited": false,
               "properties": {}
           },
+          "tidal_pool": {
+                "name": "Tidal Pool",
+                "description": "A shallow pool of seawater trapped among the marsh grasses. Small sea creatures might live here.",
+                "exits": {
+                    "west": "salt_marsh"
+                },
+                "items": [
+                     {
+                        "type": "Item",
+                        "obj_id": "item_seashell",
+                        "name": "Pretty Seashell",
+                        "description": "A colorful, intact seashell.",
+                        "weight": 0.1,
+                        "value": 2,
+                        "stackable": true,
+                        "properties": {}
+                    }
+                ],
+                "visited": false,
+                "properties": {}
+            },
           "beach_approach": {
               "name": "Beach Approach",
               "description": "The ground becomes sandy underfoot. You can hear the rhythmic sound of waves crashing nearby. Ahead, you see the sturdy wooden walls of a coastal settlement.",
               "exits": {
                   "north": "salt_marsh",
-                  "south": "portbridge:town_gate_south"
+                  "south": "portbridge:town_gate_south",
+                  "west": "sandy_beach"
               },
               "items": [
                   {
@@ -1174,7 +1895,39 @@
               "properties": {
                   "smell": "sea air"
               }
-          }
+          },
+          "sandy_beach": {
+                "name": "Sandy Beach",
+                "description": "A wide stretch of sandy beach meets the sea. Waves gently lap at the shore. Kelp and shells are strewn along the high tide line.",
+                "exits": {
+                    "east": "beach_approach",
+                    "west": "sea_cave_entrance"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"smell": "sea air"}
+            },
+           "sea_cave_entrance": {
+                "name": "Sea Cave Entrance",
+                "description": "At the base of a low cliff, a dark opening leads into a sea cave. The sound of waves echoes from within.",
+                "exits": {
+                    "east": "sandy_beach",
+                    "in": "sea_cave"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
+            "sea_cave": {
+                "name": "Sea Cave",
+                "description": "Inside the sea cave, the air is cool and damp. Water pools on the floor, rising and falling with the tide.",
+                "exits": {
+                    "out": "sea_cave_entrance"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"dark": true, "smell": "salty"}
+            }
       }
     },
     "portbridge": {
@@ -1200,7 +1953,8 @@
                     "south": "town_gate_south",
                     "east": "fish_market",
                     "west": "sailors_rest_inn",
-                    "north": "town_center_portbridge"
+                    "north": "town_center_portbridge",
+                    "down": "smugglers_tunnel_entrance"
                 },
                 "items": [
                     {
@@ -1220,11 +1974,55 @@
                     "smell": "fish and tar"
                 }
             },
+            "smugglers_tunnel_entrance": {
+                "name": "Smuggler's Tunnel Entrance",
+                "description": "Hidden behind loose crates near the docks is a dark opening leading down into a crudely dug tunnel.",
+                "exits": {
+                    "up": "harbor_district",
+                    "down": "smugglers_tunnel"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"dark": true}
+            },
+            "smugglers_tunnel": {
+                "name": "Smuggler's Tunnel",
+                "description": "A narrow, damp tunnel running beneath the harbor district. It smells of seawater and stale air.",
+                "exits": {
+                    "up": "smugglers_tunnel_entrance",
+                    "north": "underground_cache"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"dark": true, "smell": "stale air"}
+            },
+            "underground_cache": {
+                "name": "Underground Cache",
+                "description": "The tunnel opens into a small chamber where illicit goods might be stored. Some empty crates and barrels are stacked here.",
+                "exits": {
+                    "south": "smugglers_tunnel"
+                },
+                "items": [
+                     {
+                        "type": "Treasure",
+                        "obj_id": "item_dubious_cargo",
+                        "name": "Dubious Cargo",
+                        "description": "A small, locked chest containing unknown contents. It looks valuable but likely stolen.",
+                        "weight": 10.0,
+                        "value": 150,
+                        "stackable": false,
+                        "properties": {"treasure_type": "contraband"}
+                    }
+                ],
+                "visited": false,
+                "properties": {"dark": true}
+            },
             "fish_market": {
                 "name": "Fish Market",
                 "description": "An open-air market dominated by stalls selling the day's catch. Fishermen haggle loudly over prices, and the ground is slick with seawater and fish scales.",
                 "exits": {
-                    "west": "harbor_district"
+                    "west": "harbor_district",
+                    "east": "pier_1"
                 },
                 "items": [],
                 "visited": false,
@@ -1233,11 +2031,22 @@
                     "smell": "fishy"
                 }
             },
+            "pier_1": {
+                "name": "Fishing Pier",
+                "description": "A long wooden pier extending out over the water, used by local fishermen. Fishing lines dangle into the sea.",
+                "exits": {
+                    "west": "fish_market"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"smell": "sea air"}
+            },
             "sailors_rest_inn": {
                 "name": "The Sailor's Rest Inn",
                 "description": "A large, rowdy inn catering to seafarers. The common room is filled with loud conversation, laughter, and the clatter of tankards. Fights occasionally break out.",
                 "exits": {
-                    "east": "harbor_district"
+                    "east": "harbor_district",
+                    "up": "inn_rooms"
                 },
                 "items": [],
                 "visited": false,
@@ -1246,11 +2055,22 @@
                     "smell": "stale ale"
                 }
             },
+             "inn_rooms": {
+                "name": "Inn Upper Floor",
+                "description": "A narrow corridor above the Sailor's Rest, lined with doors to small, basic rooms.",
+                "exits": {
+                    "down": "sailors_rest_inn"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
             "shipwright": {
                 "name": "Shipwright's Yard",
                 "description": "The sounds of sawing and hammering fill the air. Large wooden skeletons of ships under construction dominate the yard. Wood shavings litter the ground.",
                 "exits": {
-                    "south": "town_center_portbridge"
+                    "south": "town_center_portbridge",
+                    "north": "lumber_storage"
                 },
                 "items": [],
                 "visited": false,
@@ -1259,12 +2079,33 @@
                     "smell": "wood and pitch"
                 }
             },
+            "lumber_storage": {
+                "name": "Lumber Storage",
+                "description": "Large stacks of timber and planks are stored here, ready for use by the shipwright.",
+                "exits": {
+                    "south": "shipwright"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {"smell": "fresh wood"}
+            },
             "town_center_portbridge": {
                 "name": "Portbridge Town Center",
                 "description": "The central area of Portbridge is slightly more orderly than the harbor. Merchant stalls and administrative buildings cluster around a small square.",
                 "exits": {
                     "south": "harbor_district",
-                    "north": "shipwright"
+                    "north": "shipwright",
+                    "west": "port_authority"
+                },
+                "items": [],
+                "visited": false,
+                "properties": {}
+            },
+             "port_authority": {
+                "name": "Port Authority Office",
+                "description": "A stern-looking building where harbourmasters manage dock traffic and collect tariffs. Clerks bustle about inside.",
+                "exits": {
+                    "east": "town_center_portbridge"
                 },
                 "items": [],
                 "visited": false,

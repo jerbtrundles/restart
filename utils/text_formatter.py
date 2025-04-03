@@ -3,8 +3,20 @@ utils/text_formatter.py
 Fixed text formatter with simpler rendering approach.
 """
 import textwrap
-from typing import Dict, Tuple, List, Optional, Any
+from typing import TYPE_CHECKING, Dict, Tuple, List, Optional, Any
 import pygame
+import math
+
+from core.config import (
+    DEFAULT_COLORS, COLOR_DEFAULT, # Import base colors if needed
+    FORMAT_RED, FORMAT_ORANGE, FORMAT_YELLOW, FORMAT_GREEN, FORMAT_BLUE,
+    FORMAT_CYAN, FORMAT_WHITE, FORMAT_RESET,
+    SEMANTIC_FORMAT # Import the semantic mapping too
+)
+
+if TYPE_CHECKING:
+    from player import Player
+    from npcs.npc import NPC
 
 class TextFormatter:
     """
@@ -15,24 +27,6 @@ class TextFormatter:
     - Format codes for colors and styles
     - Paragraph formatting with proper spacing
     """
-    
-    # Format codes
-    FORMAT_TITLE = "[[TITLE]]"       # Yellow, for headings
-    FORMAT_CATEGORY = "[[CAT]]"      # Cyan, for categories and labels
-    FORMAT_HIGHLIGHT = "[[HI]]"      # Green, for important information
-    FORMAT_SUCCESS = "[[OK]]"        # Green, for success messages
-    FORMAT_ERROR = "[[ERR]]"         # Red, for error messages
-    FORMAT_RESET = "[[/]]"           # Reset to default text color
-    
-    # Default color values for format codes (RGB)
-    DEFAULT_COLORS = {
-        FORMAT_TITLE: (255, 255, 0),      # Yellow
-        FORMAT_CATEGORY: (0, 255, 255),   # Cyan
-        FORMAT_HIGHLIGHT: (0, 255, 0),    # Green
-        FORMAT_SUCCESS: (0, 255, 0),      # Green
-        FORMAT_ERROR: (255, 0, 0),        # Red
-        FORMAT_RESET: (255, 255, 255)     # White (default)
-    }
 
     def __init__(self, font: pygame.font.Font, screen_width: int, 
                  colors: Optional[Dict[str, Tuple[int, int, int]]] = None,
@@ -51,7 +45,7 @@ class TextFormatter:
         self.screen_width = screen_width
         self.margin = margin
         self.line_spacing = line_spacing
-        self.colors = self.DEFAULT_COLORS.copy()
+        self.colors = DEFAULT_COLORS.copy()
         
         # Override with custom colors if provided
         if colors:
@@ -143,7 +137,7 @@ class TextFormatter:
             return position[1]
             
         x_orig, y = position
-        current_color = self.colors[self.FORMAT_RESET]  # Default color
+        current_color = self.colors[FORMAT_RESET]  # Default color
         line_height = self.font.get_linesize() + self.line_spacing
         
         # Process the text line by line
@@ -221,3 +215,60 @@ class TextFormatter:
             result = result.replace(code, "")
             
         return result
+
+# Define level difference thresholds (could be moved to config.py)
+LEVEL_DIFF_THRESHOLDS = {
+    "red": 5,       # Target level >= Player level + 5
+    "orange": 2,    # Target level >= Player level + 2
+    "yellow": -1,   # Target level >= Player level - 1 (includes equal level)
+    "blue": -4,     # Target level >= Player level - 4
+    "green": -math.inf # Target level < Player level - 4 (use -infinity for comparison)
+    # Green is the default if none of the above match
+}
+
+# Map thresholds to format codes
+LEVEL_DIFF_COLORS = {
+    "red": FORMAT_RED,        # Very hard -> Red
+    "orange": FORMAT_ORANGE,    # Hard -> Orange
+    "yellow": FORMAT_YELLOW,    # Even/Slightly hard -> Yellow
+    "blue": FORMAT_BLUE,      # Easy -> Blue
+    "green": FORMAT_GREEN,      # Very easy -> Green
+}
+
+def format_target_name(viewer, target) -> str:
+    """
+    Formats the target's name based on level difference relative to the viewer.
+    Only colors hostile NPCs based on level.
+    """
+    # *** Local import for runtime ***
+    from npcs.npc import NPC
+
+    if not hasattr(target, 'name'):
+        return "something" # Fallback
+
+    base_name = target.name
+
+    # Only color hostile NPCs based on level
+    if not isinstance(target, NPC) or target.friendly or target.faction != "hostile":
+        # Optional: Color friendlies differently?
+        # from core.config import FORMAT_SUCCESS, FORMAT_RESET
+        # if isinstance(target, NPC) and target.friendly:
+        #     return f"{FORMAT_SUCCESS}{base_name}{FORMAT_RESET}"
+        return base_name # No special level coloring for non-hostiles/non-NPCs
+
+    # Get levels (default to 1 if missing)
+    viewer_level = getattr(viewer, 'level', 1)
+    target_level = getattr(target, 'level', 1)
+
+    level_diff = target_level - viewer_level
+
+    # Determine color category
+    color_category = "green" # Default
+    if level_diff >= LEVEL_DIFF_THRESHOLDS["red"]: color_category = "red"
+    elif level_diff >= LEVEL_DIFF_THRESHOLDS["orange"]: color_category = "orange"
+    elif level_diff >= LEVEL_DIFF_THRESHOLDS["yellow"]: color_category = "yellow"
+    elif level_diff >= LEVEL_DIFF_THRESHOLDS["blue"]: color_category = "blue"
+
+    format_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
+
+    return f"{format_code}{base_name} (Level {target_level}){FORMAT_RESET}"

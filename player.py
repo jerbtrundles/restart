@@ -1,25 +1,43 @@
 # player.py
-from typing import List, Dict, Optional, Any, Tuple
+# --- Standard Imports ---
+from typing import List, Dict, Optional, Any, Tuple, Set
+import time
+import random
+
+# --- Imports for Classes Used Directly ---
+from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE
 from items.inventory import Inventory
-from utils.text_formatter import TextFormatter
 from items.weapon import Weapon
 from items.consumable import Consumable
-from items.item import Item # Import base Item
+from items.item import Item
+from magic.spell import Spell
+from magic.spell_registry import get_spell
+from magic.effects import apply_spell_effect
+
+from typing import TYPE_CHECKING
+
+from utils.text_formatter import format_target_name
+if TYPE_CHECKING:
+    from world.world import World # Only import for type checkers
 
 class Player:
-    """
-    Represents the player character in the game.
-    """
     def __init__(self, name: str):
-        # ... (existing attributes - no change) ...
         self.name = name
         self.inventory = Inventory(max_slots=20, max_weight=100.0)
         self.health = 100
         self.max_health = 100
+        # *** NEW: Mana ***
+        self.mana = 50
+        self.max_mana = 50
+        self.mana_regen_rate = 1.0 # Mana per second
+        self.last_mana_regen_time = 0
+        # *** END NEW ***
         self.stats = {
-            "strength": 10,
-            "dexterity": 10,
-            "intelligence": 10
+            "strength": 10, "dexterity": 10, "intelligence": 10,
+            # Add optional magic-related stats
+             "wisdom": 10, # Could affect mana regen or spell power
+             "spell_power": 5, # Base bonus spell damage/healing
+             "magic_resist": 2 # Base magic resistance
         }
         self.level = 1
         self.experience = 0
@@ -27,18 +45,17 @@ class Player:
         self.skills = {}
         self.effects = []
         self.quest_log = {}
-        self.equipment: Dict[str, Optional[Item]] = {
+        self.equipment: Dict[str, Optional[Item]] = { # No change needed here yet
             "main_hand": None, "off_hand": None, "body": None, "head": None,
             "feet": None, "hands": None, "neck": None,
         }
-        self.valid_slots_for_type = {
-            "Weapon": ["main_hand", "off_hand"],
-            "Armor": ["body", "head", "feet", "hands"],
+        self.valid_slots_for_type = { # No change needed here yet
+            "Weapon": ["main_hand", "off_hand"], "Armor": ["body", "head", "feet", "hands"],
             "Shield": ["off_hand"], "Amulet": ["neck"],
         }
         self.attack_power = 5
         self.defense = 3
-        self.is_alive = True # Start alive
+        self.is_alive = True
         self.faction = "player"
         self.in_combat = False
         self.combat_target = None
@@ -49,49 +66,82 @@ class Player:
         self.max_combat_messages = 10
         self.follow_target: Optional[str] = None
 
-        self.respawn_region_id: Optional[str] = "town" # Default respawn region
-        self.respawn_room_id: Optional[str] = "town_square" # Default respawn room
+        self.respawn_region_id: Optional[str] = "town"
+        self.respawn_room_id: Optional[str] = "town_square"
 
-    # ... (get_status, gain_experience, level_up, add_effect, update_effects - unchanged) ...
-    # ... (add_skill, get_skill_level, update_quest, get_quest_progress, heal - unchanged) ...
+        # *** NEW: Spellbook and Cooldowns ***
+        self.known_spells: Set[str] = {"magic_missile", "minor_heal"} # Start with some spells (IDs)
+        self.spell_cooldowns: Dict[str, float] = {} # spell_id -> time when cooldown ends
+        # *** END NEW ***
+
+    # *** NEW: Update method for regeneration ***
+    def update(self, current_time: float):
+        """Update player state like mana regeneration."""
+        # Mana Regen
+        if self.is_alive:
+            time_since_regen = current_time - self.last_mana_regen_time
+            if time_since_regen >= 1.0: # Regenerate every second
+                regen_amount = int(time_since_regen * self.mana_regen_rate * (1 + self.stats.get('wisdom', 10) / 20)) # Regen based on rate and wisdom
+                self.mana = min(self.max_mana, self.mana + regen_amount)
+                self.last_mana_regen_time = current_time
+
+        # Could update effects here too if needed
+        # self.update_effects()
 
     def get_status(self) -> str:
-        # ... (implementation unchanged) ...
-        health_percent = (self.health / self.max_health) * 100 if self.max_health > 0 else 0 # Prevent division by zero
+        from utils.text_formatter import TextFormatter
+        # ... (previous status parts) ...
+        health_percent = (self.health / self.max_health) * 100 if self.max_health > 0 else 0
         health_text = f"{self.health}/{self.max_health}"
-        if health_percent <= 25: health_display = f"{TextFormatter.FORMAT_ERROR}{health_text}{TextFormatter.FORMAT_RESET}"
-        elif health_percent <= 50: health_display = f"{TextFormatter.FORMAT_HIGHLIGHT}{health_text}{TextFormatter.FORMAT_RESET}"
-        else: health_display = f"{TextFormatter.FORMAT_SUCCESS}{health_text}{TextFormatter.FORMAT_RESET}"
+        if health_percent <= 25: health_display = f"{FORMAT_ERROR}{health_text}{FORMAT_RESET}"
+        elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{health_text}{FORMAT_RESET}"
+        else: health_display = f"{FORMAT_SUCCESS}{health_text}{FORMAT_RESET}"
 
-        status = f"{TextFormatter.FORMAT_CATEGORY}Name:{TextFormatter.FORMAT_RESET} {self.name}\n"
-        status += f"{TextFormatter.FORMAT_CATEGORY}Level:{TextFormatter.FORMAT_RESET} {self.level} (XP: {self.experience}/{self.experience_to_level})\n"
-        status += f"{TextFormatter.FORMAT_CATEGORY}Health:{TextFormatter.FORMAT_RESET} {health_display}\n"
-        status += f"{TextFormatter.FORMAT_CATEGORY}Stats:{TextFormatter.FORMAT_RESET} "
-        status += f"STR {self.stats['strength']}, DEX {self.stats['dexterity']}, INT {self.stats['intelligence']}\n"
-        status += f"{TextFormatter.FORMAT_CATEGORY}Attack:{TextFormatter.FORMAT_RESET} {self.get_attack_power()}, "
-        status += f"{TextFormatter.FORMAT_CATEGORY}Defense:{TextFormatter.FORMAT_RESET} {self.get_defense()}\n"
+        # *** ADD Mana Display ***
+        mana_percent = (self.mana / self.max_mana) * 100 if self.max_mana > 0 else 0
+        mana_text = f"{self.mana}/{self.max_mana}"
+        mana_display = f"{FORMAT_CATEGORY}{mana_text}{FORMAT_RESET}" # Default color for now
+        # *** END ADD ***
 
-        status += f"\n{TextFormatter.FORMAT_TITLE}EQUIPMENT{TextFormatter.FORMAT_RESET}\n"
-        equipped_items = False
-        for slot, item in self.equipment.items():
-            if item:
-                status += f"- {slot.replace('_', ' ').capitalize()}: {item.name}\n"
-                equipped_items = True
-        if not equipped_items:
-            status += "  (Nothing equipped)\n"
+        status = f"{FORMAT_CATEGORY}Name:{FORMAT_RESET} {self.name}\n"
+        status += f"{FORMAT_CATEGORY}Level:{FORMAT_RESET} {self.level} (XP: {self.experience}/{self.experience_to_level})\n"
+        status += f"{FORMAT_CATEGORY}Health:{FORMAT_RESET} {health_display}  " # Add space
+        # *** ADD Mana to line ***
+        status += f"{FORMAT_CATEGORY}Mana:{FORMAT_RESET} {mana_display}\n"
+        # *** END ADD ***
+        status += f"{FORMAT_CATEGORY}Stats:{FORMAT_RESET} "
+        status += f"STR {self.stats['strength']}, DEX {self.stats['dexterity']}, INT {self.stats['intelligence']}"
+        # Add magic stats if you want them visible
+        status += f", WIS {self.stats['wisdom']}, POW {self.stats['spell_power']}, RES {self.stats['magic_resist']}\n"
+        status += f"{FORMAT_CATEGORY}Attack:{FORMAT_RESET} {self.get_attack_power()}, "
+        status += f"{FORMAT_CATEGORY}Defense:{FORMAT_RESET} {self.get_defense()}\n"
 
-        if self.effects: status += f"\n{TextFormatter.FORMAT_TITLE}Active Effects:{TextFormatter.FORMAT_RESET}\n" # ... (effects - unchanged) ...
-        if self.skills: status += f"\n{TextFormatter.FORMAT_TITLE}Skills:{TextFormatter.FORMAT_RESET}\n" # ... (skills - unchanged) ...
-        if self.quest_log: status += f"\n{TextFormatter.FORMAT_TITLE}Active Quests:{TextFormatter.FORMAT_RESET} {len(self.quest_log)}\n" # ... (quests - unchanged) ...
+        # ... (Equipment, Effects, Skills, Quests - unchanged) ...
+
+        # *** NEW: Known Spells ***
+        if self.known_spells:
+             status += f"\n{FORMAT_TITLE}SPELLS KNOWN{FORMAT_RESET}\n"
+             spell_list = []
+             current_time = time.time() # Need current time to check cooldowns
+             for spell_id in sorted(list(self.known_spells)):
+                  spell = get_spell(spell_id)
+                  if spell:
+                       cooldown_end = self.spell_cooldowns.get(spell_id, 0)
+                       if current_time < cooldown_end:
+                            time_left = cooldown_end - current_time
+                            spell_list.append(f"- {spell.name} ({spell.mana_cost} MP) [{FORMAT_ERROR}CD {time_left:.1f}s{FORMAT_RESET}]")
+                       else:
+                            spell_list.append(f"- {spell.name} ({spell.mana_cost} MP)")
+             status += "\n".join(spell_list) + "\n"
+        # *** END NEW ***
+
         if self.in_combat: # ... (combat status - unchanged) ...
             target_names = ", ".join([t.name for t in self.combat_targets if hasattr(t, 'name')])
             if not target_names: target_names = "unknown foes"
-            status += f"\n{TextFormatter.FORMAT_ERROR}In combat with {target_names}!{TextFormatter.FORMAT_RESET}\n"
+            status += f"\n{FORMAT_ERROR}In combat with {target_names}!{FORMAT_RESET}\n"
 
-        # --- NEW: Indicate if dead ---
         if not self.is_alive:
-             status += f"\n{TextFormatter.FORMAT_ERROR}** YOU ARE DEAD **{TextFormatter.FORMAT_RESET}\n"
-        # --- END NEW ---
+             status += f"\n{FORMAT_ERROR}** YOU ARE DEAD **{FORMAT_RESET}\n"
 
         return status
 
@@ -103,15 +153,21 @@ class Player:
         return False
 
     def level_up(self) -> None:
+        # ... (previous level up logic) ...
         self.level += 1
         self.experience -= self.experience_to_level
         self.experience_to_level = int(self.experience_to_level * 1.5)
         self.stats["strength"] += 1
         self.stats["dexterity"] += 1
         self.stats["intelligence"] += 1
-        old_max_health = self.max_health
+        self.stats["wisdom"] += 1 # Increase wisdom on level up
         self.max_health = int(self.max_health * 1.1)
-        self.health += (self.max_health - old_max_health)
+        self.health = self.max_health
+        # *** ADD Mana Increase ***
+        old_max_mana = self.max_mana
+        self.max_mana = int(self.max_mana * 1.15 + self.stats["intelligence"] / 2) # Increase based on level and INT
+        self.mana += (self.max_mana - old_max_mana)
+        # *** END ADD ***
 
     def add_effect(self, name: str, description: str, duration: int,
                   stat_modifiers: Dict[str, int] = None) -> None:
@@ -158,44 +214,46 @@ class Player:
         return self.health - old_health
 
     def take_damage(self, amount: int) -> int:
-        if not self.is_alive: return 0 # Cannot take damage if already dead
+        if not self.is_alive: return 0
 
-        defense = self.get_defense() # Uses updated get_defense
+        # Apply physical defense (existing)
+        defense = self.get_defense()
         reduced_damage = max(0, amount - defense)
         actual_damage = max(1, reduced_damage) if amount > 0 else 0
+
+        # *** TODO: Add magic resistance application if damage type is magical ***
+        # if damage_source == "magic":
+        #     magic_resist = self.stats.get("magic_resist", 0)
+        #     actual_damage = max(1, actual_damage - magic_resist)
+
         old_health = self.health
         self.health = max(0, self.health - actual_damage)
 
         if self.health <= 0:
-            self.die() # Call the die method
+            self.die()
 
         return old_health - self.health
 
-    # --- NEW: Die method ---
     def die(self) -> None:
-        """Handles the player's death."""
-        if not self.is_alive: return # Already dead
-
+        if not self.is_alive: return
         self.health = 0
         self.is_alive = False
-        self.in_combat = False # Exit combat on death
-        self.combat_targets.clear()
-        self.effects = [] # Clear temporary effects on death
-
-        print(f"{self.name} has died!") # Console log for debugging
-        # Note: Dropping items or XP penalty logic could be added here or in GameManager
-    # --- END NEW ---
-
-    # --- NEW: Respawn method ---
-    def respawn(self) -> None:
-        """Resets the player's state upon respawning."""
-        self.health = self.max_health
-        self.is_alive = True
-        self.effects = [] # Clear effects again just in case
         self.in_combat = False
         self.combat_targets.clear()
-        # Add any other necessary resets here (e.g., hunger/thirst if implemented)
-    # --- END NEW ---
+        self.effects = []
+        # *** Reset mana on death? Optional. ***
+        # self.mana = 0
+        print(f"{self.name} has died!")
+
+    def respawn(self) -> None:
+        self.health = self.max_health
+        # *** Restore mana on respawn ***
+        self.mana = self.max_mana
+        self.is_alive = True
+        self.effects = []
+        self.in_combat = False
+        self.combat_targets.clear()
+        self.spell_cooldowns.clear() # Reset cooldowns on respawn
 
     # Make sure method name matches usage
     def get_is_alive(self) -> bool:
@@ -237,69 +295,6 @@ class Player:
                 defense += effect["stat_modifiers"]["defense"]
         return defense
 
-    def to_dict(self) -> Dict[str, Any]:
-        # ... (implementation unchanged, but added respawn location) ...
-        equipped_items_data = {}
-        for slot, item in self.equipment.items():
-            equipped_items_data[slot] = item.to_dict() if item else None
-
-        return {
-            "name": self.name,
-            "inventory": self.inventory.to_dict(),
-            "equipment": equipped_items_data,
-            "health": self.health,
-            "max_health": self.max_health,
-            "stats": self.stats,
-            "level": self.level,
-            "experience": self.experience,
-            "experience_to_level": self.experience_to_level,
-            "skills": self.skills,
-            "effects": self.effects,
-            "quest_log": self.quest_log,
-            "attack_power": self.attack_power,
-            "defense": self.defense,
-            "is_alive": self.is_alive, # Save alive status
-            "in_combat": self.in_combat,
-            "respawn_region_id": self.respawn_region_id, # Save respawn location
-            "respawn_room_id": self.respawn_room_id,     # Save respawn location
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Player':
-        # ... (implementation unchanged, but load respawn location) ...
-        player = cls(data["name"])
-        player.health = data.get("health", 100)
-        player.max_health = data.get("max_health", 100)
-        player.stats = data.get("stats", {"strength": 10, "dexterity": 10, "intelligence": 10})
-        player.level = data.get("level", 1)
-        player.experience = data.get("experience", 0)
-        player.experience_to_level = data.get("experience_to_level", 100)
-        player.skills = data.get("skills", {})
-        player.effects = data.get("effects", [])
-        player.quest_log = data.get("quest_log", {})
-        player.attack_power = data.get("attack_power", 5)
-        player.defense = data.get("defense", 3)
-        player.is_alive = data.get("is_alive", True) # Load alive status
-        player.in_combat = data.get("in_combat", False)
-        player.respawn_region_id = data.get("respawn_region_id", "town") # Load respawn location
-        player.respawn_room_id = data.get("respawn_room_id", "town_square") # Load respawn location
-
-        if "inventory" in data:
-            player.inventory = Inventory.from_dict(data["inventory"])
-        else:
-            player.inventory = Inventory()
-
-        if "equipment" in data:
-            from items.item_factory import ItemFactory
-            for slot, item_data in data["equipment"].items():
-                if item_data and slot in player.equipment:
-                    item = ItemFactory.from_dict(item_data)
-                    if item:
-                        player.equipment[slot] = item
-                    else:
-                         print(f"Warning: Failed to load item for equipment slot '{slot}'")
-        return player
-
     # ... (enter_combat, exit_combat, can_attack, get_combat_status, _add_combat_message - unchanged) ...
     def enter_combat(self, target) -> None:
         if not self.is_alive: return # Cannot enter combat if dead
@@ -328,20 +323,23 @@ class Player:
         return self.is_alive and current_time - self.last_attack_time >= self.attack_cooldown # Add is_alive check
 
     def get_combat_status(self) -> str:
-        # ... (implementation unchanged) ...
         if not self.in_combat or not self.combat_targets: return "You are not in combat."
-        status = f"{TextFormatter.FORMAT_TITLE}COMBAT STATUS{TextFormatter.FORMAT_RESET}\n\n"
-        status += f"{TextFormatter.FORMAT_CATEGORY}Fighting against:{TextFormatter.FORMAT_RESET}\n"
+        status = f"{FORMAT_TITLE}COMBAT STATUS{FORMAT_RESET}\n\n"
+        status += f"{FORMAT_CATEGORY}Fighting against:{FORMAT_RESET}\n"
         for target in self.combat_targets:
+            formatted_name = format_target_name(self, target) # <<< USE FORMATTER
             if hasattr(target, "health") and hasattr(target, "max_health") and target.max_health > 0:
                 health_percent = (target.health / target.max_health) * 100
-                if health_percent <= 25: health_display = f"{TextFormatter.FORMAT_ERROR}{target.health}/{target.max_health}{TextFormatter.FORMAT_RESET}"
-                elif health_percent <= 50: health_display = f"{TextFormatter.FORMAT_HIGHLIGHT}{target.health}/{target.max_health}{TextFormatter.FORMAT_RESET}"
-                else: health_display = f"{TextFormatter.FORMAT_SUCCESS}{target.health}/{target.max_health}{TextFormatter.FORMAT_RESET}"
-                status += f"- {target.name}: {health_display} HP\n"
-            else: status += f"- {target.name}\n"
+                if health_percent <= 25: health_display = f"{FORMAT_ERROR}{target.health}/{target.max_health}{FORMAT_RESET}"
+                elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{target.health}/{target.max_health}{FORMAT_RESET}"
+                else: health_display = f"{FORMAT_SUCCESS}{target.health}/{target.max_health}{FORMAT_RESET}"
+                # Use formatted_name in the status line
+                status += f"- {formatted_name}: {health_display} HP\n"
+            else:
+                 # Use formatted_name here too
+                status += f"- {formatted_name}\n"
         if self.combat_messages:
-            status += f"\n{TextFormatter.FORMAT_CATEGORY}Recent combat actions:{TextFormatter.FORMAT_RESET}\n"
+            status += f"\n{FORMAT_CATEGORY}Recent combat actions:{FORMAT_RESET}\n"
             for msg in self.combat_messages: status += f"- {msg}\n"
         return status
 
@@ -349,13 +347,12 @@ class Player:
         self.combat_messages.append(message)
         while len(self.combat_messages) > self.max_combat_messages: self.combat_messages.pop(0)
 
-    def attack(self, target) -> Dict[str, Any]:
-        # --- NEW: Check if player is alive ---
+    def attack(self, target, world: Optional['World'] = None) -> Dict[str, Any]:
         if not self.is_alive:
              return {"attacker": self.name, "target": getattr(target, 'name', 'target'), "damage": 0, "missed": False, "message": "You cannot attack while dead."}
-        # --- END NEW ---
 
-        # ... (Hit Chance Calculation - unchanged) ...
+        formatted_target_name = format_target_name(self, target) # <<< Format name
+
         import random
         import time
         base_hit_chance = 0.85
@@ -363,7 +360,7 @@ class Player:
         target_dex = getattr(target, "stats", {}).get("dexterity", 10)
         hit_chance = max(0.10, min(base_hit_chance + (attacker_dex - target_dex) * 0.02, 0.98))
         if random.random() > hit_chance:
-            miss_message = f"You swing at {getattr(target, 'name', 'the target')} but miss!"
+            miss_message = f"You swing at {formatted_target_name} but miss!"
             self._add_combat_message(miss_message)
             self.last_attack_time = time.time()
             return {"attacker": self.name, "target": getattr(target, 'name', 'target'), "damage": 0, "missed": True, "message": miss_message}
@@ -393,9 +390,9 @@ class Player:
                 if current_durability - 1 <= 0:
                     weapon_broke = True
 
-        hit_message = f"You attack {getattr(target, 'name', 'the target')} with your {weapon_name} for {actual_damage} damage!"
+        hit_message = f"You attack {formatted_target_name} with your {weapon_name} for {actual_damage} damage!"
         if weapon_broke:
-            hit_message += f"\n{TextFormatter.FORMAT_ERROR}Your {weapon_name} breaks!{TextFormatter.FORMAT_RESET}"
+            hit_message += f"\n{FORMAT_ERROR}Your {weapon_name} breaks!{FORMAT_RESET}"
 
         result = {"attacker": self.name, "target": getattr(target, 'name', 'target'), "damage": actual_damage, "weapon": weapon_name, "missed": False, "message": hit_message}
         self._add_combat_message(result["message"])
@@ -403,23 +400,37 @@ class Player:
         # ... (Check Target Death & XP/Loot - unchanged) ...
         if hasattr(target, "health") and target.health <= 0:
             if hasattr(target, 'is_alive'): target.is_alive = False
-            death_message = f"{target.name} has been defeated!"
+            death_message = f"{formatted_target_name} has been defeated!"
             self._add_combat_message(death_message)
             self.exit_combat(target)
+            result["target_defeated"] = True # Add flag for clarity
+            result["message"] += "\n" + death_message # Append death message
 
+            # Grant XP
             xp_gained = max(1, getattr(target, "max_health", 10) // 5) + getattr(target, "level", 1) * 5
             leveled_up = self.gain_experience(xp_gained)
             exp_message = f"You gained {xp_gained} experience points!"
             self._add_combat_message(exp_message)
-            if leveled_up: self._add_combat_message(f"You leveled up to level {self.level}!")
+            result["message"] += "\n" + exp_message
+            if leveled_up:
+                level_up_msg = f"You leveled up to level {self.level}!"
+                self._add_combat_message(level_up_msg)
+                result["message"] += "\n" + level_up_msg
 
-            world_context = getattr(self, '_context', {}).get("world")
             if hasattr(target, "die"):
-                dropped_loot = target.die(world_context)
+                dropped_loot = target.die(world) # Pass the actual world object
+            # *** END CHANGE ***
                 if dropped_loot:
+                     loot_messages = []
                      for item in dropped_loot:
-                         self._add_combat_message(f"{target.name} dropped: {item.name}")
-            elif hasattr(target, "loot_table"):
+                         # Ensure item has a name before trying to access it
+                         item_name = getattr(item, 'name', 'an unknown item')
+                         loot_messages.append(f"{formatted_target_name} dropped: {item_name}")
+                     if loot_messages:
+                          loot_str = "\n".join(loot_messages)
+                          self._add_combat_message(loot_str)
+                          result["message"] += "\n" + loot_str
+            elif hasattr(target, "loot_table"): # Fallback loot table check
                 for item_name, chance in target.loot_table.items():
                     if random.random() < chance: self._add_combat_message(f"{target.name} dropped: {item_name}")
 
@@ -488,3 +499,203 @@ class Player:
 
         self.equipment[slot_name] = None
         return True, f"You unequip the {item_to_unequip.name} from your {slot_name.replace('_', ' ')}."
+
+    # *** NEW: Spell related methods ***
+    def learn_spell(self, spell_id: str) -> bool:
+        """Adds a spell ID to the player's known spells."""
+        spell = get_spell(spell_id)
+        if spell and spell_id not in self.known_spells:
+            if self.level >= spell.level_required:
+                 self.known_spells.add(spell_id)
+                 return True
+            else:
+                 # Maybe store it as learnable later? For now, just fail.
+                 return False # Level too low
+        return False # Spell doesn't exist or already known
+
+    def forget_spell(self, spell_id: str) -> bool:
+        """Removes a spell ID from the player's known spells."""
+        if spell_id in self.known_spells:
+            self.known_spells.remove(spell_id)
+            # Remove from cooldowns too if present
+            if spell_id in self.spell_cooldowns:
+                 del self.spell_cooldowns[spell_id]
+            return True
+        return False
+
+    def can_cast_spell(self, spell: Spell, current_time: float) -> Tuple[bool, str]:
+        """Checks if the player can cast a given spell."""
+        if not self.is_alive:
+            return False, "You cannot cast spells while dead."
+        if spell.spell_id not in self.known_spells:
+            return False, "You don't know that spell."
+        if self.level < spell.level_required:
+            return False, f"You need to be level {spell.level_required} to cast {spell.name}."
+        if self.mana < spell.mana_cost:
+            return False, f"Not enough mana (need {spell.mana_cost}, have {self.mana})."
+        cooldown_end_time = self.spell_cooldowns.get(spell.spell_id, 0)
+        if current_time < cooldown_end_time:
+            time_left = cooldown_end_time - current_time
+            return False, f"{spell.name} is on cooldown for {time_left:.1f}s."
+        return True, ""
+
+    def cast_spell(self, spell: Spell, target, current_time: float, world: Optional['World'] = None) -> Dict[str, Any]:
+        """Attempts to cast a spell on a target."""
+        can_cast, reason = self.can_cast_spell(spell, current_time)
+        if not can_cast:
+            return {"success": False, "message": reason, "mana_cost": 0}
+
+        # Deduct mana
+        self.mana -= spell.mana_cost
+
+        # Set cooldown
+        self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
+
+        # Trigger combat if targeting an enemy
+        if spell.target_type == "enemy" and target != self:
+             self.enter_combat(target)
+             # Ensure target enters combat too
+             if hasattr(target, 'enter_combat'):
+                  target.enter_combat(self)
+
+        # Apply effect
+        value, effect_message = apply_spell_effect(self, target, spell)
+
+        # Generate messages
+        cast_message = spell.format_cast_message(self)
+        full_message = cast_message + "\n" + effect_message
+
+        # Add to combat log if applicable
+        if spell.target_type == "enemy":
+            self._add_combat_message(effect_message)
+
+        result = {
+            "success": True,
+            "message": full_message,
+            "cast_message": cast_message,
+            "effect_message": effect_message,
+            "mana_cost": spell.mana_cost,
+            "target": getattr(target, 'name', 'target'),
+            "value": value,
+            "spell": spell.name
+        }
+
+        # Check target death (similar to attack)
+        if spell.effect_type == "damage" and hasattr(target, "health") and target.health <= 0:
+            formatted_target_name = format_target_name(self, target) # <<< Format name
+            if hasattr(target, 'is_alive'): target.is_alive = False # Make sure state is updated
+            death_message = f"{formatted_target_name} has been defeated by {spell.name}!"
+            self._add_combat_message(death_message)
+            self.exit_combat(target)
+            result["target_defeated"] = True
+            result["message"] += "\n" + death_message
+
+            # Grant XP (could be adjusted for spells)
+            xp_gained = max(1, getattr(target, "max_health", 10) // 4) + getattr(target, "level", 1) * 6 # Slightly more XP for magic kills?
+            leveled_up = self.gain_experience(xp_gained)
+            exp_message = f"You gained {xp_gained} experience points!"
+            self._add_combat_message(exp_message)
+            result["message"] += "\n" + exp_message
+            if leveled_up:
+                level_up_msg = f"You leveled up to level {self.level}!"
+                self._add_combat_message(level_up_msg)
+                result["message"] += "\n" + level_up_msg
+
+            # Handle loot drop (existing logic from attack)
+            if hasattr(target, "die"):
+                dropped_loot = target.die(world) # Pass world context if needed by die()
+                if dropped_loot:
+                    loot_messages = []
+                    for item in dropped_loot:
+                        loot_messages.append(f"{target.name} dropped: {item.name}")
+                    if loot_messages:
+                         loot_str = "\n".join(loot_messages)
+                         self._add_combat_message(loot_str)
+                         result["message"] += "\n" + loot_str
+            # Alternative loot table check (unchanged)
+
+        return result
+    # *** END NEW ***
+
+    def to_dict(self) -> Dict[str, Any]:
+        equipped_items_data = {}
+        for slot, item in self.equipment.items():
+            equipped_items_data[slot] = item.to_dict() if item else None
+
+        return {
+            "name": self.name,
+            "inventory": self.inventory.to_dict(),
+            "equipment": equipped_items_data,
+            "health": self.health,
+            "max_health": self.max_health,
+            # *** ADD Mana ***
+            "mana": self.mana,
+            "max_mana": self.max_mana,
+            # *** END ADD ***
+            "stats": self.stats,
+            "level": self.level,
+            "experience": self.experience,
+            "experience_to_level": self.experience_to_level,
+            "skills": self.skills,
+            "effects": self.effects,
+            "quest_log": self.quest_log,
+            "attack_power": self.attack_power,
+            "defense": self.defense,
+            "is_alive": self.is_alive,
+            "in_combat": self.in_combat,
+            "respawn_region_id": self.respawn_region_id,
+            "respawn_room_id": self.respawn_room_id,
+            # *** ADD Spells ***
+            "known_spells": list(self.known_spells), # Save as list
+            "spell_cooldowns": self.spell_cooldowns, # Save cooldown end times
+             # No need to save mana_regen_rate or last_regen_time, recalculate on load/update
+            # *** END ADD ***
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Player':
+        player = cls(data["name"])
+        player.health = data.get("health", 100)
+        player.max_health = data.get("max_health", 100)
+        # *** ADD Mana ***
+        player.mana = data.get("mana", 50)
+        player.max_mana = data.get("max_mana", 50)
+        # *** END ADD ***
+        player.stats = data.get("stats", {"strength": 10, "dexterity": 10, "intelligence": 10, "wisdom": 10, "spell_power": 5, "magic_resist": 2})
+        # Ensure new stats have defaults if loading old save
+        player.stats.setdefault("wisdom", 10)
+        player.stats.setdefault("spell_power", 5)
+        player.stats.setdefault("magic_resist", 2)
+
+        player.level = data.get("level", 1)
+        player.experience = data.get("experience", 0)
+        player.experience_to_level = data.get("experience_to_level", 100)
+        player.skills = data.get("skills", {})
+        player.effects = data.get("effects", [])
+        player.quest_log = data.get("quest_log", {})
+        player.attack_power = data.get("attack_power", 5)
+        player.defense = data.get("defense", 3)
+        player.is_alive = data.get("is_alive", True)
+        player.in_combat = data.get("in_combat", False)
+        player.respawn_region_id = data.get("respawn_region_id", "town")
+        player.respawn_room_id = data.get("respawn_room_id", "town_square")
+
+        # *** ADD Spells ***
+        player.known_spells = set(data.get("known_spells", ["magic_missile", "minor_heal"])) # Load as set
+        player.spell_cooldowns = data.get("spell_cooldowns", {})
+        # Reset last mana regen time on load
+        player.last_mana_regen_time = time.time()
+        # *** END ADD ***
+
+        if "inventory" in data:
+            player.inventory = Inventory.from_dict(data["inventory"])
+        else: player.inventory = Inventory()
+
+        if "equipment" in data:
+            from items.item_factory import ItemFactory
+            for slot, item_data in data["equipment"].items():
+                if item_data and slot in player.equipment:
+                    item = ItemFactory.from_dict(item_data)
+                    if item: player.equipment[slot] = item
+                    else: print(f"Warning: Failed to load item for equipment slot '{slot}'")
+        return player

@@ -6,9 +6,16 @@ import time
 from commands.command_system import command, registered_commands
 from core.config import DEFAULT_WORLD_FILE, FORMAT_TITLE, FORMAT_HIGHLIGHT, FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET
 from items.consumable import Consumable
+from items.item_factory import ItemFactory
+from items.junk import Junk
 from items.key import Key
 from items.container import Container
 from utils.text_formatter import TextFormatter
+from magic.spell_registry import get_spell, get_spell_by_name # Import registry access
+from magic.spell import Spell # Import Spell definition
+from player import Player # Import Player to check type
+from npcs.npc import NPC # Import NPC to check type
+
 
 DIRECTIONS = [
     {"name": "north", "aliases": ["n"], "description": "Move north."}, 
@@ -22,7 +29,7 @@ DIRECTIONS = [
     {"name": "up", "aliases": ["u"], "description": "Move up."}, 
     {"name": "down", "aliases": ["d"], "description": "Move down."},
     {"name": "in", "aliases": ["enter", "inside"], "description": "Enter."}, 
-    {"name": "out", "aliases": ["exit", "outside"], "description": "Exit."}
+    {"name": "out", "aliases": ["exit", "outside", "o"], "description": "Exit."}
 ]
 
 def register_movement_commands():
@@ -42,7 +49,7 @@ def register_movement_commands():
 def go_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args: return "Go where?"
     return context["world"].change_room(args[0].lower())
 
@@ -138,7 +145,7 @@ def examine_handler(args, context):
 def take_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     world = context["world"]
     if not args: return f"{FORMAT_ERROR}Take what?{FORMAT_RESET}"
     item_name = " ".join(args).lower()
@@ -156,7 +163,7 @@ def take_handler(args, context):
 def drop_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     world = context["world"]
     if not args: return f"{FORMAT_ERROR}Drop what?{FORMAT_RESET}"
     item_name = " ".join(args).lower()
@@ -199,9 +206,9 @@ def path_handler(args, context):
 def use_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args:
-        return f"{TextFormatter.FORMAT_ERROR}Use what?{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}Use what?{FORMAT_RESET}"
 
     world = context["world"]
     item_name = ""
@@ -226,7 +233,7 @@ def use_handler(args, context):
     # Find the item in player's inventory
     item_to_use = player.inventory.find_item_by_name(item_name)
     if not item_to_use:
-        return f"{TextFormatter.FORMAT_ERROR}You don't have a '{item_name}'.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You don't have a '{item_name}'.{FORMAT_RESET}"
 
     # --- Targetted Use ---
     if target_name:
@@ -241,7 +248,7 @@ def use_handler(args, context):
         if not target and target_name in ["self", "me", player.name.lower()]: target = player
 
         if not target:
-            return f"{TextFormatter.FORMAT_ERROR}You don't see a '{target_name}' here to use the {item_to_use.name} on.{TextFormatter.FORMAT_RESET}"
+            return f"{FORMAT_ERROR}You don't see a '{target_name}' here to use the {item_to_use.name} on.{FORMAT_RESET}"
 
         # Call item's use method with target context
         try:
@@ -251,22 +258,22 @@ def use_handler(args, context):
             if isinstance(item_to_use, Consumable) and item_to_use.get_property("uses", 1) <= 0:
                  player.inventory.remove_item(item_to_use.obj_id)
                  # result might already contain 'used up' message
-            return f"{TextFormatter.FORMAT_HIGHLIGHT}{result}{TextFormatter.FORMAT_RESET}"
+            return f"{FORMAT_HIGHLIGHT}{result}{FORMAT_RESET}"
         except TypeError as e:
              # Handle cases where use doesn't accept target or specific type
              # Check if the error message indicates wrong arguments
              if "unexpected keyword argument 'target'" in str(e) or "takes 2 positional arguments but 3 were given" in str(e):
-                  return f"{TextFormatter.FORMAT_ERROR}You can't use the {item_to_use.name} on the {getattr(target, 'name', 'target')}.{TextFormatter.FORMAT_RESET}"
+                  return f"{FORMAT_ERROR}You can't use the {item_to_use.name} on the {getattr(target, 'name', 'target')}.{FORMAT_RESET}"
              else: # Reraise other TypeErrors
                   raise e
         except Exception as e: # Catch other potential errors during use
-             return f"{TextFormatter.FORMAT_ERROR}Something went wrong trying to use the {item_to_use.name}: {e}{TextFormatter.FORMAT_RESET}"
+             return f"{FORMAT_ERROR}Something went wrong trying to use the {item_to_use.name}: {e}{FORMAT_RESET}"
 
     # --- Self Use ---
     else:
         # Check if item expects a target
         if isinstance(item_to_use, Key):
-             return f"{TextFormatter.FORMAT_ERROR}What do you want to use the {item_to_use.name} on? Usage: use <key> on <target>.{TextFormatter.FORMAT_RESET}"
+             return f"{FORMAT_ERROR}What do you want to use the {item_to_use.name} on? Usage: use <key> on <target>.{FORMAT_RESET}"
 
         # Call item's use method (only user provided)
         try:
@@ -274,16 +281,16 @@ def use_handler(args, context):
              # Handle consumable removal
             if isinstance(item_to_use, Consumable) and item_to_use.get_property("uses", 1) <= 0:
                  player.inventory.remove_item(item_to_use.obj_id)
-            return f"{TextFormatter.FORMAT_HIGHLIGHT}{result}{TextFormatter.FORMAT_RESET}"
+            return f"{FORMAT_HIGHLIGHT}{result}{FORMAT_RESET}"
         except Exception as e:
-             return f"{TextFormatter.FORMAT_ERROR}Something went wrong trying to use the {item_to_use.name}: {e}{TextFormatter.FORMAT_RESET}"
+             return f"{FORMAT_ERROR}Something went wrong trying to use the {item_to_use.name}: {e}{FORMAT_RESET}"
 
 @command("follow", [], "interaction", "Follow an NPC.\nUsage: follow <npc_name> | follow stop")
 def follow_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args:
         target_npc = world.get_npc(world.player.follow_target) if world.player.follow_target else None
         target_name = target_npc.name if target_npc else "someone"
@@ -306,7 +313,7 @@ def trade_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
 
     if not args: return f"{FORMAT_ERROR}Trade with whom?{FORMAT_RESET}"
     npc_name = " ".join(args).lower(); npcs = world.get_current_room_npcs(); found_npc = None
@@ -326,7 +333,7 @@ def attack_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args: return f"{FORMAT_ERROR}Attack whom?{FORMAT_RESET}"
     target_name = " ".join(args).lower()
     npcs = world.get_current_room_npcs(); target_npc = None
@@ -343,7 +350,7 @@ def attack_handler(args, context):
     if not player.can_attack(current_time):
         time_left = player.attack_cooldown - (current_time - player.last_attack_time)
         return f"Not ready. Wait {time_left:.1f}s."
-    attack_result = player.attack(target_npc) # Player method handles messages/combat log
+    attack_result = player.attack(target_npc, world) # Player method handles messages/combat log
     # Return only the primary message to the game loop
     return attack_result["message"]
 
@@ -361,7 +368,7 @@ def combat_status_handler(args, context):
 def equip_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args:
         return f"{FORMAT_ERROR}What do you want to equip?{FORMAT_RESET}"
 
@@ -398,7 +405,7 @@ def equip_handler(args, context):
 def unequip_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args:
         # List equipped items if no args
         equipped_text = f"{FORMAT_TITLE}EQUIPPED ITEMS{FORMAT_RESET}\n"
@@ -430,7 +437,7 @@ def put_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args or "in" not in [a.lower() for a in args]:
         return f"{FORMAT_ERROR}Usage: put <item_name> in <container_name>{FORMAT_RESET}"
 
@@ -490,7 +497,7 @@ def get_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args or "from" not in [a.lower() for a in args]:
         return f"{FORMAT_ERROR}Usage: get <item_name> from <container_name>{FORMAT_RESET}"
 
@@ -554,7 +561,7 @@ def open_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args:
         return f"{FORMAT_ERROR}Open what?{FORMAT_RESET}"
 
@@ -587,7 +594,7 @@ def close_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{TextFormatter.FORMAT_ERROR}You are dead. You cannot move.{TextFormatter.FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
     if not args:
         return f"{FORMAT_ERROR}Close what?{FORMAT_RESET}"
 
@@ -613,3 +620,274 @@ def close_handler(args, context):
     # Try to close it
     result_message = container.close()
     return f"{FORMAT_HIGHLIGHT}{result_message}{FORMAT_RESET}"
+
+@command("cast", ["c"], "magic", "Cast a known spell.\nUsage: cast <spell_name> [on <target_name>]")
+def cast_handler(args, context):
+    world = context["world"]
+    player = world.player
+    current_time = time.time()
+
+    if not player.is_alive:
+        return f"{FORMAT_ERROR}You cannot cast spells while dead.{FORMAT_RESET}"
+
+    if not args:
+        # List known spells if no args given
+        spells_known_text = player.get_status().split(f"{FORMAT_TITLE}SPELLS KNOWN{FORMAT_RESET}")
+        if len(spells_known_text) > 1:
+             return f"{FORMAT_TITLE}SPELLS KNOWN{FORMAT_RESET}\n" + spells_known_text[1].strip() + "\n\nUsage: cast <spell_name> [on <target_name>]"
+        else:
+             return f"{FORMAT_ERROR}You don't know any spells.{FORMAT_RESET}\n\nUsage: cast <spell_name> [on <target_name>]"
+
+
+    target_name = ""
+    spell_name = ""
+    on_index = -1
+
+    # Find 'on' preposition
+    if "on" in [a.lower() for a in args]:
+         try:
+              on_index = [a.lower() for a in args].index("on")
+              spell_name = " ".join(args[:on_index]).lower()
+              target_name = " ".join(args[on_index + 1:]).lower()
+         except ValueError: # Should not happen
+              spell_name = " ".join(args).lower() # Fallback
+    else:
+        spell_name = " ".join(args).lower()
+
+    # Find the spell
+    spell = get_spell_by_name(spell_name)
+    if not spell:
+        return f"{FORMAT_ERROR}You don't know a spell called '{spell_name}'.{FORMAT_RESET}"
+
+    # Determine the target
+    target = None
+    if spell.target_type == "self":
+        target = player
+    elif target_name:
+        # Look for target: NPCs first, then player self
+        target = world.find_npc_in_room(target_name)
+        if not target and target_name in ["self", "me", player.name.lower()]:
+             target = player
+        # Add finding other players later if multiplayer
+        if not target:
+             return f"{FORMAT_ERROR}You don't see '{target_name}' here to target.{FORMAT_RESET}"
+    elif spell.target_type == "enemy":
+         # If no target specified for enemy spell, try player's combat target
+         if player.in_combat and player.combat_target and player.combat_target.is_alive:
+              target = player.combat_target
+              # Verify target is still in the room
+              if target not in world.get_current_room_npcs():
+                   target = None # Target left the room
+         if not target:
+              # Or target the first hostile NPC in the room? Or require target?
+              hostiles = [npc for npc in world.get_current_room_npcs() if npc.faction == 'hostile']
+              if hostiles:
+                   target = hostiles[0] # Target first hostile if no combat target
+              else:
+                   return f"{FORMAT_ERROR}Who do you want to cast {spell.name} on?{FORMAT_RESET}"
+    elif spell.target_type == "friendly":
+         # Default to self if no target specified
+         target = player
+    else: # Default target if not self/enemy/friendly and no name given
+        target = player # Default to self
+
+    if not target:
+         # Should have been caught earlier, but safety check
+         return f"{FORMAT_ERROR}Invalid target for {spell.name}.{FORMAT_RESET}"
+
+    # Validate target type vs spell requirement
+    is_enemy = isinstance(target, NPC) and target.faction == "hostile"
+    is_friendly_npc = isinstance(target, NPC) and target.faction != "hostile"
+    is_self = target == player
+
+    if spell.target_type == "enemy" and not is_enemy:
+         return f"{FORMAT_ERROR}You can only cast {spell.name} on hostile targets.{FORMAT_RESET}"
+    if spell.target_type == "friendly" and not (is_friendly_npc or is_self):
+         return f"{FORMAT_ERROR}You can only cast {spell.name} on yourself or friendly targets.{FORMAT_RESET}"
+    # Add self check if needed, though often friendly includes self
+
+    # Attempt to cast
+    result = player.cast_spell(spell, target, current_time, world)
+
+    # Return the resulting message
+    return result["message"]
+
+@command("spells", ["spl", "magic"], "magic", "List spells you know.\nUsage: spells [spell_name]")
+def spells_handler(args, context):
+    world = context["world"]
+    player = world.player
+    current_time = time.time() # For checking cooldowns
+
+    if not player.known_spells:
+        return f"{FORMAT_ERROR}You don't know any spells.{FORMAT_RESET}"
+
+    # If a spell name is provided, show detailed info for that spell
+    if args:
+        spell_name = " ".join(args).lower()
+        found_spell = None
+        for spell_id in player.known_spells:
+            spell = get_spell(spell_id)
+            if spell and spell.name.lower() == spell_name:
+                found_spell = spell
+                break
+
+        if not found_spell:
+             # Allow searching by partial name if exact match failed
+             for spell_id in player.known_spells:
+                 spell = get_spell(spell_id)
+                 if spell and spell_name in spell.name.lower():
+                      found_spell = spell
+                      break
+
+        if found_spell:
+            # Display detailed info for one spell
+            spell = found_spell
+            cooldown_end = player.spell_cooldowns.get(spell.spell_id, 0)
+            cooldown_status = ""
+            if current_time < cooldown_end:
+                time_left = cooldown_end - current_time
+                cooldown_status = f" [{FORMAT_ERROR}On Cooldown: {time_left:.1f}s{FORMAT_RESET}]"
+
+            info = f"{FORMAT_TITLE}{spell.name.upper()}{FORMAT_RESET}\n\n"
+            info += f"{FORMAT_CATEGORY}Description:{FORMAT_RESET} {spell.description}\n"
+            info += f"{FORMAT_CATEGORY}Mana Cost:{FORMAT_RESET} {spell.mana_cost}\n"
+            info += f"{FORMAT_CATEGORY}Cooldown:{FORMAT_RESET} {spell.cooldown:.1f}s{cooldown_status}\n"
+            info += f"{FORMAT_CATEGORY}Target:{FORMAT_RESET} {spell.target_type.capitalize()}\n"
+            info += f"{FORMAT_CATEGORY}Effect:{FORMAT_RESET} {spell.effect_type.capitalize()} ({spell.effect_value} base value)\n"
+            if spell.level_required > 1:
+                 req_color = FORMAT_SUCCESS if player.level >= spell.level_required else FORMAT_ERROR
+                 info += f"{FORMAT_CATEGORY}Level Req:{FORMAT_RESET} {req_color}{spell.level_required}{FORMAT_RESET}\n"
+            return info
+        else:
+            return f"{FORMAT_ERROR}You don't know a spell called '{' '.join(args)}'.{FORMAT_RESET}\nType 'spells' to see all known spells."
+
+    # If no specific spell name, list all known spells
+    else:
+        response = f"{FORMAT_TITLE}KNOWN SPELLS{FORMAT_RESET}\n\n"
+        spell_lines = []
+        sorted_spells = sorted(list(player.known_spells), key=lambda sid: getattr(get_spell(sid), 'name', sid))
+
+        for spell_id in sorted_spells:
+            spell = get_spell(spell_id)
+            if spell:
+                cooldown_end = player.spell_cooldowns.get(spell_id, 0)
+                cooldown_status = ""
+                if current_time < cooldown_end:
+                    time_left = cooldown_end - current_time
+                    cooldown_status = f" [{FORMAT_ERROR}CD {time_left:.1f}s{FORMAT_RESET}]"
+
+                level_req_str = f" (L{spell.level_required})" if spell.level_required > 1 else ""
+                req_color = FORMAT_SUCCESS if player.level >= spell.level_required else FORMAT_ERROR
+                level_req_display = f" ({req_color}L{spell.level_required}{FORMAT_RESET})" if spell.level_required > 1 else ""
+
+
+                line = f"- {FORMAT_HIGHLIGHT}{spell.name}{FORMAT_RESET}{level_req_display}: {spell.mana_cost} MP{cooldown_status}"
+                spell_lines.append(line)
+            else:
+                spell_lines.append(f"- {FORMAT_ERROR}Unknown Spell ID: {spell_id}{FORMAT_RESET}")
+
+        response += "\n".join(spell_lines)
+        response += f"\n\n{FORMAT_CATEGORY}Mana:{FORMAT_RESET} {player.mana}/{player.max_mana}\n"
+        response += "\nType 'spells <spell_name>' for more details."
+        return response
+
+@command("selljunk", ["sj"], "interaction", "Sell all junk items in your inventory to a nearby vendor.")
+def sell_junk_handler(args, context):
+    world = context["world"]
+    player = world.player
+
+    if not player.is_alive:
+        return f"{FORMAT_ERROR}You can't trade while dead.{FORMAT_RESET}"
+
+    # Find a vendor in the current room
+    vendor = None
+    npcs = world.get_current_room_npcs()
+    for npc in npcs:
+        # Check if NPC is marked as a vendor or has trade dialog
+        is_vendor = npc.get_property("is_vendor", False) or \
+                    (hasattr(npc, 'dialog') and "trade" in npc.dialog) or \
+                    any(vt in npc.obj_id.lower() for vt in ["shop","merchant", "bartender"]) # Added bartender
+        if is_vendor:
+            vendor = npc
+            break
+
+    if not vendor:
+        return f"{FORMAT_ERROR}There is no one here to sell junk to.{FORMAT_RESET}"
+
+    items_to_sell = []
+    total_value = 0
+
+    # Iterate through a copy of inventory slots to allow removal
+    slots_to_process = list(player.inventory.slots)
+    for slot in slots_to_process:
+        if slot.item and isinstance(slot.item, Junk):
+            # Add item and its quantity to list
+            items_to_sell.append({"item": slot.item, "quantity": slot.quantity})
+            total_value += slot.item.value * slot.quantity
+
+    if not items_to_sell:
+        return f"You have no junk items to sell to {vendor.name}."
+
+    # Confirm sale (optional, for now just sell)
+    # print(f"DEBUG: Items to sell: {items_to_sell}") # Debug print
+    # print(f"DEBUG: Total value: {total_value}")     # Debug print
+
+    # Remove items from inventory and collect messages
+    sell_messages = []
+    items_actually_sold = 0
+    value_actually_received = 0
+
+    for item_info in items_to_sell:
+        item_obj = item_info["item"]
+        quantity_to_remove = item_info["quantity"]
+
+        # Attempt to remove from inventory
+        removed_item_type, actual_removed_count, remove_msg = player.inventory.remove_item(
+            item_obj.obj_id, quantity_to_remove
+        )
+
+        # print(f"DEBUG: Tried removing {quantity_to_remove} of {item_obj.name} (ID: {item_obj.obj_id}). Actual removed: {actual_removed_count}") # Debug print
+
+        if removed_item_type and actual_removed_count > 0:
+             items_actually_sold += actual_removed_count
+             value_actually_received += removed_item_type.value * actual_removed_count
+             # Use the name from the removed item type
+             sell_messages.append(f"- Sold {actual_removed_count} x {removed_item_type.name} for {removed_item_type.value * actual_removed_count} value.")
+        else:
+             # This shouldn't happen if we found it initially, but log if it does
+             print(f"Warning: Failed to remove {item_obj.name} during sell junk operation: {remove_msg}")
+             sell_messages.append(f"- {FORMAT_ERROR}Failed to sell {item_obj.name}.{FORMAT_RESET}")
+
+
+    # Grant "currency" (for now, just increase a property or maybe add a 'Gold' item)
+    # Let's add a Gold item for simplicity
+    if value_actually_received > 0:
+        # Try to create Gold Coin item
+        gold_item = ItemFactory.create_item(
+            item_type="Treasure",
+            name="Gold Coin",
+            description="A shiny gold coin.",
+            value=1,
+            weight=0.01,
+            stackable=True,
+            treasure_type="coin"
+        )
+        if gold_item:
+            added_gold, add_msg = player.inventory.add_item(gold_item, value_actually_received)
+            if not added_gold:
+                 # Handle failure to add gold (e.g., inventory full) - maybe drop it?
+                 world.add_item_to_room(world.current_region_id, world.current_room_id, gold_item)
+                 sell_messages.append(f"{FORMAT_ERROR}Your inventory is full! Dropped {value_actually_received} gold instead.{FORMAT_RESET}")
+            else:
+                 sell_messages.append(f"\nReceived {value_actually_received} gold.")
+        else:
+             # Fallback if Gold Coin can't be created
+             sell_messages.append(f"\n{FORMAT_ERROR}Error creating gold coin item!{FORMAT_RESET}")
+             # Maybe add value to a player property instead?
+             # player.update_property("gold", player.get_property("gold", 0) + value_actually_received)
+
+    # Format final message
+    final_message = f"You sell your junk to {vendor.name}:\n"
+    final_message += "\n".join(sell_messages)
+
+    return final_message

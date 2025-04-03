@@ -21,11 +21,14 @@ class MonsterFactory:
             "attack_power": 5,
             "defense": 2,
             "faction": "hostile",
+            "usable_spells": ["zap"], # Goblins can zap!
+            "spell_cast_chance": 0.2, # Lower chance for goblins
             "respawn_cooldown": 300,  # 5 minutes
             "loot_table": {
-                "Gold Coin": 0.8,
-                "Dagger": 0.3,
-                "Goblin Ear": 0.9
+                # Item Name: { chance: float, type: str, [value: int], [weight: float], [description: str] }
+                "Gold Coin": {"chance": 0.8, "type": "Treasure", "value": 1}, # Keep specific types if needed
+                "Rusty Dagger": {"chance": 0.3, "type": "Weapon", "value": 2, "damage": 2}, # Can override props
+                "Goblin Ear": {"chance": 0.9, "type": "Junk", "value": 1, "weight": 0.1} # *** Type is Junk ***
             },
             "dialog": {
                 "greeting": "The {name} snarls at you!",
@@ -46,9 +49,9 @@ class MonsterFactory:
             "faction": "hostile",
             "respawn_cooldown": 360,  # 6 minutes
             "loot_table": {
-                "Wolf Pelt": 0.9,
-                "Wolf Fang": 0.7,
-                "Raw Meat": 0.5
+                "Wolf Pelt": {"chance": 0.9, "type": "Junk", "value": 3, "weight": 0.5}, # *** Type is Junk ***
+                "Wolf Fang": {"chance": 0.7, "type": "Junk", "value": 2, "weight": 0.1}, # *** Type is Junk ***
+                "Raw Meat": {"chance": 0.5, "type": "Consumable", "value": 1, "weight": 0.4, "effect_type": "heal", "effect_value": 4} # Raw meat is consumable
             },
             "dialog": {
                 "greeting": "The {name} growls menacingly!",
@@ -67,12 +70,14 @@ class MonsterFactory:
             "attack_power": 7,
             "defense": 3,
             "faction": "hostile",
+            "usable_spells": ["zap"], # Skeletons might retain some magic
+            "spell_cast_chance": 0.25,
             "respawn_cooldown": 420,  # 7 minutes
-            "loot_table": {
-                "Bone": 0.9,
-                "Rusty Sword": 0.4,
-                "Ancient Coin": 0.2
-            },
+             "loot_table": {
+                  "Bone": {"chance": 0.9, "type": "Junk", "value": 1, "weight": 0.3},
+                  "Rusty Sword": {"chance": 0.4, "type": "Weapon", "value": 5, "damage": 4},
+                  "Ancient Coin": {"chance": 0.2, "type": "Treasure", "value": 5}
+             },
             "dialog": {
                 "greeting": "The {name} rattles its bones!",
                 "threat": "The {name} raises its weapon!",
@@ -91,17 +96,16 @@ class MonsterFactory:
             "defense": 1,
             "faction": "hostile",
             "respawn_cooldown": 240,  # 4 minutes
-            "loot_table": {
-                "Rat Tail": 0.8,
-                "Rat Fur": 0.6
-            },
+             "loot_table": {
+                  "Rat Tail": {"chance": 0.8, "type": "Junk", "value": 1, "weight": 0.1},
+                  "Rat Fur": {"chance": 0.6, "type": "Junk", "value": 1, "weight": 0.2}
+             },
             "dialog": {
                 "greeting": "The {name} squeaks aggressively!",
                 "threat": "The {name} bares its teeth!",
                 "flee": "The {name} scurries away!"
             }
         },
-        
         "bandit": {
             "name": "Bandit",
             "description": "A rough-looking human armed with weapons.",
@@ -113,12 +117,12 @@ class MonsterFactory:
             "defense": 4,
             "faction": "hostile",
             "respawn_cooldown": 600,  # 10 minutes
-            "loot_table": {
-                "Gold Coin": 0.9,
-                "Dagger": 0.5,
-                "Leather Armor": 0.3,
-                "Healing Potion": 0.2
-            },
+             "loot_table": {
+                  "Gold Coin": {"chance": 0.9, "type": "Treasure", "value": 1},
+                  "Dagger": {"chance": 0.5, "type": "Weapon", "value": 5, "damage": 3},
+                  "Leather Armor": {"chance": 0.3, "type": "Armor", "value": 20, "defense": 2, "equip_slot": ["body"]}, # Example if you add Armor type
+                  "Stolen Pouch": {"chance": 0.2, "type": "Junk", "value": 4, "weight": 0.1} # Could be junk
+             },
             "dialog": {
                 "greeting": "\"Your money or your life!\" threatens the {name}.",
                 "threat": "\"You'll regret this!\" shouts the {name}.",
@@ -137,12 +141,12 @@ class MonsterFactory:
             "defense": 6,
             "faction": "hostile",
             "respawn_cooldown": 900,  # 15 minutes
-            "loot_table": {
-                "Troll Hide": 0.9,
-                "Club": 0.5,
-                "Gold Coin": 0.7,
-                "Healing Potion": 0.4
-            },
+             "loot_table": {
+                  "Troll Hide": {"chance": 0.9, "type": "Junk", "value": 10, "weight": 2.0},
+                  "Crude Club": {"chance": 0.5, "type": "Weapon", "value": 8, "damage": 7},
+                  "Shiny Rock": {"chance": 0.7, "type": "Junk", "value": 3, "weight": 0.5},
+                  # Trolls might drop potions they stole?
+             },
             "dialog": {
                 "greeting": "The {name} roars loudly!",
                 "threat": "The {name} pounds its chest!",
@@ -153,33 +157,18 @@ class MonsterFactory:
     
     @classmethod
     def create_monster(cls, monster_type: str, **kwargs) -> Optional[NPC]:
-        """
-        Create a monster from a template.
-        
-        Args:
-            monster_type: The type of monster to create
-            **kwargs: Overrides for template values
-            
-        Returns:
-            An NPC instance configured as a monster, or None if template doesn't exist
-        """
-        if monster_type not in cls._templates:
-            return None
-            
-        # Start with the template
+        if monster_type not in cls._templates: return None
         template = cls._templates[monster_type].copy()
-        
-        # Override with any provided values
         template.update(kwargs)
-        
-        # Create NPC with monster configuration
-        monster = NPC(
-            obj_id=template.get("obj_id"),
-            name=template.get("name", "Unknown Monster"),
-            description=template.get("description", "No description"),
-            health=template.get("health", 50),
-            friendly=template.get("friendly", False)
+
+        monster = NPC( # Existing creation
+             obj_id=template.get("obj_id"),
+             name=template.get("name", "Unknown Monster"),
+             description=template.get("description", "No description"),
+             health=template.get("health", 50),
+             friendly=template.get("friendly", False)
         )
+        monster.max_health = monster.health # Ensure max_health is set
         
         # Set combat properties
         monster.aggression = template.get("aggression", 0.7)
@@ -188,7 +177,11 @@ class MonsterFactory:
         monster.faction = template.get("faction", "hostile")
         monster.behavior_type = template.get("behavior_type", "aggressive")
         monster.respawn_cooldown = template.get("respawn_cooldown", 300)
-        
+
+        monster.usable_spells = template.get("usable_spells", [])
+        monster.spell_cast_chance = template.get("spell_cast_chance", 0.3) # Default chance if not specified
+        monster.spell_cooldowns = {} # Initialize empty cooldowns
+
         # Set dialog
         monster.dialog = template.get("dialog", {})
         monster.default_dialog = template.get("default_dialog", "The {name} growls menacingly.")
