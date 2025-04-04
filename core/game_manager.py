@@ -2,32 +2,55 @@
 import time
 import pygame
 import sys
+import os # Needed for path joining
 from typing import Any, List, Optional
 
-from core.config import BG_COLOR, DEFAULT_COLORS, DEFAULT_WORLD_FILE, FONT_SIZE, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, INPUT_BG_COLOR, INPUT_HEIGHT, LINE_SPACING, SCREEN_HEIGHT, SCREEN_WIDTH, SCROLL_SPEED, TEXT_COLOR
+# Use config for paths
+from core.config import BG_COLOR, DEFAULT_COLORS, FONT_SIZE, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, INPUT_BG_COLOR, INPUT_HEIGHT, LINE_SPACING, SCREEN_HEIGHT, SCREEN_WIDTH, SCROLL_SPEED, TEXT_COLOR, SAVE_GAME_DIR, DATA_DIR
+
 from world.world import World
 from commands.command_system import CommandProcessor
 from utils.text_formatter import TextFormatter
 from plugins.plugin_system import PluginManager
-from commands.commands import register_movement_commands
+from commands.commands import register_movement_commands, save_handler, load_handler # Import specific handlers
+
 
 class GameManager:
-    def __init__(self, world_file: str = DEFAULT_WORLD_FILE):
+    def __init__(self, save_file: str = "default_save.json"): # Use save file name
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Pygame MUD")
         self.font = pygame.font.SysFont("monospace", FONT_SIZE)
         self.clock = pygame.time.Clock()
+        self.current_save_file = save_file # Store the target save file
 
         self.text_formatter = TextFormatter(
             font=self.font, screen_width=SCREEN_WIDTH,
             colors=DEFAULT_COLORS, margin=10, line_spacing=LINE_SPACING
         )
+        
         self.world = World()
-        self.world.start_time = time.time(); self.world.game = self
-        if not self.world.load_from_json(world_file):
-            print(f"Failed to load world from {world_file}. Creating test world.")
-            self._create_test_world()
+        self.world.start_time = time.time()
+        self.world.game = self
+        
+        # --- Attempt to Load Save Game ---
+        if not self.world.load_save_game(self.current_save_file):
+             # If loading failed critically (not just file not found), maybe exit?
+             # For now, initialize_new_world is called by load_save_game if file not found.
+             print("Proceeding with a new game world.")
+             # Ensure world is initialized if load_save_game failed early
+             if not self.world.player:
+                  self.world.initialize_new_world()
+
+        # Ensure player location is set in world
+        if self.world.player:
+             self.world.current_region_id = self.world.player.current_region_id
+             self.world.current_room_id = self.world.player.current_room_id
+        else: # Should not happen if init/load worked, but safety
+             print(f"{FORMAT_ERROR}Critical Error: Player object not found after world load/init.{FORMAT_RESET}")
+             # Handle error appropriately - maybe force quit?
+             self.world.current_region_id = "town"
+             self.world.current_room_id = "town_square"
 
         self.time_data = { # ... (time data init - unchanged) ...
             "hour": 12, "minute": 0, "day": 1, "month": 1, "year": 1,
@@ -52,11 +75,16 @@ class GameManager:
         self.max_visible_lines = (SCREEN_HEIGHT - INPUT_HEIGHT - 40) // (FONT_SIZE + LINE_SPACING)
         self.debug_mode = False
 
-        # --- NEW: Game State ---
         self.game_state = "playing" # Possible states: playing, game_over
-        # --- END NEW ---
 
-        welcome_message = f"{FORMAT_TITLE}Welcome to Pygame MUD!{FORMAT_RESET}\n\n"
+        # --- Initial Message ---
+        welcome_message = f"{FORMAT_TITLE}Welcome to Pygame MUD!{FORMAT_RESET}\n"
+        # Indicate if loaded or new
+        save_path = os.path.join(SAVE_GAME_DIR, self.current_save_file)
+        if os.path.exists(save_path):
+             welcome_message += f"(Loaded game: {self.current_save_file})\n"
+        else:
+             welcome_message += "(Started new game)\n"
         welcome_message += "Type 'help' to see available commands.\n\n"
         welcome_message += "=" * 40 + "\n\n"
         welcome_message += self.world.look()
@@ -74,7 +102,8 @@ class GameManager:
         context = {
             "game": self,
             "world": self.world,
-            "command_processor": self.command_processor
+            "command_processor": self.command_processor,
+            "current_save_file": self.current_save_file # Pass current save name
         }
 
         # --- NEW: Block input if player is dead ---
@@ -303,7 +332,6 @@ class GameManager:
                 if event.type == pygame.QUIT:
                     running = False
 
-                # --- MODIFIED: Handle Input Based on Game State ---
                 if self.game_state == "game_over":
                     if event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_r: # Respawn
@@ -335,7 +363,6 @@ class GameManager:
                           if event.y > 0: self.scroll_offset = min(len(self.text_buffer) * 20, self.scroll_offset + SCROLL_SPEED)
                           elif event.y < 0: self.scroll_offset = max(0, self.scroll_offset - SCROLL_SPEED)
                      elif event.type == pygame.VIDEORESIZE: self.resize_screen(event.w, event.h)
-                # --- END MODIFIED ---
 
             self.update()
             self.draw()
@@ -343,8 +370,6 @@ class GameManager:
 
         self.quit_game()
 
-    # ... (_on_display_message, _on_time_data_event, _on_time_period_changed - unchanged) ...
-    # ... (_create_test_world, _trim_text_buffer, _draw_status_indicators, _draw_scroll_indicator, _calculate_layout - unchanged) ...
     def _on_display_message(self, event_type: str, data: Any) -> None:
         if isinstance(data, str): message = data
         elif isinstance(data, dict) and "message" in data: message = data["message"]

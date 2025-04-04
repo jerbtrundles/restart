@@ -1,0 +1,192 @@
+{
+    "region_id": "ruins",
+    "name": "Ancient Ruins",
+    "description": "Deep within the Whispering Woods lie the crumbling remains of a long-forgotten civilization. Stone structures are overgrown with vines and moss, hinting at a mysterious past.",
+    "rooms": {
+      "ruins_approach": {
+        "name": "Approach to the Ruins",
+        "description": "The trees thin slightly, revealing scattered, moss-covered stones - the first signs of ancient construction. The air feels heavy and still.",
+        "exits": {
+          "southeast": "forest:deep_forest_2",
+          "north": "crumbling_wall",
+          "east": "deep_forest_1"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+      "crumbling_wall": {
+        "name": "Crumbling Wall",
+        "description": "A section of what was once a formidable stone wall lies before you, now breached in several places. Strange carvings are barely visible beneath the overgrowth.",
+        "exits": {
+          "south": "ruins_approach",
+          "north": "central_plaza",
+          "east": "guard_tower_base",
+          "west": "overgrown_courtyard"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+       "overgrown_courtyard": {
+        "name": "Overgrown Courtyard",
+        "description": "Once perhaps a garden or courtyard, this area is now choked with weeds, vines, and small trees growing between cracked paving stones.",
+        "exits": {
+          "east": "crumbling_wall"
+        },
+        "items": [
+           {
+              "type": "Junk",
+              "obj_id": "item_stone_fragment",
+              "name": "Carved Stone Fragment",
+              "description": "A piece of stone broken from a larger structure, bearing part of an intricate carving.",
+              "weight": 3.0,
+              "value": 2,
+              "stackable": false,
+              "properties": {}
+          }
+        ],
+        "visited": false,
+        "properties": {}
+      },
+      "central_plaza": {
+        "name": "Central Plaza",
+        "description": "A large, open plaza paved with cracked flagstones. In the center stands the base of a destroyed statue. Collapsed buildings surround the plaza, their purpose lost to time.",
+        "exits": {
+          "south": "crumbling_wall",
+          "west": "shadowy_crypt",
+          "east": "library_ruins",
+          "north": "ritual_chamber"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+      "ritual_chamber": {
+          "name": "Ritual Chamber",
+          "description": "This circular chamber has a large stone altar at its center, stained with something dark. Symbols are etched into the floor and walls.",
+          "exits": {
+              "south": "central_plaza"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"dark": true, "smell": "dusty"}
+      },
+      "shadowy_crypt": {
+        "name": "Shadowy Crypt Entrance",
+        "description": "A dark entryway leads down beneath the plaza. The air flowing out is cold and smells of dust and decay. Stone steps descend into blackness.",
+        "exits": {
+          "east": "central_plaza",
+          "down": "crypt_lower_level"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+            "dark": true
+        }
+      },
+      "crypt_lower_level": {
+        "name": "Crypt Lower Level",
+        "description": "Stone sarcophagi line the walls of this underground chamber. Some are broken open, others remain sealed. Intricate patterns cover every surface. A faint draft suggests a hidden passage to the northwest.",
+        "exits": {
+          "up": "shadowy_crypt",
+          "northwest": "caves:hidden_passage",
+          "south": "flooded_tomb"
+        },
+        "items": [
+           {
+            "type": "Treasure",
+            "obj_id": "item_ancient_amulet",
+            "name": "Ancient Amulet",
+            "description": "A heavy amulet made of an unknown black metal, set with a dull, unblinking gem.",
+            "weight": 0.4,
+            "value": 100,
+            "stackable": false,
+            "properties": {
+                "treasure_type": "jewelry"
+            }
+          }
+        ],
+        "visited": false,
+        "properties": {
+            "dark": true
+        }
+      },
+      "flooded_tomb": {
+          "name": "Flooded Tomb",
+          "description": "This section of the crypt is partially flooded with stagnant, murky water. Sarcophagi jut out of the water like islands. The air is heavy with the smell of mildew.",
+          "exits": {
+              "north": "crypt_lower_level"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"dark": true, "smell": "mildew"}
+      },
+      "guard_tower_base": {
+        "name": "Guard Tower Base",
+        "description": "The base of a ruined guard tower. Rubble blocks most of the interior, but a narrow, unstable staircase seems to lead upwards.",
+        "exits": {
+          "west": "crumbling_wall",
+          "up": "guard_tower_top"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+       "guard_tower_top": {
+        "name": "Guard Tower Top",
+        "description": "From the precarious top of the ruined tower, you get a view of the surrounding ruins and the dense forest canopy stretching out in all directions. The wind whistles through the broken stones.",
+        "exits": {
+          "down": "guard_tower_base"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+      "library_ruins": {
+        "name": "Library Ruins",
+        "description": "This collapsed building might have once been a repository of knowledge. Scraps of decayed parchment and broken shelves litter the floor amidst the rubble.",
+        "exits": {
+          "west": "central_plaza",
+          "north": "scriptorium"
+        },
+        "items": [
+           {
+            "type": "Item",
+            "obj_id": "item_burnt_scroll",
+            "name": "Burnt Scroll",
+            "description": "A fragile scroll, mostly destroyed by fire and time. Only a few cryptic symbols remain legible.",
+            "weight": 0.1,
+            "value": 5,
+            "stackable": false,
+            "properties": {}
+          }
+        ],
+        "visited": false,
+        "properties": {
+           "dark": true
+        }
+      },
+      "scriptorium": {
+          "name": "Ruined Scriptorium",
+          "description": "A smaller room adjoining the library, likely where scribes worked. Stone desks are overturned, and dried inkwells lie scattered among the debris.",
+          "exits": {
+              "south": "library_ruins"
+          },
+          "items": [
+               {
+                  "type": "Item",
+                  "obj_id": "item_broken_stylus",
+                  "name": "Broken Stylus",
+                  "description": "An intricate stylus made of bone, now broken in two.",
+                  "weight": 0.1,
+                  "value": 1,
+                  "stackable": false,
+                  "properties": {}
+               }
+          ],
+          "visited": false,
+          "properties": {"dark": true}
+      }
+    }
+  }

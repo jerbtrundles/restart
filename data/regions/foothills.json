@@ -1,0 +1,121 @@
+{
+    "region_id": "foothills",
+    "name": "Windy Foothills",
+    "description": "The land rises from the fertile farms into rolling, grassy hills dotted with rocky outcrops. Sheep graze on the slopes, watched over by solitary shepherds.",
+    "rooms": {
+        "grassy_slope": {
+            "name": "Grassy Slope",
+            "description": "A wide, open slope covered in tough grasses and heather, climbing steadily upwards. The wind is stronger here. You can see the farmland below to the west.",
+            "exits": {
+                "west": "farmland:apple_orchard",
+                "north": "rocky_outcrop",
+                "east": "shepherds_hut",
+                "up": "windy_ridge"
+            },
+            "items": [
+                 {
+                    "type": "Consumable",
+                    "obj_id": "item_wild_herbs",
+                    "name": "Wild Herbs",
+                    "description": "A bundle of fragrant wild herbs. Might be useful for cooking or alchemy.",
+                    "weight": 0.1,
+                    "value": 3,
+                    "stackable": true,
+                    "properties": {
+                      "uses": 1,
+                      "max_uses": 1,
+                      "effect_value": 1,
+                      "effect_type": "heal"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+         "windy_ridge": {
+              "name": "Windy Ridge",
+              "description": "The top of the hill forms a long, windswept ridge. The view is expansive, showing the farmlands, the river, and the distant mountains.",
+              "exits": {
+                  "down": "grassy_slope"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {"weather": "windy"}
+          },
+        "rocky_outcrop": {
+            "name": "Rocky Outcrop",
+            "description": "A cluster of large, weathered rocks juts from the hillside, offering some shelter from the wind and a good view of the surroundings.",
+            "exits": {
+                "south": "grassy_slope",
+                "north": "hilltop_cave_entrance"
+            },
+            "items": [
+                 {
+                    "type": "Item",
+                    "obj_id": "item_sharp_flint",
+                    "name": "Sharp Flint",
+                    "description": "A piece of flint with a naturally sharp edge. Could be used as a makeshift tool or weapon.",
+                    "weight": 0.2,
+                    "value": 1,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+        "hilltop_cave_entrance": {
+              "name": "Hilltop Cave Entrance",
+              "description": "A small, dark opening is nestled amongst the rocks near the hilltop. A cool draft emerges.",
+              "exits": {
+                  "south": "rocky_outcrop",
+                  "in": "hilltop_cave"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {}
+          },
+          "hilltop_cave": {
+              "name": "Hilltop Cave",
+              "description": "A small, damp cave inside the hill. It doesn't seem to go very deep.",
+              "exits": {
+                  "out": "hilltop_cave_entrance"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {"dark": true}
+          },
+        "shepherds_hut": {
+            "name": "Shepherd's Hut",
+            "description": "A small, simple hut made of stone and turf, built into the hillside. A thin trail of smoke rises from a chimney hole. It looks occupied.",
+            "exits": {
+                "west": "grassy_slope",
+                "east": "sheep_pen"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "sheep_pen": {
+              "name": "Sheep Pen",
+              "description": "A fenced area next to the shepherd's hut where sheep are kept at night. The ground is well-trodden.",
+              "exits": {
+                  "west": "shepherds_hut"
+              },
+              "items": [
+                   {
+                      "type": "Junk",
+                      "obj_id": "item_wool_tuft",
+                      "name": "Tuft of Wool",
+                      "description": "A small tuft of sheep's wool caught on the fence.",
+                      "weight": 0.1,
+                      "value": 1,
+                      "stackable": true,
+                      "properties": {}
+                  }
+              ],
+              "visited": false,
+              "properties": {"smell": "sheep"}
+          }
+    }
+  }

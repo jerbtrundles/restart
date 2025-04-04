@@ -3,33 +3,32 @@ world/room.py
 Enhanced Room class with improved text descriptions.
 """
 from typing import Dict, List, Optional, Any
-from core.config import FORMAT_CATEGORY, FORMAT_RESET, FORMAT_TITLE
+import uuid
+from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_RESET, FORMAT_TITLE, FORMAT_HIGHLIGHT # Added missing
 from game_object import GameObject
 from items.item import Item
-from utils.text_formatter import TextFormatter
-from items.item_factory import ItemFactory # Ensure this is imported
 
 class Room(GameObject):
     def __init__(self, name: str, description: str, exits: Dict[str, str] = None, obj_id: str = None):
-        super().__init__(obj_id, name, description)
+        room_obj_id = obj_id if obj_id else f"room_{name.lower().replace(' ', '_')}_{uuid.uuid4().hex[:4]}" # Add uuid
+        super().__init__(room_obj_id, name, description) # Pass correct obj_id
         self.exits = exits or {}
-        # *** Initialize and type-hint items here in __init__ ***
-        self.items: List[Item] = []
-        self.visited = False
+        # --- Live items in the room (dynamic) ---
+        self.items: List[Item] = [] # This holds *instances* during gameplay
+        # --- Initial state references (static definition) ---
+        self.initial_item_refs: List[Dict[str, Any]] = [] # e.g., [{"item_id": "id", "quantity": 1}, ...]
+        self.initial_npc_refs: List[Dict[str, Any]] = [] # e.g., [{"template_id": "id", "instance_id": "id"}, ...]
 
+        self.visited = False
+        self.time_descriptions = {"dawn": "", "day": "", "dusk": "", "night": ""}
+        self.env_properties = {"dark": False, "outdoors": False, "has_windows": False, "noisy": False, "smell": "", "temperature": "normal"}
+
+        # Base properties are handled by GameObject
         self.update_property("exits", self.exits)
         self.update_property("visited", self.visited)
-
-        self.time_descriptions = {
-            "dawn": "", "day": "", "dusk": "", "night": ""
-        }
         self.update_property("time_descriptions", self.time_descriptions)
-
-        self.env_properties = {
-            "dark": False, "outdoors": False, "has_windows": False,
-            "noisy": False, "smell": "", "temperature": "normal"
-        }
         self.update_property("env_properties", self.env_properties)
+        # Store initial refs in properties too? Maybe not necessary if only used during init.
 
     def get_full_description(self, time_period: str = None, weather: str = None) -> str:
         """
@@ -169,48 +168,42 @@ class Room(GameObject):
         return self.is_outdoors() or self.has_windows()
     
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize room definition."""
         data = super().to_dict()
         data["exits"] = self.exits
-        # getattr ensures it doesn't crash if self.items somehow doesn't exist
-        data["items"] = [item.to_dict() for item in getattr(self, 'items', []) if item]
-        data["visited"] = self.visited
+        # --- Save only the *initial* references ---
+        data["initial_items"] = self.initial_item_refs
+        data["initial_npcs"] = self.initial_npc_refs
+        # --- Do NOT save self.items here (dynamic state saved separately) ---
+        data["visited"] = self.visited # Visited might be definition or state? Let's keep in definition for now.
         data["time_descriptions"] = self.time_descriptions
         data["env_properties"] = self.env_properties
         return data
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Room':
-        """
-        Create a room from a dictionary.
-        Args:
-            data: Dictionary containing room data
-        Returns:
-            A new Room instance
-        """
+        """Deserialize room definition."""
         # Create instance using GameObject's from_dict
-        # __init__ will have already created the self.items list
         room = super(Room, cls).from_dict(data)
 
-        # Load specific Room attributes
+        # Load specific Room definition attributes
         room.exits = data.get("exits", {})
-        room.visited = data.get("visited", False)
+        room.visited = data.get("visited", False) # Load visited status from definition
         room.time_descriptions = data.get("time_descriptions", {"dawn":"", "day":"", "dusk":"", "night":""})
         room.env_properties = data.get("env_properties", {})
 
-        # Properties dictionary is loaded by super().from_dict
+        # --- Store initial item/npc references ---
+        room.initial_item_refs = data.get("initial_items", [])
+        room.initial_npc_refs = data.get("initial_npcs", [])
 
-        # *** Load items into the existing room.items list ***
-        # No need to re-initialize or type hint here
-        loaded_items: List[Item] = [] # Use a temporary list
-        for item_data in data.get("items", []):
-            if item_data:
-                item = ItemFactory.from_dict(item_data)
-                if item:
-                    loaded_items.append(item)
-                else:
-                    item_name = item_data.get('name', 'Unknown Item')
-                    item_id = item_data.get('id', item_data.get('obj_id', 'No ID'))
-                    print(f"Warning: Failed to load item '{item_name}' (ID: {item_id}) in room '{room.name}'. Skipping item.")
-        room.items = loaded_items # Assign the populated list
+        # --- Initialize live items list as empty ---
+        # This will be populated by World.load_save_game or World.initialize_new_world
+        room.items = []
+
+        # Update properties dict (redundant if super() handles it, but safe)
+        room.update_property("exits", room.exits)
+        room.update_property("visited", room.visited)
+        room.update_property("time_descriptions", room.time_descriptions)
+        room.update_property("env_properties", room.env_properties)
 
         return room

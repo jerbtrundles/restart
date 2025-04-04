@@ -1,0 +1,225 @@
+{
+    "region_id": "forest",
+    "name": "Whispering Woods",
+    "description": "A dense forest that borders Riverside Village. The trees grow tall and close together, creating a canopy that filters the sunlight. Local legends speak of strange creatures living in its depths.",
+    "rooms": {
+      "forest_path": {
+        "name": "Forest Path",
+        "description": "A narrow path that winds between the trees. The forest is alive with the sounds of birds and rustling leaves. Shafts of sunlight break through the canopy overhead.",
+        "exits": {
+          "west": "town:river_road",
+          "east": "clearing",
+          "north": "dense_woods",
+          "south": "wolf_den",
+          "northeast": "stream_crossing"
+        },
+        "items": [
+          {
+            "type": "Consumable",
+            "obj_id": "item_forest_berries",
+            "name": "Forest Berries",
+            "description": "A handful of wild berries growing along the path. They look edible.",
+            "weight": 0.2,
+            "value": 2,
+            "stackable": true,
+            "properties": {
+              "uses": 1,
+              "max_uses": 1,
+              "effect_value": 3,
+              "effect_type": "heal"
+            }
+          }
+        ],
+        "visited": false,
+        "properties": {}
+      },
+      "stream_crossing": {
+        "name": "Stream Crossing",
+        "description": "A shallow stream bubbles over smooth stones, crossing the forest floor. Stepping stones offer a way across.",
+        "exits": {
+          "southwest": "forest_path",
+          "northeast": "deep_forest_1"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {"noisy": true}
+      },
+      "clearing": {
+        "name": "Forest Clearing",
+        "description": "A peaceful clearing where the trees thin out. Wildflowers grow in the grassy area, and the sky is visible overhead. The clearing feels strangely serene compared to the rest of the forest.",
+        "exits": {
+          "west": "forest_path",
+          "south": "abandoned_cabin",
+          "east": "thorny_thicket"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+      "thorny_thicket": {
+        "name": "Thorny Thicket",
+        "description": "A dense thicket of thorny bushes blocks easy passage eastward. It looks difficult to push through.",
+        "exits": {
+          "west": "clearing"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+      "dense_woods": {
+        "name": "Dense Woods",
+        "description": "The forest grows denser here, with trees growing closer together. The path is harder to follow, and less light filters through the branches. The sounds of the forest seem more distant.",
+        "exits": {
+          "south": "forest_path",
+          "east": "ancient_tree",
+          "northwest": "ruins:ruins_approach",
+          "north": "deep_forest_1"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+       "deep_forest_1": {
+        "name": "Deep Forest",
+        "description": "You are deep within the Whispering Woods. Ancient trees loom overhead, and the ground is covered in thick moss. The way forward is unclear.",
+        "exits": {
+          "south": "dense_woods",
+          "southwest": "stream_crossing",
+          "east": "ancient_tree",
+          "north": "deep_forest_2"
+        },
+        "items": [
+          {
+              "type": "Junk",
+              "obj_id": "item_strange_feather",
+              "name": "Strange Feather",
+              "description": "A large, iridescent feather unlike any bird you know.",
+              "weight": 0.1,
+              "value": 5,
+              "stackable": true,
+              "properties": {}
+          }
+        ],
+        "visited": false,
+        "properties": {"dark": true}
+      },
+      "deep_forest_2": {
+        "name": "Deeper Forest",
+        "description": "The forest feels ancient and slightly menacing here. Twisted roots cross the path, and shadows seem to dance at the edge of your vision.",
+        "exits": {
+          "south": "deep_forest_1",
+          "west": "ruins:ruins_approach"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {"dark": true, "smell": "damp earth"}
+      },
+      "ancient_tree": {
+        "name": "Ancient Oak",
+        "description": "A massive oak tree dominates this area, its trunk wider than several people standing together. Its roots spread out across the ground, and its branches reach high into the sky. There's a hollow at the base of the trunk.",
+        "exits": {
+          "west": "deep_forest_1",
+          "east": "caves:cave_entrance"
+        },
+        "items": [
+          {
+            "type": "Treasure",
+            "obj_id": "item_old_coin",
+            "name": "Ancient Coin",
+            "description": "A tarnished silver coin bearing unfamiliar markings. It appears to be very old and might be valuable to a collector.",
+            "weight": 0.1,
+            "value": 25,
+            "stackable": false,
+            "properties": {
+              "treasure_type": "coin"
+            }
+          }
+        ],
+        "visited": false,
+        "properties": {}
+      },
+      "abandoned_cabin": {
+        "name": "Abandoned Cabin",
+        "description": "A dilapidated wooden cabin that appears to have been abandoned for years. The door hangs off its hinges, and parts of the roof have fallen in. Despite its condition, it might provide shelter from the elements.",
+        "exits": {
+          "north": "clearing"
+        },
+        "items": [
+          {
+            "type": "Item",
+            "obj_id": "item_torn_map",
+            "name": "Torn Map",
+            "description": "A torn piece of parchment showing a partial map of the region. There appears to be a marked location deep in the forest, but part of the map is missing.",
+            "weight": 0.1,
+            "value": 5,
+            "stackable": false,
+            "properties": {}
+          },
+           {
+            "type": "Junk",
+            "obj_id": "item_rusty_lantern",
+            "name": "Rusty Lantern",
+            "description": "An old iron lantern, rusted and without fuel.",
+            "weight": 1.5,
+            "value": 2,
+            "stackable": false,
+            "properties": {}
+          }
+        ],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+      "wolf_den": {
+        "name": "Wolf Den Entrance",
+        "description": "A dark opening under a rocky outcrop, partially hidden by bushes. The ground is littered with bones, and a low growl emanates from within.",
+        "exits": {
+          "north": "forest_path",
+          "in": "wolf_cave"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "smell": "musky"
+        }
+      },
+      "wolf_cave": {
+        "name": "Wolf Den Cave",
+        "description": "A cramped, foul-smelling cave. Bones and scraps of fur cover the floor. It serves as a den for a pack of forest wolves.",
+        "exits": {
+          "out": "wolf_den",
+          "east": "wolf_cave_back"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true,
+          "smell": "rank"
+        }
+      },
+      "wolf_cave_back": {
+          "name": "Back of the Wolf Den",
+          "description": "The rear of the den is slightly larger, containing makeshift nests of leaves and fur. More bones are scattered about.",
+          "exits": {
+              "west": "wolf_cave"
+          },
+          "items": [
+              {
+                  "type": "Junk",
+                  "obj_id": "item_chewed_bone",
+                  "name": "Chewed Bone",
+                  "description": "A large bone, thoroughly chewed.",
+                  "weight": 0.8,
+                  "value": 1,
+                  "stackable": false,
+                  "properties": {}
+              }
+          ],
+          "visited": false,
+          "properties": {"dark": true, "smell": "very rank"}
+      }
+    }
+  }

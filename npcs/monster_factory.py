@@ -2,9 +2,13 @@
 npcs/monster_factory.py
 Factory for creating monster NPCs with predefined templates
 """
-from typing import Dict, List, Optional, Any, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Any, Tuple
+import random # Needed for random level/spawn
 from npcs.npc import NPC
-from items.item_factory import ItemFactory
+from npcs.npc_factory import NPCFactory # Use the main factory now
+
+if TYPE_CHECKING:
+    from world.world import World
 
 class MonsterFactory:
     """Factory for creating monster NPCs from templates"""
@@ -155,46 +159,18 @@ class MonsterFactory:
         }
     }
     
-    @classmethod
-    def create_monster(cls, monster_type: str, **kwargs) -> Optional[NPC]:
-        if monster_type not in cls._templates: return None
-        template = cls._templates[monster_type].copy()
-        template.update(kwargs)
+    @staticmethod
+    def create_monster(monster_template_id: str, world: 'World', **kwargs) -> Optional[NPC]:
+        """Creates a monster instance using the main NPCFactory."""
+        # Just delegate to the main NPCFactory
+        # Ensure 'faction' is correctly set if not in template/overrides
+        if 'faction' not in kwargs and monster_template_id in world.npc_templates:
+             if 'faction' not in world.npc_templates[monster_template_id]:
+                  kwargs['faction'] = 'hostile' # Default monsters to hostile
+        elif 'faction' not in kwargs:
+             kwargs['faction'] = 'hostile'
 
-        monster = NPC( # Existing creation
-             obj_id=template.get("obj_id"),
-             name=template.get("name", "Unknown Monster"),
-             description=template.get("description", "No description"),
-             health=template.get("health", 50),
-             friendly=template.get("friendly", False)
-        )
-        monster.max_health = monster.health # Ensure max_health is set
-        
-        # Set combat properties
-        monster.aggression = template.get("aggression", 0.7)
-        monster.attack_power = template.get("attack_power", 5)
-        monster.defense = template.get("defense", 2)
-        monster.faction = template.get("faction", "hostile")
-        monster.behavior_type = template.get("behavior_type", "aggressive")
-        monster.respawn_cooldown = template.get("respawn_cooldown", 300)
-
-        monster.usable_spells = template.get("usable_spells", [])
-        monster.spell_cast_chance = template.get("spell_cast_chance", 0.3) # Default chance if not specified
-        monster.spell_cooldowns = {} # Initialize empty cooldowns
-
-        # Set dialog
-        monster.dialog = template.get("dialog", {})
-        monster.default_dialog = template.get("default_dialog", "The {name} growls menacingly.")
-        
-        # Set loot table
-        monster.loot_table = template.get("loot_table", {})
-        
-        # Register spawn point
-        if "spawn_region_id" in template and "spawn_room_id" in template:
-            monster.spawn_region_id = template["spawn_region_id"]
-            monster.spawn_room_id = template["spawn_room_id"]
-        
-        return monster
+        return NPCFactory.create_npc_from_template(monster_template_id, world, **kwargs)
     
     @classmethod
     def get_template_names(cls) -> List[str]:
@@ -285,4 +261,59 @@ class MonsterFactory:
         monster.spawn_region_id = region_id
         monster.spawn_room_id = room_id
         
+        return monster
+
+    @staticmethod
+    def get_monster_template_names(world: 'World') -> List[str]:
+        """Get names of templates likely representing monsters."""
+        if not world or not hasattr(world, 'npc_templates'):
+            return []
+        # Filter based on faction or naming convention?
+        monster_names = []
+        for tid, template in world.npc_templates.items():
+             # Assume templates with faction 'hostile' are monsters
+             if template.get('faction') == 'hostile':
+                  monster_names.append(tid)
+             # Add other heuristics if needed (e.g., if tid starts with 'monster_')
+        return monster_names
+
+    @staticmethod
+    def spawn_random_monster(region_id: str, room_id: str, world: 'World', level_range: Tuple[int, int] = (1, 5)) -> Optional[NPC]:
+        """Spawns a random monster appropriate for the level range."""
+
+        monster_types = MonsterFactory.get_monster_template_names(world)
+        if not monster_types:
+            print("Warning: No monster templates found for random spawn.")
+            return None
+
+        monster_type = random.choice(monster_types)
+        level = random.randint(level_range[0], level_range[1])
+
+        # Prepare overrides for NPCFactory
+        overrides = {
+            "level": level,
+            "current_region_id": region_id,
+            "current_room_id": room_id,
+            "home_region_id": region_id, # Spawn point is home
+            "home_room_id": room_id
+        }
+
+        # Create using the main factory
+        monster = NPCFactory.create_npc_from_template(monster_type, world, **overrides)
+
+        if not monster:
+             print(f"Warning: Failed to spawn random monster of type '{monster_type}'.")
+             return None
+
+        # Optional: Scale stats further based on the *final* level if needed
+        # (NPCFactory already handles basic level setting)
+        # If more complex scaling is desired, do it here after creation.
+        # E.g., monster.health = monster.template_base_health * (1 + (level - 1) * 0.5)
+        # This would require storing base stats in the template distinctly.
+        # For now, the simple scaling in NPCFactory might suffice.
+
+        # Add level to name if desired (NPCFactory doesn't do this automatically)
+        if level > 1:
+             monster.name = f"{monster.name} (Level {level})"
+
         return monster

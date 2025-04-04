@@ -1,0 +1,121 @@
+{
+    "region_id": "coastal_path",
+    "name": "Salt-Kissed Path",
+    "description": "The fetid swamp gives way to brackish marshes and eventually sandy shores as the path winds towards the coast.",
+    "rooms": {
+        "mudflats": {
+            "name": "Mudflats",
+            "description": "The path crosses wide mudflats exposed by the receding tide. The air smells strongly of salt and decaying seaweed. Seabirds cry overhead.",
+            "exits": {
+                "north": "swamp:ancient_bog",
+                "south": "salt_marsh",
+                "west": "shipwreck_debris"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "smell": "salt and mud"
+            }
+        },
+        "shipwreck_debris": {
+              "name": "Shipwreck Debris",
+              "description": "Fragments of a wrecked ship lie scattered across the mudflats, half-buried in the silt. Rotted timbers and rusted metal poke out.",
+              "exits": {
+                  "east": "mudflats"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {}
+        },
+        "salt_marsh": {
+            "name": "Salt Marsh",
+            "description": "Tough grasses and reeds grow in dense clumps, adapted to the salty, waterlogged ground. Small crabs scuttle between pools left by the tide.",
+            "exits": {
+                "north": "mudflats",
+                "south": "beach_approach",
+                "east": "tidal_pool"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "tidal_pool": {
+              "name": "Tidal Pool",
+              "description": "A shallow pool of seawater trapped among the marsh grasses. Small sea creatures might live here.",
+              "exits": {
+                  "west": "salt_marsh"
+              },
+              "items": [
+                   {
+                      "type": "Item",
+                      "obj_id": "item_seashell",
+                      "name": "Pretty Seashell",
+                      "description": "A colorful, intact seashell.",
+                      "weight": 0.1,
+                      "value": 2,
+                      "stackable": true,
+                      "properties": {}
+                  }
+              ],
+              "visited": false,
+              "properties": {}
+          },
+        "beach_approach": {
+            "name": "Beach Approach",
+            "description": "The ground becomes sandy underfoot. You can hear the rhythmic sound of waves crashing nearby. Ahead, you see the sturdy wooden walls of a coastal settlement.",
+            "exits": {
+                "north": "salt_marsh",
+                "south": "portbridge:town_gate_south",
+                "west": "sandy_beach"
+            },
+            "items": [
+                {
+                    "type": "Item",
+                    "obj_id": "item_driftwood",
+                    "name": "Piece of Driftwood",
+                    "description": "A smooth piece of wood, worn by the sea and sand.",
+                    "weight": 1.5,
+                    "value": 1,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {
+                "smell": "sea air"
+            }
+        },
+        "sandy_beach": {
+              "name": "Sandy Beach",
+              "description": "A wide stretch of sandy beach meets the sea. Waves gently lap at the shore. Kelp and shells are strewn along the high tide line.",
+              "exits": {
+                  "east": "beach_approach",
+                  "west": "sea_cave_entrance"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {"smell": "sea air"}
+          },
+         "sea_cave_entrance": {
+              "name": "Sea Cave Entrance",
+              "description": "At the base of a low cliff, a dark opening leads into a sea cave. The sound of waves echoes from within.",
+              "exits": {
+                  "east": "sandy_beach",
+                  "in": "sea_cave"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {}
+          },
+          "sea_cave": {
+              "name": "Sea Cave",
+              "description": "Inside the sea cave, the air is cool and damp. Water pools on the floor, rising and falling with the tide.",
+              "exits": {
+                  "out": "sea_cave_entrance"
+              },
+              "items": [],
+              "visited": false,
+              "properties": {"dark": true, "smell": "salty"}
+          }
+    }
+  }

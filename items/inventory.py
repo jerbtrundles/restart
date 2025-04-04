@@ -3,7 +3,7 @@ items/inventory.py
 Enhanced inventory system for the MUD game with improved text formatting.
 Handles storage and management of items.
 """
-from typing import Dict, List, Optional, Tuple, Any
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Any
 from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
 from items.item import Item
 from items.item_factory import ItemFactory
@@ -232,26 +232,85 @@ class Inventory:
         return "\n".join(result) + f"\n\n{weight_info}\n{slot_info}"
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize inventory for saving game state."""
+        serialized_slots = []
+        for slot in self.slots:
+            if slot.item:
+                # Save item reference (ID) and override properties if needed
+                override_props = {}
+                template_item = ItemFactory.get_template(slot.item.obj_id) # Need access to templates or a function
+
+                if template_item:
+                    # Compare current props to template props
+                    for key, current_value in slot.item.properties.items():
+                        # Only save if different from template or not present in template's props
+                        if key not in template_item.get("properties", {}) or template_item["properties"][key] != current_value:
+                             # Specific checks for mutable types if needed
+                             if key not in ["weight", "value", "stackable", "name", "description"]: # Avoid overriding core attributes easily matched
+                                  override_props[key] = current_value
+                else:
+                     # If no template, save all properties? Risky. Log warning.
+                     print(f"Warning: No template found for item {slot.item.obj_id} during save. Saving all properties.")
+                     override_props = slot.item.properties.copy()
+
+
+                slot_data = {
+                    "item_id": slot.item.obj_id,
+                    "quantity": slot.quantity
+                }
+                if override_props:
+                    slot_data["properties_override"] = override_props
+                serialized_slots.append(slot_data)
+            else:
+                serialized_slots.append(None) # Represent empty slot as null
+
         return {
             "max_slots": self.max_slots,
             "max_weight": self.max_weight,
-            "slots": [slot.to_dict() for slot in self.slots]
+            "slots": serialized_slots
         }
 
+    # Note: This needs the World context (or ItemFactory instance) to access templates
+    if TYPE_CHECKING:
+            from world.world import World
+
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Inventory':
+    def from_dict(cls, data: Dict[str, Any], world: Optional['World']) -> 'Inventory':
+        """Deserialize inventory from save game state."""
+        if not world:
+             # Cannot load without world context for templates
+             print(f"{FORMAT_ERROR}Error: World context required to load inventory.{FORMAT_RESET}")
+             return cls(max_slots=data.get("max_slots", 20), max_weight=data.get("max_weight", 100.0)) # Return empty
+
         inventory = cls(max_slots=data.get("max_slots", 20), max_weight=data.get("max_weight", 100.0))
         loaded_slots_data = data.get("slots", [])
-        inventory.slots = [] # Clear default slots
+        inventory.slots = []  # Clear default slots
 
         for slot_data in loaded_slots_data:
-             inventory.slots.append(InventorySlot.from_dict(slot_data))
+            if slot_data and "item_id" in slot_data:
+                item_id = slot_data["item_id"]
+                quantity = slot_data.get("quantity", 1)
+                overrides = slot_data.get("properties_override", {})
+
+                # Use ItemFactory with world context to create the item instance
+                item = ItemFactory.create_item_from_template(item_id, world, **overrides)
+
+                if item:
+                    # Adjust quantity based on stackability
+                    actual_quantity = quantity if item.stackable else 1
+                    inventory.slots.append(InventorySlot(item, actual_quantity))
+                    if not item.stackable and quantity > 1:
+                         print(f"Warning: Loaded non-stackable item '{item.name}' with quantity {quantity}. Set to 1.")
+                else:
+                    print(f"Warning: Failed to load item with ID '{item_id}' for inventory. Adding empty slot.")
+                    inventory.slots.append(InventorySlot()) # Add empty slot if item fails
+            else:
+                inventory.slots.append(InventorySlot()) # Add empty slot for null data
 
         # Ensure correct number of slots
         while len(inventory.slots) < inventory.max_slots:
             inventory.slots.append(InventorySlot())
-        # Truncate if save file had more slots than current max_slots
-        inventory.slots = inventory.slots[:inventory.max_slots]
+        inventory.slots = inventory.slots[:inventory.max_slots] # Truncate if needed
 
         return inventory
 

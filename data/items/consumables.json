@@ -1,0 +1,170 @@
+{
+    "item_healing_potion_small": {
+      "type": "Consumable",
+      "name": "Small Healing Potion",
+      "description": "A small vial containing a red liquid that can heal minor wounds.",
+      "weight": 0.5,
+      "value": 10,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 15,
+        "effect_type": "heal"
+      }
+    },
+    "item_hunk_bread": {
+      "type": "Consumable",
+      "name": "Hunk of Bread",
+      "description": "A thick slice of fresh, crusty bread.",
+      "weight": 0.3,
+      "value": 1,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 3,
+        "effect_type": "heal"
+      }
+    },
+    "item_fresh_fish": {
+      "type": "Consumable",
+      "name": "Fresh Fish",
+      "description": "A recently caught fish, still fresh and glistening. It would make a good meal.",
+      "weight": 1.0,
+      "value": 3,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 5,
+        "effect_type": "heal"
+      }
+    },
+    "item_forest_berries": {
+      "type": "Consumable",
+      "name": "Forest Berries",
+      "description": "A handful of wild berries growing along the path. They look edible.",
+      "weight": 0.2,
+      "value": 2,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 3,
+        "effect_type": "heal"
+      }
+    },
+    "item_frostpetal": {
+      "type": "Consumable",
+      "name": "Frostpetal Bloom",
+      "description": "A rare alpine flower that thrives in cold, sheltered places. Said to have potent restorative properties.",
+      "weight": 0.1,
+      "value": 50,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 25,
+        "effect_type": "heal"
+      }
+    },
+    "item_swamp_fungus": {
+      "type": "Consumable",
+      "name": "Pale Fungus",
+      "description": "A cluster of pale, rubbery fungi growing on a rotting log. It looks vaguely unwholesome.",
+      "weight": 0.2,
+      "value": 1,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": -5,
+        "effect_type": "poison"
+      }
+    },
+    "item_fresh_carrot": {
+      "type": "Consumable",
+      "name": "Fresh Carrot",
+      "description": "A crisp orange carrot, pulled fresh from the earth.",
+      "weight": 0.3,
+      "value": 1,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 2,
+        "effect_type": "heal"
+      }
+    },
+    "item_pumpkin": {
+      "type": "Consumable",
+      "name": "Large Pumpkin",
+      "description": "A heavy orange pumpkin, good for carving or cooking. Might provide some sustenance.",
+      "weight": 5.0,
+      "value": 4,
+      "stackable": false,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 8,
+        "effect_type": "heal"
+      }
+    },
+    "item_ripe_apple": {
+      "type": "Consumable",
+      "name": "Ripe Apple",
+      "description": "A crisp, juicy red apple, freshly picked.",
+      "weight": 0.3,
+      "value": 2,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 4,
+        "effect_type": "heal"
+      }
+    },
+    "item_wild_herbs": {
+      "type": "Consumable",
+      "name": "Wild Herbs",
+      "description": "A bundle of fragrant wild herbs. Might be useful for cooking or alchemy.",
+      "weight": 0.1,
+      "value": 3,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 1,
+        "effect_type": "heal"
+      }
+    },
+    "item_ale": {
+      "type": "Consumable",
+      "name": "Tankard of Ale",
+      "description": "A foaming tankard of locally brewed ale. It smells of hops and barley.",
+      "weight": 1.0,
+      "value": 2,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 2,
+        "effect_type": "heal"
+      }
+    },
+     "item_raw_meat": {
+      "type": "Consumable",
+      "name": "Raw Meat",
+      "description": "A piece of raw meat, likely from a wolf.",
+      "weight": 0.4,
+      "value": 1,
+      "stackable": true,
+      "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_value": 4,
+        "effect_type": "heal"
+      }
+    }
+  }

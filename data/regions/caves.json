@@ -1,0 +1,271 @@
+{
+    "region_id": "caves",
+    "name": "Shadow Caves",
+    "description": "A network of caves in the hills beyond the forest. Few villagers venture this far from town, and those who do tell tales of strange echoes and mysterious lights.",
+    "rooms": {
+      "cave_entrance": {
+        "name": "Cave Entrance",
+        "description": "A dark opening in the hillside marks the entrance to the caves. Cool air flows out from the darkness within. Moss grows around the entrance, and you can hear water dripping somewhere inside.",
+        "exits": {
+          "west": "forest:ancient_tree",
+          "in": "main_cavern"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {}
+      },
+      "main_cavern": {
+        "name": "Main Cavern",
+        "description": "A large open space within the cave system. Stalactites hang from the ceiling, and the ground is uneven with rocks and small puddles. Your footsteps echo in the chamber. A hidden passage seems to lead southeast, while another winds north.",
+        "exits": {
+          "out": "cave_entrance",
+          "north": "narrow_passage",
+          "east": "crystal_room",
+          "down": "deep_tunnel",
+          "southeast": "hidden_passage",
+          "west": "bat_cave"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+      "bat_cave": {
+        "name": "Bat Cave",
+        "description": "The ceiling here is high and lost in shadow. The air is filled with the leathery flapping of wings and high-pitched squeaks. Guano covers the floor.",
+        "exits": {
+          "east": "main_cavern"
+        },
+        "items": [
+          {
+              "type": "Junk",
+              "obj_id": "item_guano",
+              "name": "Pile of Guano",
+              "description": "A large pile of bat droppings. Smells awful, but might be useful as fertilizer.",
+              "weight": 2.0,
+              "value": 1,
+              "stackable": true,
+              "properties": {}
+          }
+        ],
+        "visited": false,
+        "properties": {"dark": true, "smell": "ammonia"}
+      },
+      "narrow_passage": {
+        "name": "Narrow Passage",
+        "description": "A tight corridor that winds between stone walls. You have to duck in places to avoid hitting your head. The passage feels claustrophobic, and the air is stale.",
+        "exits": {
+          "south": "main_cavern",
+          "north": "underground_pool",
+          "west": "crawl_space"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+      "crawl_space": {
+          "name": "Tight Crawl Space",
+          "description": "The passage becomes so narrow you must crawl on your hands and knees. Loose pebbles shift beneath you.",
+          "exits": {
+              "east": "narrow_passage"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"dark": true}
+      },
+      "crystal_room": {
+        "name": "Crystal Chamber",
+        "description": "This chamber is filled with crystalline formations that catch and reflect light in dazzling patterns. The crystals vary in color from clear to amethyst, creating an otherworldly beauty.",
+        "exits": {
+          "west": "main_cavern",
+          "north": "geode_cluster"
+        },
+        "items": [
+          {
+            "type": "Treasure",
+            "obj_id": "item_glowing_crystal",
+            "name": "Glowing Crystal",
+            "description": "A fist-sized crystal that emits a faint blue glow. It feels warm to the touch and seems to pulse with an inner light.",
+            "weight": 1.0,
+            "value": 75,
+            "stackable": false,
+            "properties": {
+              "treasure_type": "gem"
+            }
+          }
+        ],
+        "visited": false,
+        "properties": {}
+      },
+      "geode_cluster": {
+          "name": "Geode Cluster",
+          "description": "Several large, cracked-open geodes line the walls of this small alcove. Their hollow interiors sparkle with thousands of tiny crystals.",
+          "exits": {
+              "south": "crystal_room"
+          },
+          "items": [
+               {
+                  "type": "Treasure",
+                  "obj_id": "item_crystal_shard",
+                  "name": "Crystal Shard",
+                  "description": "A sharp shard broken off from a larger crystal formation.",
+                  "weight": 0.2,
+                  "value": 10,
+                  "stackable": true,
+                  "properties": {"treasure_type": "gem"}
+               }
+          ],
+          "visited": false,
+          "properties": {}
+      },
+      "underground_pool": {
+        "name": "Underground Pool",
+        "description": "The passage opens into a chamber with a still, dark pool of water. The surface is like a mirror, reflecting the stone ceiling above. The chamber is eerily quiet except for the occasional drip of water.",
+        "exits": {
+          "south": "narrow_passage",
+          "dive": "flooded_passage"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+      "deep_tunnel": {
+        "name": "Deep Tunnel",
+        "description": "This rough-hewn tunnel slopes steeply downwards into the earth. The air grows colder, and the silence is profound. Loose scree makes the footing treacherous.",
+        "exits": {
+          "up": "main_cavern",
+          "south": "forgotten_mine",
+          "west": "lava_tube_entrance"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+      "lava_tube_entrance": {
+          "name": "Lava Tube Entrance",
+          "description": "The rock here changes, becoming darker and smoother, resembling solidified lava. A tunnel leads deeper into this volcanic rock.",
+          "exits": {
+              "east": "deep_tunnel",
+              "west": "lava_tube"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"dark": true}
+      },
+      "lava_tube": {
+          "name": "Lava Tube",
+          "description": "A smooth, cylindrical tunnel formed by ancient lava flows. The air is still and surprisingly warm.",
+          "exits": {
+              "east": "lava_tube_entrance"
+          },
+          "items": [
+               {
+                  "type": "Treasure",
+                  "obj_id": "item_obsidian_chunk",
+                  "name": "Obsidian Chunk",
+                  "description": "A piece of sharp, black volcanic glass.",
+                  "weight": 0.5,
+                  "value": 15,
+                  "stackable": true,
+                  "properties": {"treasure_type": "rock"}
+               }
+          ],
+          "visited": false,
+          "properties": {"dark": true}
+      },
+      "flooded_passage": {
+        "name": "Flooded Passage",
+        "description": "Submerged in icy water, this passage connects the pool to deeper parts of the cave. You must hold your breath to pass through. Strange phosphorescent fungi provide a dim, eerie light.",
+        "exits": {
+          "surface": "underground_pool",
+          "east": "submerged_chamber"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true,
+          "underwater": true
+        }
+      },
+      "submerged_chamber": {
+          "name": "Submerged Chamber",
+          "description": "This small air pocket within the flooded passage offers a brief respite. Water drips constantly, and the air is thick with moisture. More glowing fungi cling to the walls.",
+          "exits": {
+              "west": "flooded_passage"
+          },
+          "items": [
+              {
+                  "type": "Item",
+                  "obj_id": "item_waterlogged_pouch",
+                  "name": "Waterlogged Pouch",
+                  "description": "A small leather pouch, soaked through but seemingly intact. Perhaps something valuable remains inside.",
+                  "weight": 0.5,
+                  "value": 15,
+                  "stackable": false,
+                  "properties": {}
+              }
+          ],
+          "visited": false,
+          "properties": {
+              "dark": true
+          }
+      },
+      "forgotten_mine": {
+        "name": "Forgotten Mine Shaft",
+        "description": "The tunnel opens into an old mine shaft, supported by rotting wooden beams. Pickaxes and discarded tools lie rusting on the ground. A rickety ladder ascends upwards into darkness.",
+        "exits": {
+          "north": "deep_tunnel",
+          "up": "mountains:mine_exit",
+          "south": "collapsed_tunnel"
+        },
+        "items": [
+           {
+            "type": "Treasure",
+            "obj_id": "item_gold_nugget",
+            "name": "Gold Nugget",
+            "description": "A small, rough nugget of pure gold, likely missed by the original miners.",
+            "weight": 0.3,
+            "value": 40,
+            "stackable": false,
+            "properties": {
+                "treasure_type": "ore"
+            }
+          }
+        ],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      },
+      "collapsed_tunnel": {
+          "name": "Collapsed Tunnel",
+          "description": "This section of the mine has suffered a cave-in. Massive rocks block the way further south. Dust hangs heavy in the air.",
+          "exits": {
+              "north": "forgotten_mine"
+          },
+          "items": [],
+          "visited": false,
+          "properties": {"dark": true}
+      },
+      "hidden_passage": {
+        "name": "Hidden Passage",
+        "description": "This narrow passage seems intentionally constructed, connecting the main cavern system to somewhere else. It smells faintly of dust and decay.",
+        "exits": {
+          "northwest": "main_cavern",
+          "southeast": "ruins:crypt_lower_level"
+        },
+        "items": [],
+        "visited": false,
+        "properties": {
+          "dark": true
+        }
+      }
+    }
+  }

@@ -1,0 +1,182 @@
+{
+    "region_id": "mountains",
+    "name": "Frostpeak Mountains",
+    "description": "The jagged peaks of the Frostpeak range loom over the region. The air is thin and cold, and snow persists year-round on the higher slopes.",
+    "rooms": {
+        "mine_exit": {
+            "name": "Abandoned Mine Exit",
+            "description": "You emerge from the darkness of the mine shaft onto a windswept mountainside. The entrance is partially collapsed behind you. A narrow, treacherous path leads upwards.",
+            "exits": {
+                "down": "caves:forgotten_mine",
+                "up": "high_pass",
+                "east": "frozen_waterfall",
+                "west": "rocky_ledge"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "rocky_ledge": {
+            "name": "Rocky Ledge",
+            "description": "A narrow ledge clings to the mountainside, offering a dizzying view of the valley below. Loose rocks make footing uncertain.",
+            "exits": {
+                "east": "mine_exit"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "high_pass": {
+            "name": "High Mountain Pass",
+            "description": "A narrow pass winds between towering peaks. The wind howls fiercely here, biting through your clothes. The path continues precariously upwards.",
+            "exits": {
+                "down": "mine_exit",
+                "up": "summit",
+                "north": "crevasse_edge"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "weather": "windy"
+            }
+        },
+        "crevasse_edge": {
+            "name": "Edge of a Crevasse",
+            "description": "The path skirts the edge of a deep, icy crevasse. A blast of freezing air rises from the depths.",
+            "exits": {
+                "south": "high_pass"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"weather": "windy"}
+        },
+        "summit": {
+            "name": "Frostpeak Summit",
+            "description": "The highest point for miles around. The view is breathtaking, stretching across forests, rivers, and distant lands. An ancient, weathered shrine stands here, half-buried in snow. A barely visible cleft leads down to the north.",
+            "exits": {
+                "down": "high_pass",
+                "north": "hidden_valley_entrance"
+            },
+            "items": [
+                {
+                    "type": "Item",
+                    "obj_id": "item_summit_offering",
+                    "name": "Weathered Offering",
+                    "description": "A small, carved stone left at the shrine long ago. It feels strangely peaceful to hold.",
+                    "weight": 0.2,
+                    "value": 30,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {
+                "weather": "snowy"
+            }
+        },
+        "frozen_waterfall": {
+            "name": "Frozen Waterfall",
+            "description": "A massive waterfall, frozen solid into shimmering blue ice, clings to the mountainside. The air here is intensely cold. It might be possible to climb the ice, but it looks dangerous.",
+            "exits": {
+                "west": "mine_exit",
+                "climb": "ice_cave_entrance"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "ice_cave_entrance": {
+            "name": "Ice Cave Entrance",
+            "description": "Behind the frozen waterfall lies the entrance to a hidden cave formed entirely of ice. The walls glimmer, reflecting light in strange ways.",
+            "exits": {
+                "descend": "frozen_waterfall",
+                "in": "ice_cave"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+         "ice_cave": {
+            "name": "Glacial Cave",
+            "description": "Inside the ice cave, the temperature plummets. The air is still and silent. Elaborate formations of ice resemble frozen sculptures.",
+            "exits": {
+                "out": "ice_cave_entrance",
+                "deeper": "ice_cave_chamber"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "dark": true
+            }
+        },
+        "ice_cave_chamber": {
+            "name": "Inner Ice Chamber",
+            "description": "Deeper within the ice cave, the ice walls seem older and thicker. Something large appears to be frozen within the ice in the center of the chamber.",
+            "exits": {
+                "out": "ice_cave"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true}
+        },
+        "hidden_valley_entrance": {
+            "name": "Hidden Valley Entrance",
+            "description": "A narrow cleft between rocks, easily missed, leads down from the summit into a sheltered area. Warmer air drifts up from below.",
+            "exits": {
+                "south": "summit",
+                "down": "hidden_valley"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "hidden_valley": {
+            "name": "Verdant Hidden Valley",
+            "description": "Surprisingly sheltered from the harsh mountain weather, this small valley is lush and green. A clear stream runs through it, and unusual alpine flowers bloom.",
+            "exits": {
+                "up": "hidden_valley_entrance",
+                "north": "valley_cave"
+            },
+            "items": [
+               {
+                    "type": "Consumable",
+                    "obj_id": "item_frostpetal",
+                    "name": "Frostpetal Bloom",
+                    "description": "A rare alpine flower that thrives in cold, sheltered places. Said to have potent restorative properties.",
+                    "weight": 0.1,
+                    "value": 50,
+                    "stackable": true,
+                    "properties": {
+                        "uses": 1,
+                        "max_uses": 1,
+                        "effect_value": 25,
+                        "effect_type": "heal"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+        "valley_cave": {
+            "name": "Small Valley Cave",
+            "description": "A small, dry cave at the northern end of the hidden valley. Looks like it might have been used as a shelter recently.",
+            "exits": {
+                "south": "hidden_valley"
+            },
+            "items": [
+                {
+                    "type": "Junk",
+                    "obj_id": "item_old_campfire",
+                    "name": "Old Campfire Ashes",
+                    "description": "The cold ashes of a small campfire.",
+                    "weight": 0.1,
+                    "value": 0,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {"dark": true}
+        }
+    }
+}

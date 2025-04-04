@@ -2,9 +2,10 @@
 commands/commands.py
 Unified command system for the MUD game.
 """
+import os
 import time
 from commands.command_system import command, registered_commands
-from core.config import DEFAULT_WORLD_FILE, FORMAT_TITLE, FORMAT_HIGHLIGHT, FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET
+from core.config import DEFAULT_WORLD_FILE, FORMAT_CATEGORY, FORMAT_TITLE, FORMAT_HIGHLIGHT, FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET, SAVE_GAME_DIR
 from items.consumable import Consumable
 from items.item_factory import ItemFactory
 from items.junk import Junk
@@ -66,16 +67,69 @@ def quit_handler(args, context):
 @command("save", [], "system", "Save game state.\nUsage: save [filename]")
 def save_handler(args, context):
     world = context["world"]
-    fname = (args[0] + ".json" if not args[0].endswith(".json") else args[0]) if args else DEFAULT_WORLD_FILE
-    if world.save_to_json(fname): return f"{FORMAT_SUCCESS}World saved to {fname}{FORMAT_RESET}"
-    else: return f"{FORMAT_ERROR}Error saving world to {fname}{FORMAT_RESET}"
+    game = context["game"] # Get game manager from context
+    # Use filename arg or game manager's current file
+    fname = (args[0] if args else game.current_save_file)
+    # Ensure .json extension
+    if not fname.endswith(".json"): fname += ".json"
+
+    if world.save_game(fname): # Call new save method
+        game.current_save_file = fname # Update game manager's current file on successful save
+        return f"{FORMAT_SUCCESS}World state saved to {fname}{FORMAT_RESET}"
+    else:
+        return f"{FORMAT_ERROR}Error saving world state to {fname}{FORMAT_RESET}"
 
 @command("load", [], "system", "Load game state.\nUsage: load [filename]")
 def load_handler(args, context):
+    # Loading during gameplay is complex (need to reset plugins, UI state etc.)
+    # For now, this command might just report what *would* be loaded on restart
+    # Or, implement a full game state reset and load here. Let's try the reset.
+
     world = context["world"]
-    fname = (args[0] + ".json" if not args[0].endswith(".json") else args[0]) if args else DEFAULT_WORLD_FILE
-    if world.load_from_json(fname): return f"{FORMAT_SUCCESS}World loaded from {fname}{FORMAT_RESET}\n\n{world.look()}"
-    else: return f"{FORMAT_ERROR}Error loading world from {fname}{FORMAT_RESET}"
+    game = context["game"]
+    fname = (args[0] if args else game.current_save_file)
+    if not fname.endswith(".json"): fname += ".json"
+    save_path = os.path.join(SAVE_GAME_DIR, fname) # Use config
+
+    if not os.path.exists(save_path):
+         return f"{FORMAT_ERROR}Save file '{fname}' not found in '{SAVE_GAME_DIR}'.{FORMAT_RESET}"
+
+    # --- Perform Load ---
+    print(f"Attempting to load game state from {fname}...")
+    # 1. Unload plugins (important to reset their state)
+    if game.plugin_manager: game.plugin_manager.unload_all_plugins()
+
+    # 2. Call world's load function
+    success = world.load_save_game(fname)
+
+    if success:
+         # 3. Update game manager state
+         game.current_save_file = fname
+         game.text_buffer = [] # Clear buffer
+         game.scroll_offset = 0
+         game.input_text = ""
+         game.command_history = []
+         game.history_index = -1
+         game.game_state = "playing" # Ensure state is correct
+
+         # 4. Re-initialize and load plugins
+         if game.plugin_manager:
+             # Re-register core services if needed, though they might persist
+             game.plugin_manager.service_locator.register_service("world", game.world)
+             # Reload plugins
+             game.plugin_manager.load_all_plugins()
+             # Manually trigger initial time/weather updates if plugins rely on them immediately
+             time_plugin = game.plugin_manager.get_plugin("time_plugin")
+             if time_plugin: time_plugin._update_world_time_data()
+             weather_plugin = game.plugin_manager.get_plugin("weather_plugin")
+             if weather_plugin: weather_plugin._notify_weather_change()
+
+
+         # 5. Return success message + initial look
+         return f"{FORMAT_SUCCESS}World state loaded from {fname}{FORMAT_RESET}\n\n{world.look()}"
+    else:
+         # If load failed critically, might need to quit or revert
+         return f"{FORMAT_ERROR}Error loading world state from {fname}. Game state might be unstable.{FORMAT_RESET}"
 
 @command("inventory", ["i", "inv"], "inventory", "Show items you are carrying.")
 def inventory_handler(args, context):

@@ -1,0 +1,198 @@
+{
+    "region_id": "farmland",
+    "name": "Rolling Hills Farmland",
+    "description": "Fertile fields stretch out under an open sky, tended by hardworking farmers. The air smells of crops and earth. The Silver River lies to the west.",
+    "properties": { "safe_zone": true },
+    "rooms": {
+        "farm_bridge": {
+            "name": "Old Stone Bridge",
+            "description": "A sturdy stone bridge arches over the Silver River, connecting the village to the farmlands. You can see the Riverside docks to the west and wheat fields to the east.",
+            "exits": {
+                "west": "town:riverside",
+                "east": "wheat_field"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "wheat_field": {
+            "name": "Whispering Wheat Field",
+            "description": "A vast field of golden wheat stretches as far as the eye can see, rustling gently in the breeze. A path cuts through it towards a distant farmhouse visible to the north.",
+            "exits": {
+                "west": "farm_bridge",
+                "north": "farmhouse_path",
+                "south": "pumpkin_patch",
+                "east": "orchard_edge"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "farmhouse_path": {
+            "name": "Path to Farmhouse",
+            "description": "A well-trodden path leads towards a simple but sturdy farmhouse with smoke curling from its chimney.",
+            "exits": {
+                "south": "wheat_field",
+                "north": "farmhouse_yard",
+                "west": "vegetable_garden"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "vegetable_garden": {
+            "name": "Vegetable Garden",
+            "description": "Neat rows of vegetables grow in this well-tended garden beside the farmhouse path. Carrots, potatoes, and greens flourish here.",
+            "exits": {
+                "east": "farmhouse_path"
+            },
+            "items": [
+                {
+                    "type": "Consumable",
+                    "obj_id": "item_fresh_carrot",
+                    "name": "Fresh Carrot",
+                    "description": "A crisp orange carrot, pulled fresh from the earth.",
+                    "weight": 0.3,
+                    "value": 1,
+                    "stackable": true,
+                    "properties": {
+                         "uses": 1, "max_uses": 1, "effect_value": 2, "effect_type": "heal"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+        "farmhouse_yard": {
+            "name": "Farmhouse Yard",
+            "description": "A tidy yard surrounds the farmhouse. Chickens peck at the ground, and tools lean against the wall. The farmhouse door looks welcoming.",
+            "exits": {
+                "south": "farmhouse_path",
+                "east": "barn_entrance"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+         "barn_entrance": {
+            "name": "Barn Entrance",
+            "description": "The large double doors of a wooden barn stand before you. The smell of hay and animals comes from within.",
+            "exits": {
+                "west": "farmhouse_yard",
+                "in": "barn_interior"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "barn_interior": {
+            "name": "Barn Interior",
+            "description": "Inside the barn, stalls line the walls, some containing animals. Hay is piled high in a loft above. Farming equipment is stored neatly in corners.",
+            "exits": {
+                "out": "barn_entrance"
+            },
+            "items": [
+                {
+                    "type": "Item",
+                    "obj_id": "item_pitchfork",
+                    "name": "Pitchfork",
+                    "description": "A sturdy pitchfork used for moving hay.",
+                    "weight": 3.0,
+                    "value": 5,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {"smell": "hay"}
+        },
+        "pumpkin_patch": {
+            "name": "Pumpkin Patch",
+            "description": "Large orange pumpkins lie scattered amongst tangled vines in this fertile patch of ground. Some look ripe for picking.",
+            "exits": {
+                "north": "wheat_field",
+                "east": "scarecrow_field"
+            },
+            "items": [
+                {
+                    "type": "Consumable",
+                    "obj_id": "item_pumpkin",
+                    "name": "Large Pumpkin",
+                    "description": "A heavy orange pumpkin, good for carving or cooking. Might provide some sustenance.",
+                    "weight": 5.0,
+                    "value": 4,
+                    "stackable": false,
+                    "properties": {
+                        "uses": 1,
+                        "max_uses": 1,
+                        "effect_value": 8,
+                        "effect_type": "heal"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+        "scarecrow_field": {
+            "name": "Field with Scarecrow",
+            "description": "A lonely scarecrow made of straw and old clothes stands guard over a patch of corn.",
+            "exits": {
+                "west": "pumpkin_patch"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "orchard_edge": {
+            "name": "Edge of the Orchard",
+            "description": "Rows of apple trees begin here, stretching eastward. The scent of ripe apples hangs in the air.",
+            "exits": {
+                "west": "wheat_field",
+                "east": "apple_orchard"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "apple_orchard": {
+            "name": "Apple Orchard",
+            "description": "Gnarled apple trees grow in neat rows, laden with fruit. Bees buzz lazily among the branches. The ground is soft with fallen leaves. A path leads east, climbing towards rocky hills.",
+            "exits": {
+                "west": "orchard_edge",
+                "east": "foothills:grassy_slope",
+                "north": "beekeepers_corner"
+            },
+            "items": [
+               {
+                    "type": "Consumable",
+                    "obj_id": "item_ripe_apple",
+                    "name": "Ripe Apple",
+                    "description": "A crisp, juicy red apple, freshly picked.",
+                    "weight": 0.3,
+                    "value": 2,
+                    "stackable": true,
+                    "properties": {
+                        "uses": 1,
+                        "max_uses": 1,
+                        "effect_value": 4,
+                        "effect_type": "heal"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {
+                "smell": "apples"
+            }
+        },
+        "beekeepers_corner": {
+            "name": "Beekeeper's Corner",
+            "description": "Several wooden beehives stand in a quiet corner of the orchard. The air hums with the sound of bees.",
+            "exits": {
+                "south": "apple_orchard"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"noisy": true, "smell": "honey"}
+        }
+    }
+}

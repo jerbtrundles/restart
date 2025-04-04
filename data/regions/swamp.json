@@ -1,0 +1,191 @@
+{
+    "region_id": "swamp",
+    "name": "Murkwater Swamp",
+    "description": "A vast, humid swamp stretching south of the Silver River. Twisted trees draped in moss rise from stagnant water, and the air buzzes with insects.",
+    "rooms": {
+        "marsh_edge": {
+            "name": "Marsh Edge",
+            "description": "The firm ground of the riverbank gives way to soggy marshland. The air grows heavy and humid, filled with the croaking of frogs and the buzzing of insects. A narrow, muddy path leads deeper in.",
+            "exits": {
+                "upstream": "town:river_road",
+                "south": "stagnant_pool",
+                "west": "willow_grove"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "smell": "damp earth"
+            }
+        },
+        "willow_grove": {
+            "name": "Weeping Willow Grove",
+            "description": "A grove of weeping willow trees stands near the marsh edge, their long branches trailing into the water.",
+            "exits": {
+                "east": "marsh_edge"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "stagnant_pool": {
+            "name": "Stagnant Pool",
+            "description": "A large pool of dark, unmoving water blocks the path. Bubbles occasionally rise to the surface with a soft 'plop'. Strange, pale roots twist through the muck.",
+            "exits": {
+                "north": "marsh_edge",
+                "east": "mangrove_thicket",
+                "south": "muddy_trail"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "smell": "stagnant water"
+            }
+        },
+        "muddy_trail": {
+            "name": "Muddy Trail",
+            "description": "A slippery trail of thick mud winds southwards. It's difficult to keep your footing.",
+            "exits": {
+                "north": "stagnant_pool",
+                "south": "mangrove_thicket"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "mangrove_thicket": {
+            "name": "Mangrove Thicket",
+            "description": "A dense thicket of mangrove trees with tangled roots creating a maze-like environment. Progress is slow and difficult, and it's easy to get turned around.",
+            "exits": {
+                "west": "stagnant_pool",
+                "north": "muddy_trail",
+                "south": "sunken_structure",
+                "east": "lizard_den"
+            },
+            "items": [
+                 {
+                    "type": "Consumable",
+                    "obj_id": "item_swamp_fungus",
+                    "name": "Pale Fungus",
+                    "description": "A cluster of pale, rubbery fungi growing on a rotting log. It looks vaguely unwholesome.",
+                    "weight": 0.2,
+                    "value": 1,
+                    "stackable": true,
+                    "properties": {
+                        "uses": 1,
+                        "max_uses": 1,
+                        "effect_value": -5,
+                        "effect_type": "poison"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+        "lizard_den": {
+            "name": "Giant Lizard Den",
+            "description": "A large burrow dug into a muddy bank. Large reptilian tracks lead into the opening. It smells unpleasant.",
+            "exits": {
+                "west": "mangrove_thicket"
+            },
+            "items": [
+                 {
+                    "type": "Junk",
+                    "obj_id": "item_lizard_scale",
+                    "name": "Large Scale",
+                    "description": "A tough, greenish scale, likely shed by a large lizard.",
+                    "weight": 0.2,
+                    "value": 3,
+                    "stackable": true,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {"smell": "reptilian"}
+        },
+        "sunken_structure": {
+            "name": "Sunken Structure",
+            "description": "The top of an old stone structure juts out from the murky water. Most of it has sunk into the swamp, but carvings near the waterline suggest it predates the village. The path seems to continue south into deeper mire.",
+            "exits": {
+                "north": "mangrove_thicket",
+                "south": "deep_swamp",
+                "down": "flooded_ruin"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "flooded_ruin": {
+            "name": "Flooded Ruin Interior",
+            "description": "Submerged within the sunken structure, this room is filled with murky water and debris. Visibility is extremely limited.",
+            "exits": {
+                "up": "sunken_structure"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true, "underwater": true}
+        },
+        "deep_swamp": {
+            "name": "Deep Swamp Mire",
+            "description": "The path dissolves into treacherous mire. Twisted cypress trees rise from the muck, their roots like grasping claws. Visibility is poor due to thick fog and buzzing insects.",
+            "exits": {
+                "north": "sunken_structure",
+                "east": "quicksand_pit",
+                "south": "ancient_bog",
+                "west": "whispering_reeds"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "smell": "decay",
+                "dark": true
+            }
+        },
+         "whispering_reeds": {
+            "name": "Whispering Reeds",
+            "description": "Tall reeds grow thickly here, whispering secrets as the wind sighs through them. It's hard to see far in any direction.",
+            "exits": {
+                "east": "deep_swamp"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"noisy": true}
+        },
+        "quicksand_pit": {
+            "name": "Quicksand Pit",
+            "description": "A deceptively calm-looking pool of mud. Ripples suggest movement beneath the surface. Getting too close looks extremely dangerous. Something shiny is partially submerged near the edge.",
+            "exits": {
+                "west": "deep_swamp"
+            },
+            "items": [
+                 {
+                    "type": "Treasure",
+                    "obj_id": "item_muddy_brooch",
+                    "name": "Mud-Covered Brooch",
+                    "description": "A fancy brooch, caked in thick mud. If cleaned, it might be quite valuable.",
+                    "weight": 0.2,
+                    "value": 60,
+                    "stackable": false,
+                    "properties": {
+                        "treasure_type": "jewelry"
+                    }
+                }
+            ],
+            "visited": false,
+            "properties": {}
+        },
+        "ancient_bog": {
+            "name": "Ancient Bog",
+            "description": "This area feels unnaturally old. The water is black and still, preserving fallen trees from centuries past. The air is heavy and silent, save for the hum of insects. A path seems to lead south, towards the smell of salt.",
+            "exits": {
+                "north": "deep_swamp",
+                "south": "coastal_path:mudflats"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "smell": "peat",
+                "dark": true
+            }
+        }
+    }
+}

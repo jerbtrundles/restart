@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 from utils.text_formatter import format_target_name
 if TYPE_CHECKING:
     from world.world import World # Only import for type checkers
+    from items.item_factory import ItemFactory # For loading
 
 class Player:
     def __init__(self, name: str):
@@ -618,84 +619,128 @@ class Player:
     # *** END NEW ***
 
     def to_dict(self) -> Dict[str, Any]:
+        """Serialize player state for saving."""
+        # Serialize equipment by reference
         equipped_items_data = {}
         for slot, item in self.equipment.items():
-            equipped_items_data[slot] = item.to_dict() if item else None
+            if item:
+                 # Similar logic as Inventory.to_dict
+                 override_props = {}
+                 template_item = ItemFactory.get_template(item.obj_id) # Need access to templates
+
+                 if template_item:
+                      for key, current_value in item.properties.items():
+                           if key not in template_item.get("properties", {}) or template_item["properties"][key] != current_value:
+                                if key not in ["weight", "value", "stackable", "name", "description"]:
+                                     override_props[key] = current_value
+                 else:
+                      print(f"Warning: No template for equipped item {item.obj_id}. Saving all props.")
+                      override_props = item.properties.copy()
+
+                 equip_ref = {"item_id": item.obj_id}
+                 if override_props:
+                      equip_ref["properties_override"] = override_props
+                 equipped_items_data[slot] = equip_ref
+            else:
+                 equipped_items_data[slot] = None
+
+        # Serialize inventory using its own to_dict
+        inventory_data = self.inventory.to_dict()
 
         return {
             "name": self.name,
-            "inventory": self.inventory.to_dict(),
-            "equipment": equipped_items_data,
-            "health": self.health,
-            "max_health": self.max_health,
-            # *** ADD Mana ***
-            "mana": self.mana,
-            "max_mana": self.max_mana,
-            # *** END ADD ***
+            "health": self.health, "max_health": self.max_health,
+            "mana": self.mana, "max_mana": self.max_mana,
             "stats": self.stats,
-            "level": self.level,
-            "experience": self.experience,
-            "experience_to_level": self.experience_to_level,
+            "level": self.level, "experience": self.experience, "experience_to_level": self.experience_to_level,
             "skills": self.skills,
-            "effects": self.effects,
+            "effects": self.effects, # Assumes effects are simple serializable dicts
             "quest_log": self.quest_log,
-            "attack_power": self.attack_power,
-            "defense": self.defense,
             "is_alive": self.is_alive,
-            "in_combat": self.in_combat,
-            "respawn_region_id": self.respawn_region_id,
+            # Save current location within the player state in the save file
+            "current_location": {
+                 "region_id": self.current_region_id, # Assumes player object tracks this
+                 "room_id": self.current_room_id    # Assumes player object tracks this
+            },
+            "respawn_region_id": self.respawn_region_id, # Keep respawn point
             "respawn_room_id": self.respawn_room_id,
-            # *** ADD Spells ***
-            "known_spells": list(self.known_spells), # Save as list
-            "spell_cooldowns": self.spell_cooldowns, # Save cooldown end times
-             # No need to save mana_regen_rate or last_regen_time, recalculate on load/update
-            # *** END ADD ***
+            "known_spells": list(self.known_spells),
+            "spell_cooldowns": self.spell_cooldowns,
+            # --- Embed serialized inventory and equipment ---
+            "inventory": inventory_data,
+            "equipment": equipped_items_data,
+            # Remove redundant attack/defense power if they are calculated
+            # "attack_power": self.attack_power, # Calculated
+            # "defense": self.defense,           # Calculated
+            # Combat state is usually not saved, reset on load
+            # "in_combat": self.in_combat,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Player':
+    def from_dict(cls, data: Dict[str, Any], world: Optional['World']) -> 'Player':
+        """Deserialize player state from save game data."""
+        if not world:
+             print(f"{FORMAT_ERROR}Error: World context required to load player.{FORMAT_RESET}")
+             # Return a default player or raise error?
+             return cls("DefaultPlayer")
+
         player = cls(data["name"])
+        # --- Load Basic Stats ---
         player.health = data.get("health", 100)
         player.max_health = data.get("max_health", 100)
-        # *** ADD Mana ***
         player.mana = data.get("mana", 50)
         player.max_mana = data.get("max_mana", 50)
-        # *** END ADD ***
         player.stats = data.get("stats", {"strength": 10, "dexterity": 10, "intelligence": 10, "wisdom": 10, "spell_power": 5, "magic_resist": 2})
-        # Ensure new stats have defaults if loading old save
+        # Ensure new stats have defaults
         player.stats.setdefault("wisdom", 10)
         player.stats.setdefault("spell_power", 5)
         player.stats.setdefault("magic_resist", 2)
-
         player.level = data.get("level", 1)
         player.experience = data.get("experience", 0)
         player.experience_to_level = data.get("experience_to_level", 100)
         player.skills = data.get("skills", {})
-        player.effects = data.get("effects", [])
+        player.effects = data.get("effects", []) # Assumes effects are simple lists/dicts
         player.quest_log = data.get("quest_log", {})
-        player.attack_power = data.get("attack_power", 5)
-        player.defense = data.get("defense", 3)
         player.is_alive = data.get("is_alive", True)
-        player.in_combat = data.get("in_combat", False)
-        player.respawn_region_id = data.get("respawn_region_id", "town")
+        player.known_spells = set(data.get("known_spells", ["magic_missile", "minor_heal"]))
+        player.spell_cooldowns = data.get("spell_cooldowns", {})
+        player.respawn_region_id = data.get("respawn_region_id", "town") # Default respawn
         player.respawn_room_id = data.get("respawn_room_id", "town_square")
 
-        # *** ADD Spells ***
-        player.known_spells = set(data.get("known_spells", ["magic_missile", "minor_heal"])) # Load as set
-        player.spell_cooldowns = data.get("spell_cooldowns", {})
-        # Reset last mana regen time on load
+        # --- Load Location (world sets this externally after loading player) ---
+        loc = data.get("current_location", {})
+        player.current_region_id = loc.get("region_id") # Store temporarily
+        player.current_room_id = loc.get("room_id")     # Store temporarily
+
+        # Reset transient state
         player.last_mana_regen_time = time.time()
-        # *** END ADD ***
+        player.in_combat = False
+        player.combat_targets.clear()
+        player.combat_messages = []
+        player.last_attack_time = 0
 
+        # --- Load Inventory ---
         if "inventory" in data:
-            player.inventory = Inventory.from_dict(data["inventory"])
-        else: player.inventory = Inventory()
+            # Pass world context to Inventory.from_dict
+            player.inventory = Inventory.from_dict(data["inventory"], world)
+        else:
+            player.inventory = Inventory() # Default empty
 
+        # --- Load Equipment ---
+        player.equipment = { "main_hand": None, "off_hand": None, "body": None, "head": None, "feet": None, "hands": None, "neck": None } # Initialize empty
         if "equipment" in data:
-            from items.item_factory import ItemFactory
-            for slot, item_data in data["equipment"].items():
-                if item_data and slot in player.equipment:
-                    item = ItemFactory.from_dict(item_data)
-                    if item: player.equipment[slot] = item
-                    else: print(f"Warning: Failed to load item for equipment slot '{slot}'")
+            from items.item_factory import ItemFactory # Local import needed
+            for slot, item_ref in data["equipment"].items():
+                if item_ref and isinstance(item_ref, dict) and "item_id" in item_ref:
+                     item_id = item_ref["item_id"]
+                     overrides = item_ref.get("properties_override", {})
+                     # Use ItemFactory with world context
+                     item = ItemFactory.create_item_from_template(item_id, world, **overrides)
+                     if item and slot in player.equipment:
+                          player.equipment[slot] = item
+                     elif item:
+                          print(f"Warning: Invalid equipment slot '{slot}' found in save data for item '{item.name}'.")
+                     else:
+                          print(f"Warning: Failed to load equipped item '{item_id}' for slot '{slot}'.")
+
         return player

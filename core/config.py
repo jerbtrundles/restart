@@ -4,6 +4,9 @@ Configuration settings for the game with enhanced text system support.
 """
 
 # Display settings
+import os
+
+
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 FONT_SIZE = 18
@@ -80,3 +83,10 @@ COMMAND_HISTORY_SIZE = 50  # Number of commands to keep in history
 
 # Debug settings
 DEBUG_COLOR = (255, 0, 0)  # Red for debug text
+
+DEFAULT_SAVE_FILE = "default_save.json"
+DATA_DIR = "data"
+SAVE_GAME_DIR = os.path.join(DATA_DIR, "saves")
+REGION_DIR = os.path.join(DATA_DIR, "regions")
+ITEM_TEMPLATE_DIR = os.path.join(DATA_DIR, "items")
+NPC_TEMPLATE_DIR = os.path.join(DATA_DIR, "npcs")

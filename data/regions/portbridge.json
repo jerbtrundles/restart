@@ -1,0 +1,184 @@
+{
+    "region_id": "portbridge",
+    "name": "Portbridge",
+    "description": "A bustling port town built where the Silver River meets the sea. Its docks teem with sailors and merchants, and the smell of salt and fish hangs heavy in the air.",
+    "properties": { "safe_zone": true },
+    "rooms": {
+        "town_gate_south": {
+            "name": "Portbridge South Gate",
+            "description": "A sturdy wooden gatehouse guards the southern entrance to Portbridge. Guards eye newcomers warily. Beyond the gate, the town looks busy and somewhat rough.",
+            "exits": {
+                "north": "harbor_district",
+                "south": "coastal_path:beach_approach"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "harbor_district": {
+            "name": "Harbor District",
+            "description": "Warehouses and taverns line the cobbled streets leading to the noisy docks. Sailors shout, gulls cry, and the air is thick with the smell of tar, fish, and foreign spices.",
+            "exits": {
+                "south": "town_gate_south",
+                "east": "fish_market",
+                "west": "sailors_rest_inn",
+                "north": "town_center_portbridge",
+                "down": "smugglers_tunnel_entrance"
+            },
+            "items": [
+                {
+                    "type": "Item",
+                    "obj_id": "item_coiled_rope",
+                    "name": "Coiled Rope",
+                    "description": "A length of sturdy hemp rope, coiled neatly.",
+                    "weight": 2.0,
+                    "value": 8,
+                    "stackable": false,
+                    "properties": {}
+                }
+            ],
+            "visited": false,
+            "properties": {
+                "noisy": true,
+                "smell": "fish and tar"
+            }
+        },
+        "smugglers_tunnel_entrance": {
+            "name": "Smuggler's Tunnel Entrance",
+            "description": "Hidden behind loose crates near the docks is a dark opening leading down into a crudely dug tunnel.",
+            "exits": {
+                "up": "harbor_district",
+                "down": "smugglers_tunnel"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true}
+        },
+        "smugglers_tunnel": {
+            "name": "Smuggler's Tunnel",
+            "description": "A narrow, damp tunnel running beneath the harbor district. It smells of seawater and stale air.",
+            "exits": {
+                "up": "smugglers_tunnel_entrance",
+                "north": "underground_cache"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"dark": true, "smell": "stale air"}
+        },
+        "underground_cache": {
+            "name": "Underground Cache",
+            "description": "The tunnel opens into a small chamber where illicit goods might be stored. Some empty crates and barrels are stacked here.",
+            "exits": {
+                "south": "smugglers_tunnel"
+            },
+            "items": [
+                 {
+                    "type": "Treasure",
+                    "obj_id": "item_dubious_cargo",
+                    "name": "Dubious Cargo",
+                    "description": "A small, locked chest containing unknown contents. It looks valuable but likely stolen.",
+                    "weight": 10.0,
+                    "value": 150,
+                    "stackable": false,
+                    "properties": {"treasure_type": "contraband"}
+                }
+            ],
+            "visited": false,
+            "properties": {"dark": true}
+        },
+        "fish_market": {
+            "name": "Fish Market",
+            "description": "An open-air market dominated by stalls selling the day's catch. Fishermen haggle loudly over prices, and the ground is slick with seawater and fish scales.",
+            "exits": {
+                "west": "harbor_district",
+                "east": "pier_1"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "noisy": true,
+                "smell": "fishy"
+            }
+        },
+        "pier_1": {
+            "name": "Fishing Pier",
+            "description": "A long wooden pier extending out over the water, used by local fishermen. Fishing lines dangle into the sea.",
+            "exits": {
+                "west": "fish_market"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"smell": "sea air"}
+        },
+        "sailors_rest_inn": {
+            "name": "The Sailor's Rest Inn",
+            "description": "A large, rowdy inn catering to seafarers. The common room is filled with loud conversation, laughter, and the clatter of tankards. Fights occasionally break out.",
+            "exits": {
+                "east": "harbor_district",
+                "up": "inn_rooms"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "noisy": true,
+                "smell": "stale ale"
+            }
+        },
+         "inn_rooms": {
+            "name": "Inn Upper Floor",
+            "description": "A narrow corridor above the Sailor's Rest, lined with doors to small, basic rooms.",
+            "exits": {
+                "down": "sailors_rest_inn"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+        "shipwright": {
+            "name": "Shipwright's Yard",
+            "description": "The sounds of sawing and hammering fill the air. Large wooden skeletons of ships under construction dominate the yard. Wood shavings litter the ground.",
+            "exits": {
+                "south": "town_center_portbridge",
+                "north": "lumber_storage"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {
+                "noisy": true,
+                "smell": "wood and pitch"
+            }
+        },
+        "lumber_storage": {
+            "name": "Lumber Storage",
+            "description": "Large stacks of timber and planks are stored here, ready for use by the shipwright.",
+            "exits": {
+                "south": "shipwright"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {"smell": "fresh wood"}
+        },
+        "town_center_portbridge": {
+            "name": "Portbridge Town Center",
+            "description": "The central area of Portbridge is slightly more orderly than the harbor. Merchant stalls and administrative buildings cluster around a small square.",
+            "exits": {
+                "south": "harbor_district",
+                "north": "shipwright",
+                "west": "port_authority"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        },
+         "port_authority": {
+            "name": "Port Authority Office",
+            "description": "A stern-looking building where harbourmasters manage dock traffic and collect tariffs. Clerks bustle about inside.",
+            "exits": {
+                "east": "town_center_portbridge"
+            },
+            "items": [],
+            "visited": false,
+            "properties": {}
+        }
+    }
+}

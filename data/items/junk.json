@@ -1,0 +1,182 @@
+{
+    "item_empty_crate": {
+      "type": "Junk",
+      "name": "Empty Crate",
+      "description": "A sturdy wooden crate, currently empty.",
+      "weight": 5.0,
+      "value": 1,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_bent_coin": {
+      "type": "Junk",
+      "name": "Bent Coin",
+      "description": "A copper coin, bent almost in half. Worthless now.",
+      "weight": 0.1,
+      "value": 0,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_strange_feather": {
+      "type": "Junk",
+      "name": "Strange Feather",
+      "description": "A large, iridescent feather unlike any bird you know.",
+      "weight": 0.1,
+      "value": 5,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_rusty_lantern": {
+      "type": "Junk",
+      "name": "Rusty Lantern",
+      "description": "An old iron lantern, rusted and without fuel.",
+      "weight": 1.5,
+      "value": 2,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_chewed_bone": {
+      "type": "Junk",
+      "name": "Chewed Bone",
+      "description": "A large bone, thoroughly chewed.",
+      "weight": 0.8,
+      "value": 1,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_guano": {
+      "type": "Junk",
+      "name": "Pile of Guano",
+      "description": "A large pile of bat droppings. Smells awful, but might be useful as fertilizer.",
+      "weight": 2.0,
+      "value": 1,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_stone_fragment": {
+      "type": "Junk",
+      "name": "Carved Stone Fragment",
+      "description": "A piece of stone broken from a larger structure, bearing part of an intricate carving.",
+      "weight": 3.0,
+      "value": 2,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_broken_stylus": {
+      "type": "Junk",
+      "name": "Broken Stylus",
+      "description": "An intricate stylus made of bone, now broken in two.",
+      "weight": 0.1,
+      "value": 1,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_old_campfire": {
+      "type": "Junk",
+      "name": "Old Campfire Ashes",
+      "description": "The cold ashes of a small campfire.",
+      "weight": 0.1,
+      "value": 0,
+      "stackable": false,
+      "properties": {}
+    },
+    "item_lizard_scale": {
+      "type": "Junk",
+      "name": "Large Scale",
+      "description": "A tough, greenish scale, likely shed by a large lizard.",
+      "weight": 0.2,
+      "value": 3,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_wool_tuft": {
+      "type": "Junk",
+      "name": "Tuft of Wool",
+      "description": "A small tuft of sheep's wool caught on the fence.",
+      "weight": 0.1,
+      "value": 1,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_goblin_ear": {
+      "type": "Junk",
+      "name": "Goblin Ear",
+      "description": "A severed goblin ear. Grim, but maybe someone collects these.",
+      "weight": 0.1,
+      "value": 1,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_wolf_pelt": {
+      "type": "Junk",
+      "name": "Wolf Pelt",
+      "description": "The furry pelt of a wolf.",
+      "weight": 0.5,
+      "value": 3,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_wolf_fang": {
+      "type": "Junk",
+      "name": "Wolf Fang",
+      "description": "A sharp fang taken from a wolf.",
+      "weight": 0.1,
+      "value": 2,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_bone": {
+      "type": "Junk",
+      "name": "Bone",
+      "description": "A weathered bone, likely humanoid.",
+      "weight": 0.3,
+      "value": 1,
+      "stackable": true,
+      "properties": {}
+    },
+     "item_rat_tail": {
+      "type": "Junk",
+      "name": "Rat Tail",
+      "description": "The long, scaly tail of a giant rat.",
+      "weight": 0.1,
+      "value": 1,
+      "stackable": true,
+      "properties": {}
+    },
+     "item_rat_fur": {
+      "type": "Junk",
+      "name": "Rat Fur",
+      "description": "A patch of mangy rat fur.",
+      "weight": 0.2,
+      "value": 1,
+      "stackable": true,
+      "properties": {}
+    },
+     "item_stolen_pouch": {
+      "type": "Junk",
+      "name": "Stolen Pouch",
+      "description": "A small leather pouch, likely stolen.",
+      "weight": 0.1,
+      "value": 4,
+      "stackable": false,
+      "properties": {}
+    },
+     "item_troll_hide": {
+      "type": "Junk",
+      "name": "Troll Hide",
+      "description": "A thick, tough piece of troll hide.",
+      "weight": 2.0,
+      "value": 10,
+      "stackable": true,
+      "properties": {}
+    },
+    "item_shiny_rock": {
+      "type": "Junk",
+      "name": "Shiny Rock",
+      "description": "A mundane rock that happens to be shiny. Trolls like shiny things.",
+      "weight": 0.5,
+      "value": 3,
+      "stackable": true,
+      "properties": {}
+    }
+  }

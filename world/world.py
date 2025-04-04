@@ -3,127 +3,419 @@ from typing import Dict, List, Optional, Any, Tuple
 import time
 import json
 import os
+import uuid # For NPC instance IDs
+import heapq # For pathfinding
 
-from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
+# --- Core Imports ---
+from core.config import DEFAULT_SAVE_FILE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, ITEM_TEMPLATE_DIR, NPC_TEMPLATE_DIR, REGION_DIR, SAVE_GAME_DIR # Use config
 from player import Player
 from world.region import Region
 from world.room import Room
-from items.item import Item # Import base Item
+from items.item import Item
+from items.key import Key
 from items.inventory import Inventory
 from npcs.npc import NPC
 from utils.text_formatter import format_target_name
 
+# --- Factory Imports ---
+from items.item_factory import ItemFactory
+from npcs.npc_factory import NPCFactory
+# MonsterFactory might just use NPCFactory now
+# from npcs.monster_factory import MonsterFactory
 
 class World:
     def __init__(self):
+        # --- Static Definitions ---
         self.regions: Dict[str, Region] = {}
+        self.item_templates: Dict[str, Dict[str, Any]] = {} # item_id -> template_data
+        self.npc_templates: Dict[str, Dict[str, Any]] = {} # template_id -> template_data
+
+        # --- Dynamic State ---
+        self.player: Player = None # Loaded/Created later
+        self.npcs: Dict[str, NPC] = {} # instance_id -> NPC object
+        # Current location is now part of player state for saving, but world tracks it live
         self.current_region_id: Optional[str] = None
         self.current_room_id: Optional[str] = None
-        self.player = Player("Adventurer")
-        if not hasattr(self.player, "inventory"): self.player.inventory = Inventory(max_slots=20, max_weight=100.0)
-        # --- Initialize equipment properly ---
-        if not hasattr(self.player, "equipment"):
-             self.player.equipment = { "main_hand": None, "off_hand": None, "body": None, "head": None, "feet": None, "hands": None, "neck": None }
-        # --- End Init ---
-        self.npcs: Dict[str, NPC] = {}
+
+        # --- Meta ---
         self.start_time = time.time()
         self.last_update_time = 0
         self.plugin_data = {}
-        self.game = None # To link back to game manager if needed
+        self.game = None # Link back to game manager
 
-    def add_region(self, region_id: str, region: Region) -> None: self.regions[region_id] = region
+        # --- Load Definitions ---
+        self._load_definitions()
+
+    # --- Definition Loading ---
+    def _load_definitions(self):
+        """Loads static definitions (regions, items, npcs) from the data directory."""
+        print("Loading definitions...")
+        self._load_item_templates()
+        self._load_npc_templates()
+        self._load_regions()
+        print("Definitions loaded.")
+
+    def _load_item_templates(self):
+        """Loads item templates from JSON files."""
+        self.item_templates = {}
+        if not os.path.isdir(ITEM_TEMPLATE_DIR):
+            print(f"Warning: Item template directory not found: {ITEM_TEMPLATE_DIR}")
+            return
+        for filename in os.listdir(ITEM_TEMPLATE_DIR):
+            if filename.endswith(".json"):
+                path = os.path.join(ITEM_TEMPLATE_DIR, filename)
+                try:
+                    with open(path, 'r') as f:
+                        data = json.load(f)
+                        for item_id, template_data in data.items():
+                            if item_id in self.item_templates:
+                                print(f"Warning: Duplicate item template ID '{item_id}' found in {filename}.")
+                            # Basic validation
+                            if "name" not in template_data or "type" not in template_data:
+                                print(f"Warning: Item template '{item_id}' in {filename} is missing 'name' or 'type'. Skipping.")
+                                continue
+                            self.item_templates[item_id] = template_data
+                    # print(f"Loaded item templates from {filename}")
+                except Exception as e:
+                    print(f"Error loading item templates from {path}: {e}")
+
+    def _load_npc_templates(self):
+        """Loads NPC templates from JSON files."""
+        self.npc_templates = {}
+        if not os.path.isdir(NPC_TEMPLATE_DIR):
+            print(f"Warning: NPC template directory not found: {NPC_TEMPLATE_DIR}")
+            return
+        for filename in os.listdir(NPC_TEMPLATE_DIR):
+            if filename.endswith(".json"):
+                path = os.path.join(NPC_TEMPLATE_DIR, filename)
+                try:
+                    with open(path, 'r') as f:
+                        data = json.load(f)
+                        for template_id, template_data in data.items():
+                            if template_id in self.npc_templates:
+                                print(f"Warning: Duplicate NPC template ID '{template_id}' found in {filename}.")
+                             # Basic validation
+                            if "name" not in template_data:
+                                print(f"Warning: NPC template '{template_id}' in {filename} is missing 'name'. Skipping.")
+                                continue
+                            self.npc_templates[template_id] = template_data
+                    # print(f"Loaded NPC templates from {filename}")
+                except Exception as e:
+                    print(f"Error loading NPC templates from {path}: {e}")
+
+    def _load_regions(self):
+        """Loads region and room definitions from JSON files."""
+        self.regions = {}
+        if not os.path.isdir(REGION_DIR):
+            print(f"Warning: Region directory not found: {REGION_DIR}")
+            return
+        for filename in os.listdir(REGION_DIR):
+            if filename.endswith(".json"):
+                path = os.path.join(REGION_DIR, filename)
+                try:
+                    with open(path, 'r') as f:
+                        region_data = json.load(f)
+                        region_id = filename[:-5] # Use filename base as ID
+                        region_data['obj_id'] = region_id # Add obj_id hint
+                        region = Region.from_dict(region_data)
+                        self.add_region(region_id, region)
+                    # print(f"Loaded region '{region_id}' from {filename}")
+                except Exception as e:
+                    print(f"Error loading region from {path}: {e}")
+
+    # --- Game State Management ---
+
+    def initialize_new_world(self, start_region="town", start_room="town_square"):
+         """Sets up the world for a new game."""
+         print("Initializing new world state...")
+         self.player = Player("Adventurer") # Create default player
+         # Give player starting items (using templates)
+         starter_dagger = ItemFactory.create_item_from_template("item_starter_dagger", self)
+         potion = ItemFactory.create_item_from_template("item_healing_potion_small", self)
+         if starter_dagger: self.player.inventory.add_item(starter_dagger)
+         if potion: self.player.inventory.add_item(potion, 2) # Give 2 potions
+
+         # Set starting location
+         self.current_region_id = start_region
+         self.current_room_id = start_room
+         self.player.current_region_id = start_region # Also store on player
+         self.player.current_room_id = start_room
+
+         # Reset dynamic state
+         self.npcs = {}
+         for region in self.regions.values():
+              for room in region.rooms.values():
+                   room.items = [] # Clear dynamic items
+
+         # Place initial NPCs and Items from definitions
+         for region_id, region in self.regions.items():
+              for room_id, room in region.rooms.items():
+                   # Initial Items
+                   for item_ref in getattr(room, 'initial_item_refs', []):
+                        item_id = item_ref.get("item_id")
+                        qty = item_ref.get("quantity", 1)
+                        overrides = item_ref.get("properties_override", {})
+                        if item_id:
+                             item = ItemFactory.create_item_from_template(item_id, self, **overrides)
+                             if item:
+                                  # Add quantity separately if stackable
+                                  if item.stackable:
+                                       for _ in range(qty): room.add_item(item) # Add individual stackable items
+                                  else:
+                                       room.add_item(item) # Add single non-stackable item
+                             else: print(f"Warning: Failed to create initial item '{item_id}' in {region_id}:{room_id}")
+
+                   # Initial NPCs
+                   for npc_ref in getattr(room, 'initial_npc_refs', []):
+                        template_id = npc_ref.get("template_id")
+                        instance_id = npc_ref.get("instance_id") # Use predefined instance ID
+                        if not instance_id:
+                             instance_id = f"{template_id}_{uuid.uuid4().hex[:8]}" # Generate if missing
+                        if template_id and instance_id not in self.npcs: # Avoid duplicates
+                             overrides = npc_ref.get("overrides", {})
+                             # Set initial location
+                             overrides["current_region_id"] = region_id
+                             overrides["current_room_id"] = room_id
+                             overrides["home_region_id"] = region_id # Initial pos is home
+                             overrides["home_room_id"] = room_id
+                             npc = NPCFactory.create_npc_from_template(template_id, self, instance_id, **overrides)
+                             if npc:
+                                  self.add_npc(npc) # Add to world.npcs
+                             else: print(f"Warning: Failed to create initial NPC '{template_id}' (ID: {instance_id}) in {region_id}:{room_id}")
+
+         self.start_time = time.time() # Reset start time
+         self.last_update_time = 0
+         self.plugin_data = {} # Reset plugin data
+         print(f"New world initialized. Player at {start_region}:{start_room}")
+
+    def load_save_game(self, filename: str = DEFAULT_SAVE_FILE) -> bool:
+        """Loads dynamic game state from a save file."""
+        save_path = self._resolve_save_path(filename, SAVE_GAME_DIR) # Use SAVE_GAME_DIR
+        if not save_path or not os.path.exists(save_path):
+            print(f"Save file not found: {save_path}. Starting new game.")
+            self.initialize_new_world() # Start new game if save doesn't exist
+            return True # Technically successful, started new game
+
+        print(f"Loading save game from {save_path}...")
+        try:
+            with open(save_path, 'r') as f:
+                save_data = json.load(f)
+
+            # --- Load Player State ---
+            if "player" in save_data:
+                # Pass world context for item loading
+                self.player = Player.from_dict(save_data["player"], self)
+                # Set world's current location from player's loaded location
+                self.current_region_id = self.player.current_region_id
+                self.current_room_id = self.player.current_room_id
+            else:
+                print("Warning: Player data missing in save file. Creating default player.")
+                self.player = Player("Adventurer")
+                self.current_region_id = "town" # Default start
+                self.current_room_id = "town_square"
+
+            # --- Clear Dynamic World State ---
+            self.npcs = {}
+            for region in self.regions.values():
+                for room in region.rooms.values():
+                    room.items = [] # Clear dynamic items from rooms
+
+            # --- Load NPC States ---
+            for instance_id, npc_state in save_data.get("npc_states", {}).items():
+                template_id = npc_state.get("template_id")
+                if template_id:
+                    # Create NPC using factory with state overrides
+                    npc = NPCFactory.create_npc_from_template(template_id, self, instance_id, **npc_state)
+                    if npc:
+                         self.add_npc(npc) # Adds to self.npcs with instance_id
+                    else:
+                         print(f"Warning: Failed to load NPC instance '{instance_id}' (template: {template_id}).")
+                else:
+                    print(f"Warning: NPC state for '{instance_id}' missing template_id.")
+
+            # --- Load Dynamic Items ---
+            for location_key, item_refs in save_data.get("dynamic_items", {}).items():
+                region_id, room_id = location_key.split(":") # Assuming format "region:room"
+                region = self.get_region(region_id)
+                room = region.get_room(room_id) if region else None
+                if room:
+                    for item_ref in item_refs:
+                        item_id = item_ref.get("item_id")
+                        overrides = item_ref.get("properties_override", {})
+                        qty = item_ref.get("quantity", 1) # Get quantity if saved (for stacks dropped)
+                        if item_id:
+                             item = ItemFactory.create_item_from_template(item_id, self, **overrides)
+                             if item:
+                                  # Add quantity for stackables
+                                  if item.stackable:
+                                       for _ in range(qty): room.add_item(item)
+                                  else: room.add_item(item)
+                             else: print(f"Warning: Failed to load dynamic item '{item_id}' in {location_key}.")
+                else: print(f"Warning: Room '{location_key}' not found for dynamic items.")
+
+            # --- Load World State & Plugin Data ---
+            # TODO: Apply world_state flags if implemented
+            self.plugin_data = save_data.get("plugin_data", {})
+
+            self.start_time = time.time() # Reset start time relative to load
+            self.last_update_time = 0
+            print(f"Save game loaded. Player at {self.current_region_id}:{self.current_room_id}")
+            return True
+
+        except json.JSONDecodeError as json_err:
+             print(f"{FORMAT_ERROR}FATAL: Error decoding JSON from save file {save_path}: {json_err}{FORMAT_RESET}")
+             # Optionally try to load backup or start new game
+             return False
+        except Exception as e:
+            print(f"{FORMAT_ERROR}Error loading save game: {e}{FORMAT_RESET}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    def save_game(self, filename: str = DEFAULT_SAVE_FILE) -> bool:
+        """Saves the dynamic game state to a save file."""
+        save_path = self._resolve_save_path(filename, SAVE_GAME_DIR) # Use SAVE_GAME_DIR
+        if not save_path: return False
+
+        print(f"Saving game to {save_path}...")
+        try:
+            # --- Player State ---
+            # Update player's tracked location before saving
+            self.player.current_region_id = self.current_region_id
+            self.player.current_room_id = self.current_room_id
+            player_data = self.player.to_dict()
+
+            # --- NPC States ---
+            npc_states = {}
+            for instance_id, npc in self.npcs.items():
+                 # Basic state needed to recreate
+                 state = {
+                      "template_id": getattr(npc, 'template_id', instance_id.split('_')[0]), # Guess template if missing
+                      "current_region_id": npc.current_region_id,
+                      "current_room_id": npc.current_room_id,
+                      "health": npc.health,
+                      "is_alive": npc.is_alive,
+                      "ai_state": npc.ai_state,
+                      # Add inventory overrides if needed (complex, skip for now)
+                      # "inventory_overrides": npc.inventory.get_overrides(self.npc_templates.get(template_id))
+                 }
+                 npc_states[instance_id] = state
+
+            # --- Dynamic Items ---
+            dynamic_items = {}
+            for region_id, region in self.regions.items():
+                 for room_id, room in region.rooms.values():
+                      # Only save if items differ from initial state (or if initial state wasn't saved this way)
+                      # Simple approach: Save all current items in rooms.
+                      if room.items: # Only save rooms that currently have items
+                           item_refs = []
+                           # Group stackable items for saving quantity
+                           grouped_items = {}
+                           for item in room.items:
+                                if item.stackable:
+                                     if item.obj_id not in grouped_items:
+                                          grouped_items[item.obj_id] = {"item": item, "count": 0}
+                                     grouped_items[item.obj_id]["count"] += 1
+                                else:
+                                     # Save non-stackable individually
+                                     override_props = self._get_item_overrides(item)
+                                     ref = {"item_id": item.obj_id}
+                                     if override_props: ref["properties_override"] = override_props
+                                     item_refs.append(ref)
+
+                           # Save grouped stackable items
+                           for group in grouped_items.values():
+                                item = group["item"]
+                                count = group["count"]
+                                override_props = self._get_item_overrides(item)
+                                ref = {"item_id": item.obj_id, "quantity": count}
+                                if override_props: ref["properties_override"] = override_props
+                                item_refs.append(ref)
+
+                           if item_refs: # Only add if there are items to save
+                                dynamic_items[f"{region_id}:{room_id}"] = item_refs
+
+            # --- Assemble Save Data ---
+            save_data = {
+                "save_name": filename.replace(".json", ""),
+                "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "player": player_data,
+                "npc_states": npc_states,
+                "dynamic_items": dynamic_items,
+                # "world_state": {}, # Add world state flags if implemented
+                "plugin_data": self.plugin_data
+            }
+
+            # --- Write to File ---
+            # Ensure saves directory exists
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            with open(save_path, 'w') as f:
+                json.dump(save_data, f, indent=2)
+
+            print(f"Game saved successfully.")
+            return True
+
+        except Exception as e:
+            print(f"{FORMAT_ERROR}Error saving game: {e}{FORMAT_RESET}")
+            import traceback
+            traceback.print_exc()
+            return False
+        
+    # --- Getters (mostly unchanged, verify they work with new structure) ---
     def get_region(self, region_id: str) -> Optional[Region]: return self.regions.get(region_id)
     def get_current_region(self) -> Optional[Region]: return self.regions.get(self.current_region_id) if self.current_region_id else None
     def get_current_room(self) -> Optional[Room]:
         region = self.get_current_region()
         return region.get_room(self.current_room_id) if region and self.current_room_id else None
-
-
-    # ... (add_npc, get_npc, get_npcs_in_room, get_current_room_npcs - unchanged) ...
+    def add_region(self, region_id: str, region: Region) -> None: self.regions[region_id] = region
     def add_npc(self, npc: NPC) -> None:
-        npc.last_moved = time.time() - self.start_time # Initialize last_moved
-        self.npcs[npc.obj_id] = npc
-    def get_npc(self, obj_id: str) -> Optional[NPC]: return self.npcs.get(obj_id)
+        npc.last_moved = time.time() - self.start_time
+        # Ensure NPC has world reference if needed by its methods
+        npc.world = self # Give NPC access to world (for target formatting, etc.)
+        self.npcs[npc.obj_id] = npc # Use obj_id (instance_id) as key
+    def get_npc(self, instance_id: str) -> Optional[NPC]: return self.npcs.get(instance_id)
     def get_npcs_in_room(self, region_id: str, room_id: str) -> List[NPC]:
-        return [npc for npc in self.npcs.values() if npc.current_region_id == region_id and npc.current_room_id == room_id and npc.is_alive] # Check is_alive
+        return [npc for npc in self.npcs.values() if npc.current_region_id == region_id and npc.current_room_id == room_id and npc.is_alive]
     def get_current_room_npcs(self) -> List[NPC]:
         if not self.current_region_id or not self.current_room_id: return []
         return self.get_npcs_in_room(self.current_region_id, self.current_room_id)
 
-    # ... (update - unchanged) ...
+    def get_items_in_room(self, region_id: str, room_id: str) -> List[Item]:
+        region = self.get_region(region_id)
+        room = region.get_room(room_id) if region else None
+        return getattr(room, 'items', []) if room else [] # Return dynamic items list
+    def get_items_in_current_room(self) -> List[Item]:
+        if not self.current_region_id or not self.current_room_id: return []
+        return self.get_items_in_room(self.current_region_id, self.current_room_id)
+
+    def add_item_to_room(self, region_id: str, room_id: str, item: Item) -> bool:
+        room = self.get_region(region_id).get_room(room_id) if self.get_region(region_id) else None
+        if room:
+             room.add_item(item) # Use Room's method
+             return True
+        return False
+    def remove_item_from_room(self, region_id: str, room_id: str, obj_id: str) -> Optional[Item]:
+         room = self.get_region(region_id).get_room(room_id) if self.get_region(region_id) else None
+         return room.remove_item(obj_id) if room else None # Use Room's method
+
+    # --- Update & Actions (minor changes) ---
     def update(self) -> List[str]:
         current_time = time.time() - self.start_time
         messages = []
-        # Limit updates to prevent excessive processing if tick rate is high
-        if current_time - self.last_update_time < 0.5: # e.g., update NPCs max twice per second
-            return messages
+        if current_time - self.last_update_time < 0.5: return messages
         self.last_update_time = current_time
 
+        # Update Player (for regen, effects)
+        if self.player and self.player.is_alive:
+             self.player.update(current_time) # Pass absolute time for mana regen
+
         # Update NPCs
-        # Iterate over a copy of values in case NPCs are removed during update (e.g., dying)
         for npc in list(self.npcs.values()):
-            # Only update living NPCs (respawn logic might be handled elsewhere or here)
-            if npc.is_alive:
-                npc_message = npc.update(self, current_time)
-                if npc_message: messages.append(npc_message)
-            # Add respawn logic here if needed based on npc.spawn_time etc.
-            # elif npc.should_respawn(current_time): npc.respawn(self); messages.append(...)
-
+             # Pass relative time if NPC update expects that, or absolute
+             # Let's assume npc.update uses absolute time now
+             npc_message = npc.update(self, time.time()) # Pass absolute time
+             if npc_message: messages.append(npc_message)
         return messages
-
-    # ... (change_room - unchanged) ...
-    def change_room(self, direction: str) -> str:
-        old_region_id = self.current_region_id; old_room_id = self.current_room_id
-        current_room = self.get_current_room()
-        if not current_room: return f"{FORMAT_ERROR}You are lost in the void.{FORMAT_RESET}"
-        destination_id = current_room.get_exit(direction)
-        if not destination_id: return f"{FORMAT_ERROR}You cannot go {direction}.{FORMAT_RESET}"
-
-        new_region_id = self.current_region_id
-        new_room_id = destination_id
-
-        # Check for complex exit (e.g., requires key, condition) - Placeholder
-        # if isinstance(exit_info, ExitObject) and not exit_info.can_pass(self.player):
-        #     return f"{FORMAT_ERROR}{exit_info.fail_message}{FORMAT_RESET}"
-
-        # Handle region transition
-        if ":" in destination_id:
-             new_region_id, new_room_id = destination_id.split(":")
-
-        target_region = self.get_region(new_region_id)
-        if not target_region or not target_region.get_room(new_room_id):
-             return f"{FORMAT_ERROR}That path leads to an unknown place.{FORMAT_RESET}"
-
-        # Successfully moving
-        self.current_region_id = new_region_id
-        self.current_room_id = new_room_id
-        new_room = target_region.get_room(new_room_id)
-        new_room.visited = True # Mark as visited
-
-        # Trigger hooks/events
-        if self.game and hasattr(self.game, "plugin_manager"):
-             self.game.plugin_manager.on_room_exit(old_region_id, old_room_id)
-             self.game.plugin_manager.on_room_enter(new_region_id, new_room_id)
-
-        # Announce region change
-        region_change_msg = ""
-        if new_region_id != old_region_id:
-             region_change_msg = f"{FORMAT_HIGHLIGHT}You have entered {target_region.name}.{FORMAT_RESET}\n\n"
-
-        return region_change_msg + self.look() # Return description of new location
-
-
-    # ... (look - use get_room_description_for_display) ...
-    def look(self) -> str:
-        """Get a description of the player's current surroundings."""
-        # Delegate to the more comprehensive method
-        return self.get_room_description_for_display()
-
-    # ... (get_player_status - unchanged, relies on Player.get_status) ...
-    def get_player_status(self) -> str:
-        # Player.get_status() now includes inventory and equipment details
-        return self.player.get_status()
-
 
     # ... (get_items_in_room, get_items_in_current_room - unchanged) ...
     def get_items_in_room(self, region_id: str, room_id: str) -> List[Item]:
@@ -160,22 +452,6 @@ class World:
                    return item
          return None
 
-    def find_npc_in_room(self, name: str) -> Optional[NPC]:
-         """Finds an NPC in the current room by name/id."""
-         npcs = self.get_current_room_npcs()
-         name_lower = name.lower()
-         for npc in npcs:
-              if name_lower == npc.name.lower() or name_lower == npc.obj_id:
-                   return npc
-         # Fallback partial match
-         for npc in npcs:
-              if name_lower in npc.name.lower():
-                   return npc
-         return None
-    # --- END NEW ---
-
-
-    # ... (save_to_json, load_from_json - Updated to use Player.to/from_dict which includes equipment) ...
     def save_to_json(self, filename: str) -> bool:
         save_path = self._resolve_save_path(filename)
         if not save_path: return False
@@ -292,30 +568,12 @@ class World:
          # Default to current dir if all else fails
          return os.path.join(os.getcwd(), filename)
 
-    def _resolve_load_path(self, filename):
-        paths = [filename, os.path.join(os.getcwd(), filename)]
-        parent_dir = os.path.dirname(os.getcwd())
-        if parent_dir != os.getcwd(): paths.append(os.path.join(parent_dir, filename))
-        # Maybe add script's dir path too?
-        script_dir = os.path.dirname(os.path.abspath(__file__)) # world dir
-        paths.append(os.path.join(script_dir, "..", filename)) # Game root?
-
-        for path in paths:
-            if os.path.exists(path):
-                print(f"Found load file at: {path}")
-                return path
-        print(f"Error: Cannot find load file '{filename}'")
-        print(f"Searched: {paths}")
-        return None
-
-
     # ... (set_plugin_data, get_plugin_data - unchanged) ...
     def set_plugin_data(self, plugin_id: str, key: str, value: Any) -> None:
         if plugin_id not in self.plugin_data: self.plugin_data[plugin_id] = {}
         self.plugin_data[plugin_id][key] = value
     def get_plugin_data(self, plugin_id: str, key: str, default: Any = None) -> Any:
         return self.plugin_data.get(plugin_id, {}).get(key, default)
-
 
     # ... (find_path - unchanged) ...
     def find_path(self, source_region_id: str, source_room_id: str,
@@ -367,33 +625,6 @@ class World:
 
         return None # No path found
 
-
-    # ... (get_room_description_for_display - unchanged) ...
-    def get_room_description_for_display(self) -> str:
-        current_room = self.get_current_room()
-        if not current_room: return f"{FORMAT_ERROR}You are nowhere.{FORMAT_RESET}"
-        time_period = self.get_plugin_data("time_plugin", "time_period")
-        weather = self.get_plugin_data("weather_plugin", "current_weather")
-        room_desc = current_room.get_full_description(time_period, weather)
-        npcs_in_room = self.get_current_room_npcs()
-        npcs_text = []
-        if npcs_in_room:
-            for npc in npcs_in_room:
-                formatted_name = format_target_name(self.player, npc) # <<< USE FORMATTER
-                activity = f" ({npc.ai_state['current_activity']})" if hasattr(npc, "ai_state") and "current_activity" in npc.ai_state else ""
-                combat_status = f" {FORMAT_ERROR}(Fighting!){FORMAT_RESET}" if npc.in_combat else ""
-                # Use formatted_name in the message
-                npcs_text.append(f"{formatted_name} is here{activity}{combat_status}.")
-
-        items_in_room = self.get_items_in_current_room()
-        # *** Optional: Color items based on rarity/value? For now, keep as is ***
-        items_text = [f"There is {FORMAT_CATEGORY}{item.name}{FORMAT_RESET} here." for item in items_in_room]
-
-        full_description = room_desc
-        if npcs_text: full_description += "\n\n" + "\n".join(npcs_text)
-        if items_text: full_description += "\n\n" + "\n".join(items_text)
-        return full_description
-
     def is_location_safe(self, region_id: str, room_id: Optional[str] = None) -> bool:
         """
         Check if a given region (and optionally room) is considered safe
@@ -411,3 +642,192 @@ class World:
         # e.g., if room_id in config.SAFE_ROOMS_EVEN_IN_DANGEROUS_REGIONS: return True
 
         return False # Default to not safe if region isn't marked
+
+    def _get_item_overrides(self, item: Item) -> Dict[str, Any]:
+        """Helper to find properties differing from the template."""
+        overrides = {}
+        template = self.item_templates.get(item.obj_id)
+        if template:
+             template_props = template.get("properties", {})
+             for key, current_value in item.properties.items():
+                  # Simple comparison, might need refinement for complex types
+                  if key not in template_props or template_props[key] != current_value:
+                       if key not in ["weight", "value", "stackable", "name", "description"]:
+                            overrides[key] = current_value
+        else:
+             # No template? Save all properties?
+             print(f"Warning: No template for item {item.obj_id} during save override check.")
+             overrides = item.properties.copy()
+             # Remove potentially problematic core props if saving all
+             for core in ["weight", "value", "stackable", "name", "description"]:
+                  overrides.pop(core, None)
+
+        return overrides
+
+    # --- Path Resolution Helpers ---
+    def _resolve_save_path(self, filename: str, base_dir: str) -> Optional[str]:
+        """Resolves the absolute path for saving, ensuring the directory exists."""
+        try:
+            # Ensure base_dir exists
+            os.makedirs(base_dir, exist_ok=True)
+            # Basic sanitation
+            safe_filename = "".join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
+            if not safe_filename.endswith(".json"):
+                 safe_filename += ".json"
+            return os.path.abspath(os.path.join(base_dir, safe_filename))
+        except Exception as e:
+            print(f"Error resolving save path '{filename}' in '{base_dir}': {e}")
+            return None
+
+    def _resolve_load_path(self, filename: str, base_dir: str) -> Optional[str]:
+         """Resolves the absolute path for loading."""
+         try:
+             safe_filename = "".join(c for c in filename if c.isalnum() or c in ('_', '-', '.'))
+             if not safe_filename.endswith(".json"):
+                  safe_filename += ".json"
+             path = os.path.abspath(os.path.join(base_dir, safe_filename))
+             if os.path.exists(path):
+                  return path
+             else:
+                  print(f"Load path not found: {path}")
+                  # Try finding in CWD as fallback?
+                  cwd_path = os.path.abspath(safe_filename)
+                  if os.path.exists(cwd_path):
+                       print(f"Found in CWD instead: {cwd_path}")
+                       return cwd_path
+                  return None # Not found
+         except Exception as e:
+              print(f"Error resolving load path '{filename}' in '{base_dir}': {e}")
+              return None
+
+    def find_npc_in_room(self, name: str) -> Optional[NPC]:
+         """Finds an NPC in the current room by name or instance_id."""
+         npcs = self.get_current_room_npcs()
+         name_lower = name.lower()
+         # Exact match first (name or instance ID)
+         for npc in npcs:
+              if name_lower == npc.name.lower() or name_lower == npc.obj_id:
+                   return npc
+         # Fallback partial match on name
+         for npc in npcs:
+              if name_lower in npc.name.lower():
+                   return npc
+         return None
+
+    def get_player_status(self) -> str:
+        return self.player.get_status() if self.player else "Player not loaded."
+
+    def change_room(self, direction: str) -> str:
+        if not self.player or not self.player.is_alive:
+             return f"{FORMAT_ERROR}You cannot move while dead.{FORMAT_RESET}" # Check player state
+
+        old_region_id = self.current_region_id; old_room_id = self.current_room_id
+        current_room = self.get_current_room()
+        if not current_room: return f"{FORMAT_ERROR}You are lost in the void.{FORMAT_RESET}"
+
+        # --- Check for locked exits ---
+        # Check room properties first
+        lock_key_id = current_room.get_property("locked_by")
+        lock_target_id = current_room.get_property("lock_target_id")
+        # TODO: Need a way to associate lock properties with specific *exits*, not just the room.
+        # This requires extending the Room/Region definition format.
+        # For now, assume lock applies to all exits if defined on the room (simplified).
+        if lock_key_id:
+             # Check if player has the key
+             has_key = False
+             if self.player.inventory.find_item_by_name(lock_key_id): # Crude check by ID/name
+                  has_key = True
+             # More robust check if key has target_id property matching lock_target_id
+             for slot in self.player.inventory.slots:
+                  if slot.item and isinstance(slot.item, Key):
+                       if slot.item.get_property("target_id") == lock_target_id:
+                            has_key = True
+                            break
+             if not has_key:
+                  return f"{FORMAT_ERROR}The way is locked.{FORMAT_RESET}"
+        # --- End Lock Check ---
+
+
+        destination_id = current_room.get_exit(direction)
+        if not destination_id: return f"{FORMAT_ERROR}You cannot go {direction}.{FORMAT_RESET}"
+
+        new_region_id = self.current_region_id
+        new_room_id = destination_id
+        if ":" in destination_id:
+             new_region_id, new_room_id = destination_id.split(":")
+
+        target_region = self.get_region(new_region_id)
+        target_room = target_region.get_room(new_room_id) if target_region else None # Get target room
+        if not target_room:
+             return f"{FORMAT_ERROR}That path leads to an unknown place.{FORMAT_RESET}"
+
+        # --- Check if target room is locked from the *other* side (requires definition change) ---
+        # target_lock_key = target_room.get_property("locked_by")
+        # if target_lock_key and not self.player_has_key(target_lock_key):
+        #      return f"{FORMAT_ERROR}The door is locked from the other side.{FORMAT_RESET}"
+        # --- End Target Lock Check ---
+
+        # Successfully moving
+        self.current_region_id = new_region_id
+        self.current_room_id = new_room_id
+        target_room.visited = True
+
+        # Update player location tracking
+        self.player.current_region_id = new_region_id
+        self.player.current_room_id = new_room_id
+
+        # Trigger hooks/events
+        if self.game and hasattr(self.game, "plugin_manager"):
+             self.game.plugin_manager.on_room_exit(old_region_id, old_room_id)
+             self.game.plugin_manager.on_room_enter(new_region_id, new_room_id)
+
+        region_change_msg = ""
+        if new_region_id != old_region_id:
+             region_change_msg = f"{FORMAT_HIGHLIGHT}You have entered {target_region.name}.{FORMAT_RESET}\n\n"
+
+        return region_change_msg + self.look()
+
+    def look(self) -> str:
+        return self.get_room_description_for_display()
+
+    def get_room_description_for_display(self) -> str:
+        current_room = self.get_current_room()
+        if not current_room: return f"{FORMAT_ERROR}You are nowhere.{FORMAT_RESET}"
+
+        # Get dynamic data from plugins or world state
+        time_period = self.get_plugin_data("time_plugin", "time_period", "day") # Default to day
+        weather = self.get_plugin_data("weather_plugin", "current_weather", "clear") # Default to clear
+
+        room_desc = current_room.get_full_description(time_period, weather)
+
+        # Get NPCs and Items currently in the room
+        npcs_in_room = self.get_current_room_npcs()
+        items_in_room = self.get_items_in_current_room() # Gets dynamic items
+
+        npcs_text = []
+        if npcs_in_room:
+            for npc in npcs_in_room:
+                formatted_name = format_target_name(self.player, npc)
+                activity = f" ({npc.ai_state['current_activity']})" if hasattr(npc, "ai_state") and "current_activity" in npc.ai_state else ""
+                combat_status = f" {FORMAT_ERROR}(Fighting!){FORMAT_RESET}" if npc.in_combat else ""
+                npcs_text.append(f"{formatted_name} is here{activity}{combat_status}.")
+
+        items_text = []
+        # Group stackable items for display
+        grouped_items = {}
+        for item in items_in_room:
+             if item.stackable:
+                  if item.obj_id not in grouped_items:
+                       grouped_items[item.obj_id] = {"name": item.name, "count": 0}
+                  grouped_items[item.obj_id]["count"] += 1
+             else:
+                  items_text.append(f"There is {FORMAT_CATEGORY}{item.name}{FORMAT_RESET} here.")
+
+        for group in grouped_items.values():
+             items_text.append(f"There are {group['count']} {FORMAT_CATEGORY}{group['name']}(s){FORMAT_RESET} here.")
+
+
+        full_description = room_desc
+        if npcs_text: full_description += "\n\n" + "\n".join(npcs_text)
+        if items_text: full_description += "\n\n" + "\n".join(items_text)
+        return full_description

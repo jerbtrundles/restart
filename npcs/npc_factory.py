@@ -3,10 +3,16 @@ npcs/npc_factory.py
 NPC Factory for the MUD game.
 Creates NPCs from templates and manages NPC instances.
 """
-from typing import Dict, List, Optional, Any
-from npcs.npc import NPC
+import inspect # To inspect constructor arguments
+import time
+import uuid   # To generate unique instance IDs
+from typing import TYPE_CHECKING, Dict, List, Optional, Any
+from core.config import FORMAT_ERROR, FORMAT_RESET
 from items.item_factory import ItemFactory
+from npcs.npc import NPC
 
+if TYPE_CHECKING:
+    from world.world import World
 
 class NPCFactory:
     """Factory class for creating NPCs from templates."""
@@ -171,31 +177,21 @@ class NPCFactory:
         
         return npc
     
-    @classmethod
-    def get_template_names(cls) -> List[str]:
-        """
-        Get a list of available template names.
-        
-        Returns:
-            A list of template names.
-        """
-        return list(cls._templates.keys())
-    
-    @classmethod
-    def get_template(cls, template_name: str) -> Optional[Dict[str, Any]]:
-        """
-        Get a copy of a template.
-        
-        Args:
-            template_name: The name of the template.
-            
-        Returns:
-            A copy of the template, or None if it doesn't exist.
-        """
-        if template_name not in cls._templates:
-            return None
-            
-        return cls._templates[template_name].copy()
+    # Keep static methods for template management if desired, but they'd need world context now
+    @staticmethod
+    def get_template_names(world: 'World') -> List[str]:
+        """Get a list of available NPC template names."""
+        if world and hasattr(world, 'npc_templates'):
+             return list(world.npc_templates.keys())
+        return []
+
+    @staticmethod
+    def get_template(template_id: str, world: 'World') -> Optional[Dict[str, Any]]:
+         """Get a copy of an NPC template."""
+         if world and hasattr(world, 'npc_templates'):
+              template = world.npc_templates.get(template_id)
+              return template.copy() if template else None
+         return None
     
     @classmethod
     def add_template(cls, name: str, template: Dict[str, Any]) -> None:
@@ -207,3 +203,129 @@ class NPCFactory:
             template: The template data.
         """
         cls._templates[name] = template.copy()
+
+    @staticmethod
+    def create_npc_from_template(template_id: str, world: 'World', instance_id: Optional[str] = None, **overrides) -> Optional[NPC]:
+        """Creates an NPC instance from a template ID and applies overrides."""
+        if not world or not hasattr(world, 'npc_templates'):
+            print(f"{FORMAT_ERROR}Error: World context with npc_templates required.{FORMAT_RESET}")
+            return None
+
+        template = world.npc_templates.get(template_id)
+        if not template:
+            print(f"{FORMAT_ERROR}Error: NPC template '{template_id}' not found.{FORMAT_RESET}")
+            return None
+
+        try:
+            # 1. Prepare arguments from template
+            creation_args = template.copy()
+            # Generate instance ID if not provided
+            npc_instance_id = instance_id if instance_id else f"{template_id}_{uuid.uuid4().hex[:8]}"
+            creation_args["obj_id"] = npc_instance_id # Use instance ID for the object
+            creation_args["template_id"] = template_id # Store template ref if needed later
+
+            # Separate complex structures
+            template_properties = creation_args.pop("properties", {})
+            template_dialog = creation_args.pop("dialog", {})
+            template_loot = creation_args.pop("loot_table", {})
+            template_schedule = creation_args.pop("schedule", {})
+            template_inventory = creation_args.pop("initial_inventory", [])
+            template_spells = creation_args.pop("usable_spells", [])
+
+            # 2. Apply overrides to the creation args
+            # Prioritize overrides passed via kwargs
+            prop_overrides = overrides.pop("properties_override", {})
+            dialog_overrides = overrides.pop("dialog_override", {})
+            # Location is a key override
+            current_region_id = overrides.pop("current_region_id", template.get("current_region_id"))
+            current_room_id = overrides.pop("current_room_id", template.get("current_room_id"))
+            health_override = overrides.get("health") # Check if health is overridden
+
+            creation_args.update(overrides) # Apply remaining top-level overrides
+
+            # 3. Create the base NPC instance
+            # Pass only known __init__ args. NPC class is simple.
+            init_args = {
+                 "obj_id": npc_instance_id,
+                 "name": creation_args.get("name", "Unknown NPC"),
+                 "description": creation_args.get("description", "No description"),
+                 # Use override health if provided, else template health
+                 "health": health_override if health_override is not None else creation_args.get("health", 100),
+                 "friendly": creation_args.get("friendly", True),
+                 "level": creation_args.get("level", 1)
+            }
+            npc = NPC(**init_args)
+            # Set max_health based on initial health
+            npc.max_health = npc.health
+
+            # 4. Apply attributes from template and overrides
+            npc.faction = creation_args.get("faction", "neutral")
+            npc.behavior_type = creation_args.get("behavior_type", "stationary")
+            npc.attack_power = creation_args.get("attack_power", 3)
+            npc.defense = creation_args.get("defense", 2)
+
+            # Location (important override)
+            npc.current_region_id = current_region_id
+            npc.current_room_id = current_room_id
+            # Set home location if not overridden
+            npc.home_region_id = overrides.get("home_region_id", current_region_id)
+            npc.home_room_id = overrides.get("home_room_id", current_room_id)
+
+            # Apply properties (template + overrides)
+            if not hasattr(npc, 'properties'): npc.properties = {}
+            npc.properties.update(template_properties)
+            npc.properties.update(prop_overrides) # Apply specific property overrides
+
+            # Apply dialog (template + overrides)
+            npc.dialog = template_dialog.copy()
+            npc.dialog.update(dialog_overrides)
+            npc.default_dialog = creation_args.get("default_dialog", template.get("default_dialog", "The {name} doesn't respond."))
+
+            # Apply loot table, schedule, spells (usually just from template)
+            npc.loot_table = template_loot.copy()
+            npc.schedule = template_schedule.copy() # Schedule loaded from template
+            npc.usable_spells = template_spells[:]
+            npc.spell_cast_chance = npc.properties.get("spell_cast_chance", 0.3) # Get from properties or default
+            npc.aggression = npc.properties.get("aggression", 0.0)
+            npc.flee_threshold = npc.properties.get("flee_threshold", 0.2)
+            npc.respawn_cooldown = npc.properties.get("respawn_cooldown", 600)
+            npc.wander_chance = npc.properties.get("wander_chance", 0.3)
+            npc.move_cooldown = npc.properties.get("move_cooldown", 10)
+
+            # Initialize state attributes
+            npc.is_alive = overrides.get("is_alive", True)
+            npc.ai_state = overrides.get("ai_state", {}) # Load saved AI state if provided
+            npc.last_moved = time.time() - world.start_time # Initialize timer
+
+            # 5. Initialize Inventory
+            from items.inventory import Inventory # Local import
+            from items.item_factory import ItemFactory # Local import
+            npc.inventory = Inventory(max_slots=10, max_weight=50.0) # Default empty inventory
+
+            # Add items from template's initial_inventory
+            for item_ref in template_inventory:
+                 item_id = item_ref.get("item_id")
+                 quantity = item_ref.get("quantity", 1)
+                 if item_id:
+                      # Use ItemFactory with world context
+                      item = ItemFactory.create_item_from_template(item_id, world)
+                      if item:
+                           npc.inventory.add_item(item, quantity)
+                      else:
+                           print(f"Warning: Failed to create initial inventory item '{item_id}' for NPC '{npc.name}'.")
+
+            # Apply inventory overrides from saved state (if any)
+            inv_overrides = overrides.get("inventory_overrides", {})
+            if inv_overrides:
+                 # This requires more complex logic: modify existing items or add/remove
+                 # For simplicity now, let's just print a warning
+                 print(f"Warning: inventory_overrides loading not fully implemented for NPC '{npc.name}'.")
+                 # TODO: Implement proper inventory override application
+
+            return npc
+
+        except Exception as e:
+            print(f"{FORMAT_ERROR}Error instantiating NPC '{template_id}' from template: {e}{FORMAT_RESET}")
+            import traceback
+            traceback.print_exc()
+            return None
