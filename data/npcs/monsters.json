@@ -141,7 +141,8 @@
     "loot_table": {
       "item_gold_coin": { "chance": 0.9, "quantity": [5, 15] },
       "item_dagger": { "chance": 0.5 },
-      "item_stolen_pouch": { "chance": 0.2 }
+      "item_stolen_pouch": { "chance": 0.2 },
+      "item_leather_tunic": { "chance": 0.15 }
     },
     "usable_spells": [],
     "properties": {
