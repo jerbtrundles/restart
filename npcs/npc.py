@@ -356,20 +356,20 @@ class NPC(GameObject):
         elif self.behavior_type == "scheduled":
              move_message = self._schedule_behavior(world, current_time)
         elif self.behavior_type == "aggressive":
-            # Aggressive NPCs actively seek out the player if nearby
-            if self.current_region_id == world.current_region_id:
-                # Check if player is in an adjacent room
-                region = world.get_region(self.current_region_id)
-                if region:
-                    room = region.get_room(self.current_room_id)
-                    if room and room.exits:
-                        for direction, destination in room.exits.items():
-                            if destination == world.current_room_id:
-                                # Move toward player
-                                old_room_id = self.current_room_id
-                                self.current_room_id = destination
-                                self.last_moved = current_time
-                                return f"{format_target_name(world.player, self)} enters from the {self._reverse_direction(direction)}!"
+            # # Aggressive NPCs actively seek out the player if nearby
+            # if self.current_region_id == world.current_region_id:
+            #     # Check if player is in an adjacent room
+            #     region = world.get_region(self.current_region_id)
+            #     if region:
+            #         room = region.get_room(self.current_room_id)
+            #         if room and room.exits:
+            #             for direction, destination in room.exits.items():
+            #                 if destination == world.current_room_id:
+            #                     # Move toward player
+            #                     old_room_id = self.current_room_id
+            #                     self.current_room_id = destination
+            #                     self.last_moved = current_time
+            #                     return f"{format_target_name(world.player, self)} enters from the {self._reverse_direction(direction)}!"
             
             # If player not found nearby, wander randomly
             move_message = self._wander_behavior(world, current_time)

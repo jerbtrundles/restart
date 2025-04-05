@@ -19,201 +19,167 @@ if TYPE_CHECKING:
     from npcs.npc import NPC
 
 class TextFormatter:
-    """
-    Handles text formatting, wrapping, and style management for game text.
-    
-    Features:
-    - Consistent text wrapping based on screen width
-    - Format codes for colors and styles
-    - Paragraph formatting with proper spacing
-    """
-
-    def __init__(self, font: pygame.font.Font, screen_width: int, 
+    def __init__(self, font: pygame.font.Font, screen_width: int,
                  colors: Optional[Dict[str, Tuple[int, int, int]]] = None,
                  margin: int = 10, line_spacing: int = 5):
-        """
-        Initialize the text formatter.
-        
-        Args:
-            font: The pygame font to use for text rendering
-            screen_width: Width of the screen in pixels
-            colors: Custom colors for format codes (defaults to DEFAULT_COLORS)
-            margin: Margin from screen edge in pixels
-            line_spacing: Space between lines in pixels
-        """
         self.font = font
         self.screen_width = screen_width
         self.margin = margin
         self.line_spacing = line_spacing
         self.colors = DEFAULT_COLORS.copy()
-        
-        # Override with custom colors if provided
-        if colors:
-            self.colors.update(colors)
-            
-        # Calculate chars per line for wrapping
-        self._calculate_wrap_width()
-        
-    def _calculate_wrap_width(self):
-        """Calculate the number of characters that fit on one line."""
-        # Use a conservative estimate for character width
-        test_char = "m"  # Wide character
-        char_width = self.font.size(test_char)[0]
-        usable_width = self.screen_width - (self.margin * 2)
-        self.chars_per_line = max(40, usable_width // char_width)
-        
-        # Create a textwrap wrapper with the calculated width
-        self.wrapper = textwrap.TextWrapper(
-            width=self.chars_per_line,
-            expand_tabs=True,
-            replace_whitespace=True,
-            break_long_words=True,
-            break_on_hyphens=True
-        )
-        
-    def update_screen_width(self, new_width: int):
-        """
-        Update the screen width and recalculate wrapping.
-        
-        Args:
-            new_width: The new screen width in pixels
-        """
-        self.screen_width = new_width
-        self._calculate_wrap_width()
-    
-    def format_text(self, text: str) -> List[str]:
-        """
-        Format text with wrapping and proper paragraph spacing.
-        Breaks the text into individual lines.
-        
-        Args:
-            text: The text to format
-            
-        Returns:
-            A list of formatted lines
-        """
-        # Handle empty or None text
-        if not text:
-            return []
-            
-        # Process paragraphs separately to maintain spacing
-        paragraphs = text.split('\n\n')
-        result_lines = []
-        
-        for i, paragraph in enumerate(paragraphs):
-            # Skip empty paragraphs but preserve spacing
-            if not paragraph.strip():
-                result_lines.append('')
-                continue
-                
-            # Handle each paragraph
-            lines = paragraph.split('\n')
-            for line in lines:
-                # Wrap the line
-                wrapped_lines = self.wrapper.wrap(line) if line.strip() else ['']
-                result_lines.extend(wrapped_lines)
-            
-            # Add paragraph break except after the last paragraph
-            if i < len(paragraphs) - 1:
-                result_lines.append('')
-        
-        return result_lines
+        if colors: self.colors.update(colors)
+        self.default_color = self.colors.get(FORMAT_RESET, (255, 255, 255))
+        self._calculate_usable_width() # Renamed calculation method
 
-    def render(self, surface: pygame.Surface, text: str, position: Tuple[int, int], 
+    def _calculate_usable_width(self):
+        """Calculate usable pixel width based on screen width and margin."""
+        self.usable_width = self.screen_width - (self.margin * 2)
+        self.line_height = self.font.get_linesize() + self.line_spacing
+
+    def update_screen_width(self, new_width: int):
+        self.screen_width = new_width
+        self._calculate_usable_width()
+
+    def render(self, surface: pygame.Surface, text: str, position: Tuple[int, int],
             max_height: Optional[int] = None) -> int:
         """
-        Render text to a pygame surface with format codes.
-        
-        Args:
-            surface: The pygame surface to render to
-            text: The text to render (may include format codes)
-            position: (x, y) position to start rendering
-            max_height: Optional maximum height to render (to avoid overlapping UI elements)
-            
-        Returns:
-            The final y position after rendering
+        Render text to a pygame surface with format codes and manual word wrapping.
+        Returns the Y coordinate *below* the last rendered line.
         """
         if not text:
             return position[1]
-            
-        x_orig, y = position
-        current_color = self.colors[FORMAT_RESET]  # Default color
-        line_height = self.font.get_linesize() + self.line_spacing
-        
-        # Process the text line by line
-        lines = text.split('\n')
-        for line in lines:
-            # Check if we've reached the maximum height
-            if max_height and y + line_height > max_height:
-                break
-                
-            x = x_orig  # Reset x position for each line
-            
-            # Skip empty lines but advance Y position
-            if not line:
-                y += line_height
-                continue
-                
-            # Process format codes and text segments
-            segments = []
-            remaining_text = line
-            
-            # Find and extract all format codes
-            while remaining_text:
-                # Find the earliest format code
-                earliest_pos = len(remaining_text)
-                earliest_code = None
-                
-                for code in self.colors.keys():
-                    pos = remaining_text.find(code)
-                    if pos != -1 and pos < earliest_pos:
-                        earliest_pos = pos
-                        earliest_code = code
-                
-                # No more format codes found
-                if earliest_code is None:
-                    segments.append((remaining_text, current_color))
-                    break
-                    
-                # Add text before the format code
-                if earliest_pos > 0:
-                    segments.append((remaining_text[:earliest_pos], current_color))
-                    
-                # Update color based on the format code
-                current_color = self.colors[earliest_code]
-                    
-                # Continue with the text after the format code
-                remaining_text = remaining_text[earliest_pos + len(earliest_code):]
-                
-            # Render all segments in this line
-            for text_segment, color in segments:
-                if text_segment:
-                    text_surface = self.font.render(text_segment, True, color)
-                    surface.blit(text_surface, (x, y))
-                    x += text_surface.get_width()
-            
-            # Move to the next line
-            y += line_height
-            
-        return y  # Return the final y position   
+
+        x_start, y = position
+        current_color = self.default_color
+        x = x_start
+
+        # Split by explicit newlines first to handle paragraphs/manual breaks
+        lines_from_input = text.split('\n')
+
+        for line_index, current_line_text in enumerate(lines_from_input):
+            # Check height limit before starting processing a new line from input
+            if max_height and y + self.line_height > max_height:
+                # print(f"Render height limit reached before line {line_index}") # Debug
+                break # Stop processing further lines
+
+            # Handle explicitly empty lines (single \n in input) -> just advance Y
+            if not current_line_text.strip():
+                # Check height limit before adding blank line space
+                if not max_height or y + self.line_height <= max_height:
+                    y += self.line_height
+                continue # Move to the next line from input
+
+            # Process words within the current line text
+            words = current_line_text.split(' ')
+            current_word_index = 0
+
+            while current_word_index < len(words):
+                word = words[current_word_index]
+
+                # Check height limit *before potentially wrapping* to a new line
+                if max_height and y + self.line_height > max_height:
+                    # print(f"Render height limit reached mid-line wrap check") # Debug
+                    return y # Return current Y, don't process more words
+
+                # --- Segment Calculation (unchanged) ---
+                segments = self._split_by_format_codes(word)
+                word_render_width = 0
+                temp_color_for_word = current_color
+                segments_for_word = []
+                for segment_text, format_code in segments:
+                    if format_code:
+                        temp_color_for_word = self.colors.get(format_code, temp_color_for_word)
+                    elif segment_text:
+                        segment_width = self.font.size(segment_text)[0]
+                        word_render_width += segment_width
+                        segments_for_word.append((segment_text, temp_color_for_word))
+                # --- End Segment Calculation ---
+
+                space_width = self.font.size(' ')[0] if x > x_start else 0
+
+                # --- Word Wrapping Logic ---
+                # Does the word fit on the *current* line?
+                if x + space_width + word_render_width <= x_start + self.usable_width:
+                    # Fits: Render space (if needed) and word segments
+                    if x > x_start: x += space_width
+                    for segment_text, segment_color in segments_for_word:
+                        if segment_text:
+                            text_surface = self.font.render(segment_text, True, segment_color)
+                            surface.blit(text_surface, (x, y))
+                            x += text_surface.get_width()
+                    current_color = temp_color_for_word
+                    current_word_index += 1 # Move to next word
+                else:
+                    # Word does NOT fit on current line
+                    # Handle word longer than line width (render and force wrap)
+                    if x == x_start:
+                         temp_x = x
+                         for segment_text, segment_color in segments_for_word:
+                              if segment_text:
+                                   text_surface = self.font.render(segment_text, True, segment_color)
+                                   surface.blit(text_surface, (temp_x, y))
+                                   temp_x += text_surface.get_width()
+                         current_color = temp_color_for_word
+                         current_word_index += 1 # Processed the long word
+                         # Since we rendered something, advance Y for the *next* potential line
+                         y += self.line_height
+                         x = x_start
+                    else:
+                        # Normal wrap: move to next line, reset X, process *same* word again
+                        y += self.line_height
+                        x = x_start
+                        # --- Do NOT increment current_word_index here ---
+
+            # --- After processing all words for 'current_line_text' ---
+            # If the line wasn't empty and we actually rendered something
+            # that didn't end by forcing a wrap (i.e., x > x_start),
+            # we need to advance Y to prepare for the next potential line from input.
+            # If x == x_start, it means the last word either fit perfectly and filled
+            # the line (rare) or caused a wrap, which already advanced Y.
+            if x > x_start:
+                 y += self.line_height
+                 x = x_start # Reset x for the next line regardless
+
+        # Ensure final Y is returned correctly
+        # If the last action advanced Y, it's already correct (pointing below last line)
+        # If the last action just rendered without advancing Y (e.g., fit perfectly),
+        # the current Y is the top of the rendered line, but we need the position *below* it.
+        # However, the loop structure seems to handle this by advancing Y after rendering
+        # or after wrapping. Let's trust the final 'y' value.
+
+        return y
     
     def remove_format_codes(self, text: str) -> str:
-        """
-        Remove all format codes from text.
-        
-        Args:
-            text: Text with format codes
-            
-        Returns:
-            Clean text without format codes
-        """
-        if not text:
-            return ""
-            
+        if not text: return ""
         result = text
         for code in self.colors.keys():
             result = result.replace(code, "")
-            
+        return result
+
+    def _split_by_format_codes(self, text: str) -> List[Tuple[str, Optional[str]]]:
+        """Splits text, yielding (text_segment, format_code_or_None)."""
+        result = []
+        current_text = text
+        while current_text:
+            earliest_pos = len(current_text)
+            earliest_code = None
+            for code in self.colors.keys():
+                try: # Protect against invalid code searches if needed
+                    pos = current_text.find(code)
+                    if pos != -1 and pos < earliest_pos:
+                        earliest_pos = pos
+                        earliest_code = code
+                except TypeError: # Handle potential issues if code isn't a string
+                     print(f"Warning: Invalid format code type encountered: {code}")
+                     continue
+
+            if earliest_code is None:
+                result.append((current_text, None)) # Text segment
+                break
+            if earliest_pos > 0:
+                result.append((current_text[:earliest_pos], None)) # Text segment
+            result.append((earliest_code, earliest_code)) # Format code segment
+            current_text = current_text[earliest_pos + len(earliest_code):]
         return result
 
 # Map thresholds to format codes
@@ -293,3 +259,4 @@ def get_level_diff_category(viewer_level: int, target_level: int) -> str:
 
     return color_category
 # --- END NEW Function ---
+

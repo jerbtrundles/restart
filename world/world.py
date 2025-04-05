@@ -23,7 +23,7 @@ from npcs.npc_factory import NPCFactory
 # MonsterFactory might just use NPCFactory now
 # from npcs.monster_factory import MonsterFactory
 
-from utils.utils import _serialize_item_reference # If defined in utils/utils.py
+from utils.utils import _serialize_item_reference, get_article, simple_plural # If defined in utils/utils.py
 
 class World:
     def __init__(self):
@@ -878,40 +878,102 @@ class World:
         current_room = self.get_current_room()
         if not current_room: return f"{FORMAT_ERROR}You are nowhere.{FORMAT_RESET}"
 
-        # Get dynamic data from plugins or world state
-        time_period = self.get_plugin_data("time_plugin", "time_period", "day") # Default to day
-        weather = self.get_plugin_data("weather_plugin", "current_weather", "clear") # Default to clear
+        time_period = self.get_plugin_data("time_plugin", "time_period", "day")
+        weather = self.get_plugin_data("weather_plugin", "current_weather", "clear")
 
         room_desc = current_room.get_full_description(time_period, weather)
 
         # Get NPCs and Items currently in the room
         npcs_in_room = self.get_current_room_npcs()
-        items_in_room = self.get_items_in_current_room() # Gets dynamic items
+        items_in_room = self.get_items_in_current_room()
 
-        npcs_text = []
+        # --- MODIFIED: Format NPC List into Sentence ---
+        npcs_sentence = "" # Initialize empty sentence string
         if npcs_in_room:
+            npc_message_parts = []
             for npc in npcs_in_room:
+                # Get the base formatted name (with color/level)
                 formatted_name = format_target_name(self.player, npc)
-                activity = f" ({npc.ai_state['current_activity']})" if hasattr(npc, "ai_state") and "current_activity" in npc.ai_state else ""
-                combat_status = f" {FORMAT_ERROR}(Fighting!){FORMAT_RESET}" if npc.in_combat else ""
-                npcs_text.append(f"{formatted_name} is here{activity}{combat_status}.")
+                # Add status info directly to the name part
+                status_suffix = ""
+                if npc.in_combat:
+                    status_suffix = f" {FORMAT_ERROR}(Fighting!){FORMAT_RESET}"
+                elif hasattr(npc, "ai_state") and "current_activity" in npc.ai_state:
+                    activity = npc.ai_state["current_activity"]
+                    # Optionally shorten very long activities?
+                    # if len(activity) > 15: activity = activity[:12] + "..."
+                    status_suffix = f" ({activity})"
 
-        items_text = []
-        # Group stackable items for display
-        grouped_items = {}
-        for item in items_in_room:
-             if item.stackable:
-                  if item.obj_id not in grouped_items:
-                       grouped_items[item.obj_id] = {"name": item.name, "count": 0}
-                  grouped_items[item.obj_id]["count"] += 1
-             else:
-                  items_text.append(f"There is {FORMAT_CATEGORY}{item.name}{FORMAT_RESET} here.")
+                npc_message_parts.append(f"{formatted_name}{status_suffix}")
 
-        for group in grouped_items.values():
-             items_text.append(f"There are {group['count']} {FORMAT_CATEGORY}{group['name']}(s){FORMAT_RESET} here.")
+            # Construct the sentence
+            prefix = "You also see " # Consistent prefix
+            if not npc_message_parts:
+                pass # Should not happen if npcs_in_room was not empty
+            elif len(npc_message_parts) == 1:
+                npcs_sentence = f"{prefix}{npc_message_parts[0]} here."
+            elif len(npc_message_parts) == 2:
+                npcs_sentence = f"{prefix}{npc_message_parts[0]} and {npc_message_parts[1]} here."
+            else: # More than 2 NPCs
+                all_but_last = ", ".join(npc_message_parts[:-1])
+                last_npc = npc_message_parts[-1]
+                npcs_sentence = f"{prefix}{all_but_last}, and {last_npc} here."
+        # --- END MODIFIED NPC Formatting ---
 
+        # --- MODIFIED: Format Item List into Sentence ---
+        items_sentence = "" # Initialize empty sentence string
+        if items_in_room:
+            # Aggregate items by ID
+            item_counts: Dict[str, Dict[str, Any]] = {} # item_id -> {"name": str, "count": int}
+            for item in items_in_room:
+                item_id = item.obj_id
+                if item_id not in item_counts:
+                    item_counts[item_id] = {"name": item.name, "count": 0}
+                item_counts[item_id]["count"] += 1
 
+            # Format item parts
+            item_message_parts = []
+            for item_id, data in item_counts.items():
+                base_name = data["name"] # Use the base name for grammar checks
+                count = data["count"]
+                # Apply standard item color formatting
+                formatted_name = f"{FORMAT_CATEGORY}{base_name}{FORMAT_RESET}"
+
+                if count == 1:
+                    article = get_article(base_name) # Use base name for article
+                    item_message_parts.append(f"{article} {formatted_name}")
+                else:
+                    # Use base name for pluralization
+                    plural_base_name = simple_plural(base_name)
+                    # Apply formatting to the pluralized name
+                    formatted_plural_name = f"{FORMAT_CATEGORY}{plural_base_name}{FORMAT_RESET}"
+                    item_message_parts.append(f"{count} {formatted_plural_name}")
+
+            # Construct the sentence
+            prefix = "You also see " # Or "On the ground lies ", "Scattered around are " etc.
+            if not item_message_parts:
+                pass # No items, items_sentence remains ""
+            elif len(item_message_parts) == 1:
+                items_sentence = f"{prefix}{item_message_parts[0]} here."
+            elif len(item_message_parts) == 2:
+                items_sentence = f"{prefix}{item_message_parts[0]} and {item_message_parts[1]} here."
+            else: # More than 2 items
+                all_but_last = ", ".join(item_message_parts[:-1])
+                last_item = item_message_parts[-1]
+                items_sentence = f"{prefix}{all_but_last}, and {last_item} here."
+        # --- END MODIFIED Item Formatting ---
+
+        # --- Combine Description Parts ---
         full_description = room_desc
-        if npcs_text: full_description += "\n\n" + "\n".join(npcs_text)
-        if items_text: full_description += "\n\n" + "\n".join(items_text)
+        # Add NPC sentence first if it exists
+        if npcs_sentence:
+             full_description += "\n\n" + npcs_sentence
+        # Add item sentence next if it exists
+        if items_sentence:
+            # Add extra newline if BOTH NPCs and Items are present for separation
+            if npcs_sentence:
+                 full_description += "\n\n" + items_sentence
+            else: # Only items present
+                 full_description += "\n\n" + items_sentence
+
         return full_description

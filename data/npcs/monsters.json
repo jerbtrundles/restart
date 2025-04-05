@@ -30,7 +30,7 @@
     },
     "usable_spells": ["zap"],
     "properties": {
-      "aggression": 0.7,
+      "aggression": 0.1,
       "flee_threshold": 0.2,
       "respawn_cooldown": 300,
       "spell_cast_chance": 0.2
@@ -59,7 +59,7 @@
     },
     "usable_spells": [],
     "properties": {
-      "aggression": 0.6,
+      "aggression": 0.1,
       "flee_threshold": 0.3,
       "respawn_cooldown": 360,
       "spell_cast_chance": 0.0
@@ -88,7 +88,7 @@
     },
     "usable_spells": ["zap"],
     "properties": {
-      "aggression": 0.8,
+      "aggression": 0.1,
       "flee_threshold": 0.1,
       "respawn_cooldown": 420,
       "spell_cast_chance": 0.25
@@ -116,7 +116,7 @@
     },
     "usable_spells": [],
     "properties": {
-      "aggression": 0.5,
+      "aggression": 0.1,
       "flee_threshold": 0.4,
       "respawn_cooldown": 240,
       "spell_cast_chance": 0.0
@@ -145,7 +145,7 @@
     },
     "usable_spells": [],
     "properties": {
-      "aggression": 0.6,
+      "aggression": 0.1,
       "flee_threshold": 0.25,
       "respawn_cooldown": 600,
       "spell_cast_chance": 0.0
@@ -175,7 +175,7 @@
     },
     "usable_spells": [],
     "properties": {
-      "aggression": 0.7,
+      "aggression": 0.1,
       "flee_threshold": 0.15,
       "respawn_cooldown": 900,
       "spell_cast_chance": 0.0

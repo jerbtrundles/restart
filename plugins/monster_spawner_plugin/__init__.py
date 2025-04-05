@@ -43,7 +43,11 @@ class MonsterSpawnerPlugin(PluginBase):
         # Register commands
         self._register_commands()
 
-        print(f"Monster spawner plugin initialized. Spawn interval: {self.config['spawn_interval']}s. Max/region: {self.config['max_monsters_per_region']}.")
+        ratio = self.config.get('rooms_per_monster', 5)
+        min_m = self.config.get('min_monsters_per_region', 1)
+        max_cap = self.config.get('max_monsters_per_region_cap', 15)
+        print(f"Monster spawner plugin initialized. Spawn interval: {self.config['spawn_interval']}s. Target: ~1 monster / {ratio} rooms (Min: {min_m}, Max Cap: {max_cap}).")
+
         self.last_spawn_time = time.time() # Initialize last spawn time
 
     def _register_commands(self):
@@ -99,7 +103,7 @@ class MonsterSpawnerPlugin(PluginBase):
         """
         Attempt to spawn monsters in a region.
         """
-        if not self.world: return # Need world context
+        if not self.world or not region or not hasattr(region, 'rooms'): return
 
         # --- Safety/Config Checks ---
         if self.world.is_location_safe(region_id):
@@ -107,10 +111,31 @@ class MonsterSpawnerPlugin(PluginBase):
                  self.event_system.publish("display_message", f"[SpawnerDebug] Skipping spawn in safe region: {region_id}")
              return
 
-        if self._count_monsters_in_region(region_id) >= self.config.get("max_monsters_per_region", 10): # Use .get()
+        # --- Calculate Dynamic Max Monsters ---
+        num_rooms = len(region.rooms)
+        if num_rooms <= 0: return # Don't spawn in empty regions
+
+        ratio = self.config.get("rooms_per_monster", 5)
+        min_limit = self.config.get("min_monsters_per_region", 1)
+        max_cap = self.config.get("max_monsters_per_region_cap", 15)
+
+        # Calculate based on ratio (ensure at least 1 if ratio > num_rooms)
+        # Using integer division // is simple. Using math.ceil might feel slightly better for density.
+        # calculated_limit = max(1, math.ceil(num_rooms / ratio)) # Option 1: Ceiling
+        calculated_limit = max(1, num_rooms // ratio) # Option 2: Floor (integer division)
+
+        # Apply min and max caps
+        dynamic_max_for_region = max(min_limit, min(calculated_limit, max_cap))
+        # --- End Calculate Dynamic Max ---
+
+        # --- Check Current Count Against Dynamic Limit ---
+        current_monster_count = self._count_monsters_in_region(region_id)
+        if current_monster_count >= dynamic_max_for_region:
             if self.config.get("debug", False) and self.event_system:
-                self.event_system.publish("display_message", f"[SpawnerDebug] Max monsters reached in region: {region_id}")
+                # Include calculated limit in debug message
+                self.event_system.publish("display_message", f"[SpawnerDebug] Max monsters ({current_monster_count}/{dynamic_max_for_region}) reached in region: {region_id}")
             return
+        # --- End Check ---
 
         if random.random() > self.config.get("spawn_chance", 0.3): # Use .get()
             return

@@ -381,32 +381,40 @@ def trade_handler(args, context):
     else: return f"{FORMAT_ERROR}{found_npc.name} doesn't want to trade.{FORMAT_RESET}"
 
 
-# ... (attack_handler, combat_status_handler - unchanged) ...
 @command("attack", ["kill", "fight", "hit"], "combat", "Attack a target.\nUsage: attack <target_name>")
 def attack_handler(args, context):
     world = context["world"]
     player = world.player
     if not player.is_alive:
-        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot attack.{FORMAT_RESET}" # Changed msg slightly
     if not args: return f"{FORMAT_ERROR}Attack whom?{FORMAT_RESET}"
+
     target_name = " ".join(args).lower()
+    # ... (find target_npc logic) ...
     npcs = world.get_current_room_npcs(); target_npc = None
-    # Prioritize exact match
-    for npc in npcs:
+    for npc in npcs: # Prioritize exact match
         if target_name == npc.name.lower() or target_name == npc.obj_id: target_npc = npc; break
-    # Fallback partial match
-    if not target_npc:
+    if not target_npc: # Fallback partial match
         for npc in npcs:
             if target_name in npc.name.lower(): target_npc = npc; break
     if not target_npc: return f"{FORMAT_ERROR}No '{target_name}' here to attack.{FORMAT_RESET}"
     if not target_npc.is_alive: return f"{FORMAT_ERROR}{target_npc.name} is already defeated.{FORMAT_RESET}"
+
     current_time = time.time()
+    
+    # --- MODIFIED COOLDOWN CHECK MESSAGE ---
     if not player.can_attack(current_time):
-        time_left = player.attack_cooldown - (current_time - player.last_attack_time)
+        # Get effective cooldown to calculate remaining time
+        effective_cooldown = player.get_effective_attack_cooldown()
+        time_left = effective_cooldown - (current_time - player.last_attack_time)
+        # Ensure time_left isn't negative due to potential float inaccuracies
+        time_left = max(0, time_left)
         return f"Not ready. Wait {time_left:.1f}s."
-    attack_result = player.attack(target_npc, world) # Player method handles messages/combat log
-    # Return only the primary message to the game loop
-    return attack_result["message"]
+    # --- END MODIFIED ---
+
+    # Call the player's attack method (which already handles hit/damage logic)
+    attack_result = player.attack(target_npc, world)
+    return attack_result["message"] # Return the primary message
 
 @command("combat", ["cstat", "fightstatus"], "combat", "Show combat status.")
 def combat_status_handler(args, context):

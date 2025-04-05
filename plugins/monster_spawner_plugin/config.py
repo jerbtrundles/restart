@@ -7,8 +7,12 @@ DEFAULT_CONFIG = {
     # How often to attempt spawns (in seconds)
     "spawn_interval": 1,
     
-    # Maximum monsters per region
-    "max_monsters_per_region": 8,
+    # --- MODIFIED: Dynamic Monster Limits ---
+    # "max_monsters_per_region": 3, # REMOVED this fixed value
+    "rooms_per_monster": 1,           # NEW: Target ratio (e.g., 1 monster per 5 rooms)
+    "min_monsters_per_region": 1,     # NEW: Minimum monsters allowed, even in small regions
+    "max_monsters_per_region_cap": 15,# NEW: Absolute maximum cap, regardless of region size
+    # --- END MODIFIED ---
     
     # Chance to spawn a monster on each attempt (0.0-1.0)
     "spawn_chance": 1.0,

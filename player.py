@@ -6,8 +6,8 @@ import random
 
 # --- Imports for Classes Used Directly ---
 from core.config import (
-    FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT,
-    FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, LEVEL_DIFF_COMBAT_MODIFIERS,
+    FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GREEN, FORMAT_HIGHLIGHT,
+    FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_ATTACK_COOLDOWN,
     MIN_HIT_CHANCE, MAX_HIT_CHANCE, MIN_XP_GAIN
 )
 
@@ -32,53 +32,49 @@ class Player:
         self.inventory = Inventory(max_slots=20, max_weight=100.0)
         self.health = 100
         self.max_health = 100
-        # *** NEW: Mana ***
         self.mana = 50
         self.max_mana = 50
-        self.mana_regen_rate = 1.0 # Mana per second
+        self.mana_regen_rate = 1.0
         self.last_mana_regen_time = 0
-        # *** END NEW ***
         self.stats = {
             "strength": 10, "dexterity": 10, "intelligence": 10,
-            # Add optional magic-related stats
-             "wisdom": 10, # Could affect mana regen or spell power
-             "spell_power": 5, # Base bonus spell damage/healing
-             "magic_resist": 2 # Base magic resistance
+            "wisdom": 10, "spell_power": 5, "magic_resist": 2
         }
         self.level = 1
         self.experience = 0
         self.experience_to_level = 100
-        self.skills = {}
-        self.effects = []
-        self.quest_log = {}
-        self.equipment: Dict[str, Optional[Item]] = { # No change needed here yet
+        self.skills = {} # Example: {"swordsmanship": 1}
+        self.effects = [] # Example: [{"name": "Regen", "duration": 10}]
+        self.quest_log = {} # Example: {"missing_supplies": "started"}
+        self.equipment: Dict[str, Optional[Item]] = {
             "main_hand": None, "off_hand": None, "body": None, "head": None,
             "feet": None, "hands": None, "neck": None,
         }
-        self.valid_slots_for_type = { # No change needed here yet
+        self.valid_slots_for_type = {
             "Weapon": ["main_hand", "off_hand"], "Armor": ["body", "head", "feet", "hands"],
             "Shield": ["off_hand"], "Amulet": ["neck"],
+            "Item": ["body", "head", "feet", "hands"] # Generic Item might fit armor slots?
         }
-        self.attack_power = 5
-        self.defense = 3
+        self.attack_power = 5 # Base physical attack power before stats/weapon
+        self.defense = 3 # Base physical defense before stats/armor
         self.is_alive = True
         self.faction = "player"
         self.in_combat = False
-        self.combat_target = None
-        self.attack_cooldown = 2.0
+        self.combat_target = None # Primarily used by NPCs, maybe player focuses one?
+        self.attack_cooldown = 2.0 # Base cooldown in seconds
         self.last_attack_time = 0
-        self.combat_targets = set()
+        self.combat_targets = set() # All entities player is currently in combat with
         self.combat_messages = []
         self.max_combat_messages = 10
         self.follow_target: Optional[str] = None
-
         self.respawn_region_id: Optional[str] = "town"
         self.respawn_room_id: Optional[str] = "town_square"
-
-        # *** NEW: Spellbook and Cooldowns ***
-        self.known_spells: Set[str] = {"magic_missile", "minor_heal"} # Start with some spells (IDs)
-        self.spell_cooldowns: Dict[str, float] = {} # spell_id -> time when cooldown ends
-        # *** END NEW ***
+        self.known_spells: Set[str] = {"magic_missile", "minor_heal"}
+        self.spell_cooldowns: Dict[str, float] = {}
+        # Add world reference if needed, e.g. set externally after creation
+        self.world: Optional['World'] = None
+        self.current_region_id: Optional[str] = None # Tracked by player for saving
+        self.current_room_id: Optional[str] = None
 
     # *** NEW: Update method for regeneration ***
     def update(self, current_time: float):
@@ -117,61 +113,141 @@ class Player:
             # --- End Regeneration ---
 
     def get_status(self) -> str:
-        from utils.text_formatter import TextFormatter
-        # ... (previous status parts) ...
+        """Returns a formatted string representing the player's current status."""
+
+        # --- Health and Mana Formatting ---
         health_percent = (self.health / self.max_health) * 100 if self.max_health > 0 else 0
         health_text = f"{self.health}/{self.max_health}"
         if health_percent <= 25: health_display = f"{FORMAT_ERROR}{health_text}{FORMAT_RESET}"
-        elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{health_text}{FORMAT_RESET}"
+        elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{health_text}{FORMAT_RESET}" # Using HIGHLIGHT for mid-health
         else: health_display = f"{FORMAT_SUCCESS}{health_text}{FORMAT_RESET}"
 
-        # *** ADD Mana Display ***
         mana_percent = (self.mana / self.max_mana) * 100 if self.max_mana > 0 else 0
         mana_text = f"{self.mana}/{self.max_mana}"
-        mana_display = f"{FORMAT_CATEGORY}{mana_text}{FORMAT_RESET}" # Default color for now
-        # *** END ADD ***
+        # Using a blueish color for mana
+        mana_display = f"{FORMAT_BLUE}{mana_text}{FORMAT_RESET}"
+        # --- End Health/Mana Formatting ---
 
+        # --- Basic Info ---
         status = f"{FORMAT_CATEGORY}Name:{FORMAT_RESET} {self.name}\n"
-        status += f"{FORMAT_CATEGORY}Level:{FORMAT_RESET} {self.level} (XP: {self.experience}/{self.experience_to_level})\n"
-        status += f"{FORMAT_CATEGORY}Health:{FORMAT_RESET} {health_display}  " # Add space
-        # *** ADD Mana to line ***
+        status += f"{FORMAT_CATEGORY}Level:{FORMAT_RESET} {self.level} ({FORMAT_CATEGORY}XP:{FORMAT_RESET} {self.experience}/{self.experience_to_level})\n"
+        status += f"{FORMAT_CATEGORY}Health:{FORMAT_RESET} {health_display}  "
         status += f"{FORMAT_CATEGORY}Mana:{FORMAT_RESET} {mana_display}\n"
-        # *** END ADD ***
+        # --- End Basic Info ---
+
+        # --- Stats ---
         status += f"{FORMAT_CATEGORY}Stats:{FORMAT_RESET} "
-        status += f"STR {self.stats['strength']}, DEX {self.stats['dexterity']}, INT {self.stats['intelligence']}"
-        # Add magic stats if you want them visible
-        status += f", WIS {self.stats['wisdom']}, POW {self.stats['spell_power']}, RES {self.stats['magic_resist']}\n"
-        status += f"{FORMAT_CATEGORY}Attack:{FORMAT_RESET} {self.get_attack_power()}, "
+        stat_parts = []
+        # Define which stats to show
+        stats_to_show = ["strength", "dexterity", "intelligence", "wisdom", "spell_power", "magic_resist"]
+        for stat_name in stats_to_show:
+            stat_value = self.stats.get(stat_name, 0)
+            # Abbreviate common stats
+            abbr = stat_name[:3].upper() if stat_name in ["strength", "dexterity", "intelligence", "wisdom"] else stat_name.upper()
+            stat_parts.append(f"{abbr} {stat_value}")
+        status += ", ".join(stat_parts) + "\n"
+        # --- End Stats ---
+
+        # --- Combat Stats (with Effective Cooldown) ---
+        effective_cd = self.get_effective_attack_cooldown()
+        status += f"{FORMAT_CATEGORY}Attack:{FORMAT_RESET} {self.get_attack_power()} ({effective_cd:.1f}s CD), "
         status += f"{FORMAT_CATEGORY}Defense:{FORMAT_RESET} {self.get_defense()}\n"
+        # --- End Combat Stats ---
 
-        # ... (Equipment, Effects, Skills, Quests - unchanged) ...
+        # --- Equipment ---
+        equipped_items_found = False
+        equip_lines = []
+        # Iterate through standard slots in a defined order
+        slot_order = ["main_hand", "off_hand", "head", "body", "hands", "feet", "neck"]
+        for slot in slot_order:
+            item = self.equipment.get(slot)
+            if item:
+                equipped_items_found = True
+                slot_display = slot.replace('_', ' ').capitalize()
+                # Add durability info if applicable
+                durability_str = ""
+                if "durability" in item.properties and "max_durability" in item.properties:
+                     current_dura = item.get_property("durability")
+                     max_dura = item.get_property("max_durability")
+                     if max_dura > 0: # Avoid division by zero and irrelevant info
+                          dura_percent = (current_dura / max_dura) * 100
+                          if current_dura <= 0: dura_color = FORMAT_ERROR
+                          elif dura_percent <= 30: dura_color = FORMAT_YELLOW
+                          else: dura_color = FORMAT_GREEN # Use green for good condition
+                          durability_str = f" [{dura_color}{current_dura}/{max_dura}{FORMAT_RESET}]"
 
-        # *** NEW: Known Spells ***
+                equip_lines.append(f"  - {slot_display}: {item.name}{durability_str}")
+
+        if equipped_items_found:
+            status += f"\n{FORMAT_TITLE}EQUIPPED{FORMAT_RESET}\n"
+            status += "\n".join(equip_lines) + "\n"
+        # --- End Equipment ---
+
+        # --- Effects ---
+        if self.effects:
+            status += f"\n{FORMAT_TITLE}EFFECTS{FORMAT_RESET}\n"
+            effect_lines = []
+            for effect in self.effects:
+                # Assuming effects are dictionaries with 'name' and 'duration'
+                name = effect.get('name', 'Unknown Effect')
+                duration = effect.get('duration', '?')
+                effect_lines.append(f"  - {name} ({duration} remaining)")
+            status += "\n".join(effect_lines) + "\n"
+        # --- End Effects ---
+
+        # --- Skills ---
+        if self.skills:
+            status += f"\n{FORMAT_TITLE}SKILLS{FORMAT_RESET}\n"
+            skill_lines = []
+            # Sort skills alphabetically
+            for skill_name, level in sorted(self.skills.items()):
+                skill_lines.append(f"  - {skill_name.capitalize()}: {level}")
+            status += "\n".join(skill_lines) + "\n"
+        # --- End Skills ---
+
+        # --- Quests ---
+        if self.quest_log:
+            status += f"\n{FORMAT_TITLE}QUEST LOG{FORMAT_RESET}\n"
+            quest_lines = []
+             # Sort quests alphabetically by ID
+            for quest_id, progress in sorted(self.quest_log.items()):
+                # Simple display, replace underscores in ID for readability
+                quest_display_name = quest_id.replace('_', ' ').title()
+                # Truncate long progress strings
+                progress_str = str(progress)
+                if len(progress_str) > 30: progress_str = progress_str[:27] + "..."
+                quest_lines.append(f"  - {quest_display_name}: {progress_str}")
+            status += "\n".join(quest_lines) + "\n"
+        # --- End Quests ---
+
+        # --- Known Spells ---
         if self.known_spells:
              status += f"\n{FORMAT_TITLE}SPELLS KNOWN{FORMAT_RESET}\n"
              spell_list = []
-             current_time = time.time() # Need current time to check cooldowns
+             current_time_abs = time.time() # Use absolute time for cooldown check
              for spell_id in sorted(list(self.known_spells)):
                   spell = get_spell(spell_id)
                   if spell:
                        cooldown_end = self.spell_cooldowns.get(spell_id, 0)
-                       if current_time < cooldown_end:
-                            time_left = cooldown_end - current_time
-                            spell_list.append(f"- {spell.name} ({spell.mana_cost} MP) [{FORMAT_ERROR}CD {time_left:.1f}s{FORMAT_RESET}]")
-                       else:
-                            spell_list.append(f"- {spell.name} ({spell.mana_cost} MP)")
+                       cd_status = ""
+                       if current_time_abs < cooldown_end:
+                            time_left = cooldown_end - current_time_abs
+                            cd_status = f" [{FORMAT_ERROR}CD {time_left:.1f}s{FORMAT_RESET}]"
+                       spell_list.append(f"  - {spell.name} ({spell.mana_cost} MP){cd_status}")
              status += "\n".join(spell_list) + "\n"
-        # *** END NEW ***
+        # --- End Known Spells ---
 
-        if self.in_combat: # ... (combat status - unchanged) ...
-            target_names = ", ".join([t.name for t in self.combat_targets if hasattr(t, 'name')])
-            if not target_names: target_names = "unknown foes"
-            status += f"\n{FORMAT_ERROR}In combat with {target_names}!{FORMAT_RESET}\n"
+        # --- Combat Status ---
+        if self.in_combat:
+            status += "\n" + self.get_combat_status() # Use existing combat status method
+        # --- End Combat Status ---
 
+        # --- Death Message ---
         if not self.is_alive:
              status += f"\n{FORMAT_ERROR}** YOU ARE DEAD **{FORMAT_RESET}\n"
+        # --- End Death Message ---
 
-        return status
+        return status.strip() # Remove potential trailing newline
 
     def gain_experience(self, amount: int) -> bool:
         self.experience += amount
@@ -309,38 +385,29 @@ class Player:
         return self.is_alive and self.health > 0
 
 
+    # Make sure get_attack_power and get_defense are present
     def get_attack_power(self) -> int:
-        # ... (implementation unchanged) ...
-        attack = self.attack_power
-        attack += self.stats["strength"] // 3
-
+        attack = self.attack_power + self.stats.get("strength", 0) // 3
         weapon_bonus = 0
         main_hand_weapon = self.equipment.get("main_hand")
         if main_hand_weapon and isinstance(main_hand_weapon, Weapon):
             if main_hand_weapon.get_property("durability", 1) > 0:
                 weapon_bonus = main_hand_weapon.get_property("damage", 0)
         attack += weapon_bonus
-
-        for effect in self.effects:
-            if "stat_modifiers" in effect and "attack" in effect["stat_modifiers"]:
-                attack += effect["stat_modifiers"]["attack"]
+        # Add effects bonus if implemented
         return attack
 
     def get_defense(self) -> int:
-        # ... (implementation unchanged) ...
-        defense = self.defense
-        defense += self.stats["dexterity"] // 4
-
+        defense = self.defense + self.stats.get("dexterity", 0) // 4
         armor_bonus = 0
-        for slot_name, item in self.equipment.items():
+        for item in self.equipment.values():
             if item:
-                item_defense = item.get_property("defense", 0)
-                if item_defense > 0: armor_bonus += item_defense
+                 item_defense = item.get_property("defense", 0)
+                 # Check item durability if applicable
+                 # if item.get_property("durability", 1) > 0:
+                 if item_defense > 0: armor_bonus += item_defense
         defense += armor_bonus
-
-        for effect in self.effects:
-            if "stat_modifiers" in effect and "defense" in effect["stat_modifiers"]:
-                defense += effect["stat_modifiers"]["defense"]
+        # Add effects bonus if implemented
         return defense
 
     # ... (enter_combat, exit_combat, can_attack, get_combat_status, _add_combat_message - unchanged) ...
@@ -368,32 +435,53 @@ class Player:
         if not self.combat_targets: self.in_combat = False
 
     def can_attack(self, current_time: float) -> bool:
-        return self.is_alive and current_time - self.last_attack_time >= self.attack_cooldown # Add is_alive check
+        """Checks if the player can attack based on the effective cooldown."""
+        effective_cooldown = self.get_effective_attack_cooldown()
+        time_elapsed = current_time - self.last_attack_time
+        # Use a small tolerance (epsilon) if needed, but usually >= is fine
+        # epsilon = 0.001
+        # return self.is_alive and time_elapsed >= (effective_cooldown - epsilon)
+        return self.is_alive and time_elapsed >= effective_cooldown # Standard check is usually okay
 
     def get_combat_status(self) -> str:
-        if not self.in_combat or not self.combat_targets: return "You are not in combat."
-        status = f"{FORMAT_TITLE}COMBAT STATUS{FORMAT_RESET}\n\n"
-        status += f"{FORMAT_CATEGORY}Fighting against:{FORMAT_RESET}\n"
-        for target in self.combat_targets:
-            formatted_name = format_target_name(self, target) # <<< USE FORMATTER
-            if hasattr(target, "health") and hasattr(target, "max_health") and target.max_health > 0:
-                health_percent = (target.health / target.max_health) * 100
-                if health_percent <= 25: health_display = f"{FORMAT_ERROR}{target.health}/{target.max_health}{FORMAT_RESET}"
-                elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{target.health}/{target.max_health}{FORMAT_RESET}"
-                else: health_display = f"{FORMAT_SUCCESS}{target.health}/{target.max_health}{FORMAT_RESET}"
-                # Use formatted_name in the status line
-                status += f"- {formatted_name}: {health_display} HP\n"
-            else:
-                 # Use formatted_name here too
-                status += f"- {formatted_name}\n"
+        if not self.in_combat or not self.combat_targets: return "" # Return empty if not in combat for status integration
+
+        status = f"{FORMAT_TITLE}COMBAT STATUS{FORMAT_RESET}\n"
+        status += f"{FORMAT_CATEGORY}Fighting:{FORMAT_RESET}\n"
+        valid_targets = [t for t in self.combat_targets if hasattr(t, 'is_alive') and t.is_alive]
+
+        if not valid_targets:
+            status += "  (No current targets)\n"
+            # Maybe auto-exit combat here if no valid targets?
+            # self.in_combat = False
+        else:
+            for target in valid_targets:
+                formatted_name = format_target_name(self, target)
+                if hasattr(target, "health") and hasattr(target, "max_health") and target.max_health > 0:
+                    health_percent = (target.health / target.max_health) * 100
+                    if health_percent <= 25: health_display = f"{FORMAT_ERROR}{target.health}/{target.max_health}{FORMAT_RESET}"
+                    elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{target.health}/{target.max_health}{FORMAT_RESET}"
+                    else: health_display = f"{FORMAT_SUCCESS}{target.health}/{target.max_health}{FORMAT_RESET}"
+                    status += f"  - {formatted_name}: {health_display} HP\n"
+                else:
+                    status += f"  - {formatted_name}\n"
+
         if self.combat_messages:
-            status += f"\n{FORMAT_CATEGORY}Recent combat actions:{FORMAT_RESET}\n"
-            for msg in self.combat_messages: status += f"- {msg}\n"
+            status += f"\n{FORMAT_CATEGORY}Recent Actions:{FORMAT_RESET}\n"
+            for msg in self.combat_messages: status += f"  - {msg}\n" # Indent actions
+
         return status
 
     def _add_combat_message(self, message: str) -> None:
-        self.combat_messages.append(message)
-        while len(self.combat_messages) > self.max_combat_messages: self.combat_messages.pop(0)
+        # Strip leading/trailing whitespace and newlines before adding
+        clean_message = message.strip()
+        if not clean_message: return
+
+        # Split potential multi-line messages passed in
+        for line in clean_message.splitlines():
+            self.combat_messages.append(line)
+            while len(self.combat_messages) > self.max_combat_messages:
+                self.combat_messages.pop(0)
 
     def attack(self, target, world: Optional['World'] = None) -> Dict[str, Any]:
         if not self.is_alive:
@@ -886,3 +974,27 @@ class Player:
 
         return player
     # --- END MODIFIED ---
+
+    def get_effective_attack_cooldown(self) -> float:
+        """Calculates the current attack cooldown considering haste effects."""
+        base_cooldown = self.attack_cooldown
+        haste_factor = 1.0
+
+        # Check equipped items for haste multipliers
+        for item in self.equipment.values():
+            if item:
+                multiplier = item.get_property("haste_multiplier")
+                if multiplier and multiplier > 0: # Ensure multiplier is valid
+                    haste_factor *= multiplier
+
+        # TODO: Check active player effects for haste multipliers if needed
+        # for effect in self.effects:
+        #     if "stat_modifiers" in effect and "attack_speed_multiplier" in effect["stat_modifiers"]:
+        #         haste_factor *= effect["stat_modifiers"]["attack_speed_multiplier"]
+
+        effective_cooldown = base_cooldown * haste_factor
+
+        # Clamp to a minimum cooldown
+        effective_cooldown = max(MIN_ATTACK_COOLDOWN, effective_cooldown)
+
+        return effective_cooldown

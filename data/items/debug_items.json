@@ -2,7 +2,7 @@
   "debug_sword": {
     "type": "Weapon",
     "name": "Debug Sword",
-    "description": "A ridiculously powerful sword for testing purposes. Ignores durability and always hits.",
+    "description": "A ridiculously powerful sword for testing purposes. Ignores durability, always hits, and grants incredible haste.",
     "weight": 0.1,
     "value": 0,
     "stackable": false,
@@ -12,7 +12,8 @@
       "max_durability": 999999,
       "equip_slot": ["main_hand", "off_hand"],
       "always_hit": true,
-      "regen_boost": 50
+      "regen_boost": 50,
+      "haste_multiplier": 0.1
     }
   },
   "debug_armor": {

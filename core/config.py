@@ -115,3 +115,6 @@ LEVEL_DIFF_COMBAT_MODIFIERS = {
 MIN_HIT_CHANCE = 0.05 # 5% minimum chance to hit
 MAX_HIT_CHANCE = 0.95 # 95% maximum chance to hit
 MIN_XP_GAIN = 1       # Always gain at least 1 XP
+MIN_ATTACK_COOLDOWN = 0.5 # Prevent excessively fast attacks
+
+MAX_BUFFER_LINES = 50 # keep this much history
