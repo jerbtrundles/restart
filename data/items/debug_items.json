@@ -1,0 +1,33 @@
+{
+  "debug_sword": {
+    "type": "Weapon",
+    "name": "Debug Sword",
+    "description": "A ridiculously powerful sword for testing purposes. Ignores durability and always hits.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "damage": 9999,
+      "durability": 999999,
+      "max_durability": 999999,
+      "equip_slot": ["main_hand", "off_hand"],
+      "always_hit": true,
+      "regen_boost": 50
+    }
+  },
+  "debug_armor": {
+    "type": "Item",
+    "name": "Debug Armor",
+    "description": "Impossibly protective armor for testing. Grants near immunity and regeneration.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "defense": 10000,
+      "magic_resist": 10000,
+      "damage_immunity_chance": 0.95,
+      "equip_slot": ["body"],
+       "regen_boost": 50
+    }
+  }
+}

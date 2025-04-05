@@ -5,8 +5,12 @@ import sys
 import os # Needed for path joining
 from typing import Any, List, Optional
 
-# Use config for paths
-from core.config import BG_COLOR, DEFAULT_COLORS, FONT_SIZE, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, INPUT_BG_COLOR, INPUT_HEIGHT, LINE_SPACING, SCREEN_HEIGHT, SCREEN_WIDTH, SCROLL_SPEED, TEXT_COLOR, SAVE_GAME_DIR, DATA_DIR
+from core.config import (
+    BG_COLOR, DEFAULT_COLORS, FONT_SIZE, FORMAT_ERROR, FORMAT_HIGHLIGHT,
+    FORMAT_RESET, FORMAT_TITLE, INPUT_BG_COLOR, INPUT_HEIGHT, LINE_SPACING,
+    SCREEN_HEIGHT, SCREEN_WIDTH, SCROLL_SPEED, TEXT_COLOR, SAVE_GAME_DIR,
+    DATA_DIR, COLOR_ORANGE # <<< Added COLOR_ORANGE
+)
 
 from world.world import World
 from commands.command_system import CommandProcessor
@@ -420,69 +424,83 @@ class GameManager:
         player = self.world.player
 
         status_y_offset = 5 # How far down from the top of the status area the bars/text start
+        bar_height = 10 # Standard height for bars
+        bar_width = 100 # Standard width for bars
+        text_padding = 10 # Space between bar and text
+        bar_padding = 25 # Space between bar sections (e.g., HP text and Mana bar)
 
         # --- Health Bar ---
-        health_width = 100
-        health_height = 10 # Slightly taller bar
         health_x = 10
         health_y = self.layout["status_area"]["y"] + status_y_offset
 
         # Background
-        pygame.draw.rect(self.screen, (80, 0, 0), (health_x, health_y, health_width, health_height))
+        pygame.draw.rect(self.screen, (80, 0, 0), (health_x, health_y, bar_width, bar_height))
 
         # Foreground (Filled portion)
         health_percent = player.health / player.max_health if player.max_health > 0 else 0
-        filled_health_width = int(health_width * health_percent)
+        filled_health_width = int(bar_width * health_percent)
         if health_percent < 0.3: health_color = (200, 0, 0)      # Red
         elif health_percent < 0.7: health_color = (200, 200, 0)  # Yellow
         else: health_color = (0, 200, 0)                         # Green
-        pygame.draw.rect(self.screen, health_color, (health_x, health_y, filled_health_width, health_height))
+        pygame.draw.rect(self.screen, health_color, (health_x, health_y, filled_health_width, bar_height))
 
         # Health Text
         health_text = f"HP: {player.health}/{player.max_health}"
         health_surface = self.font.render(health_text, True, TEXT_COLOR)
-        hp_text_x = health_x + health_width + 10
+        hp_text_x = health_x + bar_width + text_padding
         # Center text vertically with the bar center
-        hp_text_y = health_y + (health_height // 2) - (health_surface.get_height() // 2)
+        hp_text_y = health_y + (bar_height // 2) - (health_surface.get_height() // 2)
         self.screen.blit(health_surface, (hp_text_x, hp_text_y))
 
 
-        # --- Mana Bar (NEW) ---
-        mana_width = 100
-        mana_height = 10 # Same height as HP bar
-        # Position mana bar after HP text, with some padding
-        mana_x = hp_text_x + health_surface.get_width() + 25
-        mana_y = self.layout["status_area"]["y"] + status_y_offset # Same vertical position as HP bar
+        # --- Mana Bar ---
+        # Position mana bar after HP text, with bar padding
+        mana_x = hp_text_x + health_surface.get_width() + bar_padding
+        mana_y = health_y # Same vertical position as HP bar
 
         # Mana Background
         mana_bg_color = (0, 0, 80) # Dark Blue
-        pygame.draw.rect(self.screen, mana_bg_color, (mana_x, mana_y, mana_width, mana_height))
+        pygame.draw.rect(self.screen, mana_bg_color, (mana_x, mana_y, bar_width, bar_height))
 
         # Mana Foreground (Filled portion)
         mana_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
-        filled_mana_width = int(mana_width * mana_percent)
+        filled_mana_width = int(bar_width * mana_percent)
         mana_fill_color = (50, 100, 255) # Bright Blue
-        pygame.draw.rect(self.screen, mana_fill_color, (mana_x, mana_y, filled_mana_width, mana_height))
+        pygame.draw.rect(self.screen, mana_fill_color, (mana_x, mana_y, filled_mana_width, bar_height))
 
         # Mana Text
         mana_text = f"MP: {player.mana}/{player.max_mana}"
         mana_surface = self.font.render(mana_text, True, TEXT_COLOR)
-        mp_text_x = mana_x + mana_width + 10
+        mp_text_x = mana_x + bar_width + text_padding
         # Center text vertically with the bar center
-        mp_text_y = mana_y + (mana_height // 2) - (mana_surface.get_height() // 2)
+        mp_text_y = mana_y + (bar_height // 2) - (mana_surface.get_height() // 2)
         self.screen.blit(mana_surface, (mp_text_x, mp_text_y))
-        # --- End Mana Bar ---
 
 
-        # --- XP Text ---
-        if hasattr(player, 'experience') and hasattr(player, 'experience_to_level'):
-            xp_text = f"XP: {player.experience}/{player.experience_to_level} (Lvl {player.level})"
-            xp_surface = self.font.render(xp_text, True, TEXT_COLOR)
-            # Align XP text to the far right, before the margin
-            xp_x = self.layout["screen_width"] - xp_surface.get_width() - 10
-            # Center text vertically with the bars
-            xp_y = health_y + (health_height // 2) - (xp_surface.get_height() // 2)
-            self.screen.blit(xp_surface, (xp_x, xp_y))
+        # --- Experience (XP) Bar (NEW) ---
+        xp_x = mp_text_x + mana_surface.get_width() + bar_padding
+        xp_y = mana_y # Same vertical position
+
+        # XP Background
+        xp_bg_color = (100, 60, 0) # Dark Orange/Brown
+        pygame.draw.rect(self.screen, xp_bg_color, (xp_x, xp_y, bar_width, bar_height))
+
+        # XP Foreground
+        xp = player.experience
+        xp_needed = player.experience_to_level
+        xp_percent = xp / xp_needed if xp_needed > 0 else 0
+        # Ensure percent doesn't exceed 1 visually even if xp > xp_needed briefly
+        filled_xp_width = int(bar_width * min(1.0, xp_percent))
+        xp_fill_color = COLOR_ORANGE # Use orange from config
+        pygame.draw.rect(self.screen, xp_fill_color, (xp_x, xp_y, filled_xp_width, bar_height))
+
+        # XP Text
+        xp_text = f"XP: {xp}/{xp_needed} (Lvl {player.level})"
+        xp_surface = self.font.render(xp_text, True, TEXT_COLOR)
+        xp_text_x = xp_x + bar_width + text_padding
+        xp_text_y = xp_y + (bar_height // 2) - (xp_surface.get_height() // 2)
+        self.screen.blit(xp_surface, (xp_text_x, xp_text_y))
+        # --- End XP Bar ---
 
         # --- Separator Line ---
         # Draw line above the status area content

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Any
 from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
 from items.item import Item
 from items.item_factory import ItemFactory
+from utils.utils import _serialize_item_reference # If defined in utils/utils.py
 
 class InventorySlot:
     """Represents a slot in an inventory that can hold items."""
@@ -231,54 +232,30 @@ class Inventory:
 
         return "\n".join(result) + f"\n\n{weight_info}\n{slot_info}"
 
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize inventory for saving game state."""
+    # Note: This needs the World context (or ItemFactory instance) to access templates
+    if TYPE_CHECKING:
+            from world.world import World
+    def to_dict(self, world: 'World') -> Dict[str, Any]: # Needs world context now
+        """Serialize inventory for saving game state using item references."""
         serialized_slots = []
         for slot in self.slots:
             if slot.item:
-                # Save item reference (ID) and override properties if needed
-                override_props = {}
-                template_item = ItemFactory.get_template(slot.item.obj_id) # Need access to templates or a function
-
-                if template_item:
-                    # Compare current props to template props
-                    for key, current_value in slot.item.properties.items():
-                        # Only save if different from template or not present in template's props
-                        if key not in template_item.get("properties", {}) or template_item["properties"][key] != current_value:
-                             # Specific checks for mutable types if needed
-                             if key not in ["weight", "value", "stackable", "name", "description"]: # Avoid overriding core attributes easily matched
-                                  override_props[key] = current_value
-                else:
-                     # If no template, save all properties? Risky. Log warning.
-                     print(f"Warning: No template found for item {slot.item.obj_id} during save. Saving all properties.")
-                     override_props = slot.item.properties.copy()
-
-
-                slot_data = {
-                    "item_id": slot.item.obj_id,
-                    "quantity": slot.quantity
-                }
-                if override_props:
-                    slot_data["properties_override"] = override_props
-                serialized_slots.append(slot_data)
+                # Use the helper function to create the reference
+                item_ref = _serialize_item_reference(slot.item, slot.quantity, world)
+                serialized_slots.append(item_ref)
             else:
                 serialized_slots.append(None) # Represent empty slot as null
 
         return {
             "max_slots": self.max_slots,
             "max_weight": self.max_weight,
-            "slots": serialized_slots
+            "slots": serialized_slots # Now contains references
         }
-
-    # Note: This needs the World context (or ItemFactory instance) to access templates
-    if TYPE_CHECKING:
-            from world.world import World
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any], world: Optional['World']) -> 'Inventory':
         """Deserialize inventory from save game state."""
         if not world:
-             # Cannot load without world context for templates
              print(f"{FORMAT_ERROR}Error: World context required to load inventory.{FORMAT_RESET}")
              return cls(max_slots=data.get("max_slots", 20), max_weight=data.get("max_weight", 100.0)) # Return empty
 
@@ -287,8 +264,10 @@ class Inventory:
         inventory.slots = []  # Clear default slots
 
         for slot_data in loaded_slots_data:
-            if slot_data and "item_id" in slot_data:
+            # Check if slot_data is a valid reference dictionary
+            if slot_data and isinstance(slot_data, dict) and "item_id" in slot_data:
                 item_id = slot_data["item_id"]
+                # Quantity defaults to 1 if not present (for non-stackables or single stackables)
                 quantity = slot_data.get("quantity", 1)
                 overrides = slot_data.get("properties_override", {})
 
@@ -296,16 +275,17 @@ class Inventory:
                 item = ItemFactory.create_item_from_template(item_id, world, **overrides)
 
                 if item:
-                    # Adjust quantity based on stackability
+                    # Adjust quantity based on stackability after creation
                     actual_quantity = quantity if item.stackable else 1
                     inventory.slots.append(InventorySlot(item, actual_quantity))
                     if not item.stackable and quantity > 1:
-                         print(f"Warning: Loaded non-stackable item '{item.name}' with quantity {quantity}. Set to 1.")
+                         print(f"Warning: Loaded non-stackable item '{item.name}' (ID: {item_id}) with quantity {quantity}. Set to 1.")
                 else:
                     print(f"Warning: Failed to load item with ID '{item_id}' for inventory. Adding empty slot.")
                     inventory.slots.append(InventorySlot()) # Add empty slot if item fails
             else:
-                inventory.slots.append(InventorySlot()) # Add empty slot for null data
+                # Append empty slot if slot_data is None or invalid
+                inventory.slots.append(InventorySlot())
 
         # Ensure correct number of slots
         while len(inventory.slots) < inventory.max_slots:

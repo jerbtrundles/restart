@@ -251,10 +251,6 @@ class MonsterFactory:
         monster.attack_power = int(base_attack * (1 + (level - 1) * 0.3))
         monster.defense = int(base_defense * (1 + (level - 1) * 0.2))
         
-        # Add level to name if > 1
-        if level > 1:
-            monster.name = f"{monster.name} (Level {level})"
-        
         # Set spawn location
         monster.current_region_id = region_id
         monster.current_room_id = room_id
@@ -311,9 +307,5 @@ class MonsterFactory:
         # E.g., monster.health = monster.template_base_health * (1 + (level - 1) * 0.5)
         # This would require storing base stats in the template distinctly.
         # For now, the simple scaling in NPCFactory might suffice.
-
-        # Add level to name if desired (NPCFactory doesn't do this automatically)
-        if level > 1:
-             monster.name = f"{monster.name} (Level {level})"
 
         return monster

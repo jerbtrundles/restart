@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple # Added List
 from items.item import Item
 from items.key import Key
 from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_HIGHLIGHT # Added missing FORMAT imports
+from utils.utils import _serialize_item_reference # If defined in utils/utils.py
 
 if TYPE_CHECKING:
     from world.world import World
@@ -172,73 +173,70 @@ class Container(Item):
     # --- END NEW ---
 
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self, world: 'World') -> Dict[str, Any]: # Needs world context
         """Serialize container for saving, referencing contained items."""
-        data = super().to_dict()
+        data = super().to_dict() # Get base item data
         contained_item_refs = []
         contained_items: List[Item] = self.properties.get("contains", [])
 
+        # Use helper to serialize references for contained items
         for item in contained_items:
-             if item:
-                  # Similar logic as Inventory.to_dict
-                  override_props = {}
-                  template_item = ItemFactory.get_template(item.obj_id) # Need access to templates
-
-                  if template_item:
-                       for key, current_value in item.properties.items():
-                            if key not in template_item.get("properties", {}) or template_item["properties"][key] != current_value:
-                                 if key not in ["weight", "value", "stackable", "name", "description"]:
-                                      override_props[key] = current_value
-                  else:
-                       print(f"Warning: No template for contained item {item.obj_id} in {self.name}. Saving all props.")
-                       override_props = item.properties.copy()
-
-                  item_ref = {"item_id": item.obj_id}
-                  if override_props:
-                       item_ref["properties_override"] = override_props
-                  # Note: We assume containers don't stack items internally for save simplicity.
-                  # If they did, we'd need quantity here.
-                  contained_item_refs.append(item_ref)
+            # Assuming items are stored individually, quantity is 1 for serialization ref
+            item_ref = _serialize_item_reference(item, 1, world)
+            if item_ref:
+                 contained_item_refs.append(item_ref)
 
         # Store item references directly in properties for saving
-        data["properties"]["contains"] = contained_item_refs
-        # Ensure other container properties are saved in properties
+        # Ensure properties dict exists
+        if "properties" not in data: data["properties"] = {}
+        data["properties"]["contains"] = contained_item_refs # List of references
+
+        # Ensure other container-specific properties are saved in properties
         data["properties"]["capacity"] = self.properties.get("capacity", 50.0)
         data["properties"]["locked"] = self.properties.get("locked", False)
         data["properties"]["key_id"] = self.properties.get("key_id")
         data["properties"]["is_open"] = self.properties.get("is_open", False)
         return data
+    # --- END MODIFIED ---
 
+    # --- MODIFIED: Container.from_dict ---
     @classmethod
     def from_dict(cls, data: Dict[str, Any], world: Optional['World'] = None) -> Optional['Container']:
         """Deserialize container from definition or save data."""
-        # Use base class from_dict first
+        if not world:
+             print(f"{FORMAT_ERROR}Error: World context needed to load container '{data.get('name', 'Unknown')}'.{FORMAT_RESET}")
+             return None # Cannot load contained items without world
+
+        # Use Item.from_dict first (which uses GameObject.from_dict)
+        # We assume Item.from_dict correctly populates base attributes and properties dict
         container = super(Container, cls).from_dict(data)
-        if not container: return None
+        if not container: return None # Should not happen if data is valid
 
         # Load items inside 'contains' using references
         loaded_items: List[Item] = []
+        # Check properties dict for contains list
         if "properties" in data and "contains" in data["properties"]:
              items_data = data["properties"]["contains"] # This now contains item_refs
 
-             # *** Need ItemFactory and world context ***
+             # Need ItemFactory
              from items.item_factory import ItemFactory # Local import
-             if not world:
-                  print(f"{FORMAT_ERROR}Error: World context needed to load items inside container '{container.name}'.{FORMAT_RESET}")
-             else:
-                  for item_ref in items_data:
-                       if item_ref and isinstance(item_ref, dict) and "item_id" in item_ref:
-                           item_id = item_ref["item_id"]
-                           overrides = item_ref.get("properties_override", {})
-                           item = ItemFactory.create_item_from_template(item_id, world, **overrides)
-                           if item:
-                               loaded_items.append(item)
-                           else:
-                               print(f"Warning: Failed to load contained item '{item_id}' inside container '{container.name}'.")
+
+             for item_ref in items_data:
+                  # Check if item_ref is a valid reference dictionary
+                  if item_ref and isinstance(item_ref, dict) and "item_id" in item_ref:
+                       item_id = item_ref["item_id"]
+                       # Quantity inside container is implicitly 1 per entry
+                       # quantity = item_ref.get("quantity", 1) # Not needed for container items
+                       overrides = item_ref.get("properties_override", {})
+                       item = ItemFactory.create_item_from_template(item_id, world, **overrides)
+                       if item:
+                            loaded_items.append(item)
+                       else:
+                            print(f"Warning: Failed to load contained item '{item_id}' inside container '{container.name}'.")
 
         # Ensure properties dict exists and set contains
         if not hasattr(container, 'properties'): container.properties = {}
-        container.properties["contains"] = loaded_items
+        container.properties["contains"] = loaded_items # List of Item instances
 
         # Ensure other container properties have defaults if missing from data/properties
         container.properties.setdefault("capacity", 50.0)
@@ -247,3 +245,4 @@ class Container(Item):
         container.properties.setdefault("is_open", False)
 
         return container
+    # --- END MODIFIED ---

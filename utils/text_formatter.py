@@ -8,7 +8,7 @@ import pygame
 import math
 
 from core.config import (
-    DEFAULT_COLORS, COLOR_DEFAULT, # Import base colors if needed
+    DEFAULT_COLORS, COLOR_DEFAULT, FORMAT_GRAY, FORMAT_PURPLE, # Import base colors if needed
     FORMAT_RED, FORMAT_ORANGE, FORMAT_YELLOW, FORMAT_GREEN, FORMAT_BLUE,
     FORMAT_CYAN, FORMAT_WHITE, FORMAT_RESET,
     SEMANTIC_FORMAT # Import the semantic mapping too
@@ -216,32 +216,24 @@ class TextFormatter:
             
         return result
 
-# Define level difference thresholds (could be moved to config.py)
-LEVEL_DIFF_THRESHOLDS = {
-    "red": 5,       # Target level >= Player level + 5
-    "orange": 2,    # Target level >= Player level + 2
-    "yellow": -1,   # Target level >= Player level - 1 (includes equal level)
-    "blue": -4,     # Target level >= Player level - 4
-    "green": -math.inf # Target level < Player level - 4 (use -infinity for comparison)
-    # Green is the default if none of the above match
-}
-
 # Map thresholds to format codes
 LEVEL_DIFF_COLORS = {
+    "purple": FORMAT_PURPLE,
     "red": FORMAT_RED,        # Very hard -> Red
     "orange": FORMAT_ORANGE,    # Hard -> Orange
     "yellow": FORMAT_YELLOW,    # Even/Slightly hard -> Yellow
     "blue": FORMAT_BLUE,      # Easy -> Blue
     "green": FORMAT_GREEN,      # Very easy -> Green
+    "gray": FORMAT_GRAY,
 }
 
 def format_target_name(viewer, target) -> str:
     """
-    Formats the target's name based on level difference relative to the viewer.
+    Formats the target's name based on dynamic level difference relative to the viewer (7 Tiers).
     Only colors hostile NPCs based on level.
     """
-    # *** Local import for runtime ***
-    from npcs.npc import NPC
+    # Local import for runtime if needed
+    from npcs.npc import NPC # Assuming NPC is defined relative to this file's usage
 
     if not hasattr(target, 'name'):
         return "something" # Fallback
@@ -250,25 +242,54 @@ def format_target_name(viewer, target) -> str:
 
     # Only color hostile NPCs based on level
     if not isinstance(target, NPC) or target.friendly or target.faction != "hostile":
-        # Optional: Color friendlies differently?
-        # from core.config import FORMAT_SUCCESS, FORMAT_RESET
-        # if isinstance(target, NPC) and target.friendly:
-        #     return f"{FORMAT_SUCCESS}{base_name}{FORMAT_RESET}"
-        return base_name # No special level coloring for non-hostiles/non-NPCs
+        return base_name
 
-    # Get levels (default to 1 if missing)
     viewer_level = getattr(viewer, 'level', 1)
     target_level = getattr(target, 'level', 1)
 
-    level_diff = target_level - viewer_level
-
-    # Determine color category
-    color_category = "green" # Default
-    if level_diff >= LEVEL_DIFF_THRESHOLDS["red"]: color_category = "red"
-    elif level_diff >= LEVEL_DIFF_THRESHOLDS["orange"]: color_category = "orange"
-    elif level_diff >= LEVEL_DIFF_THRESHOLDS["yellow"]: color_category = "yellow"
-    elif level_diff >= LEVEL_DIFF_THRESHOLDS["blue"]: color_category = "blue"
+    # --- Use the new function to get the category ---
+    color_category = get_level_diff_category(viewer_level, target_level)
+    # --- End Use ---
 
     format_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
 
-    return f"{format_code}{base_name} (Level {target_level}){FORMAT_RESET}"
+    level_str = f" (Level {target_level})"
+    if f"(Level {target_level})" in base_name:
+         level_str = ""
+
+    return f"{format_code}{base_name}{level_str}{FORMAT_RESET}"
+
+# --- NEW Function to Calculate Category ---
+def get_level_diff_category(viewer_level: int, target_level: int) -> str:
+    """Calculates the difficulty category string based on level difference."""
+    level_diff = target_level - viewer_level
+    color_category = "gray" # Default
+
+    if viewer_level <= 5:
+        # Strict Thresholds for Levels 1-5
+        if level_diff >= 3: color_category = "purple"
+        elif level_diff == 2: color_category = "red"
+        elif level_diff == 1: color_category = "orange"
+        elif level_diff == 0: color_category = "yellow"
+        elif level_diff == -1: color_category = "blue"
+        elif level_diff == -2: color_category = "green"
+        else: color_category = "gray" # <= -3
+    else:
+        # Scaling Logic for Levels 6+
+        purple_threshold = 3 + ((viewer_level - 5) // 12)
+        red_threshold = 2 + ((viewer_level - 5) // 9)
+        orange_threshold = 1
+        yellow_lower_bound = 0 - ((viewer_level - 5) // 7)
+        blue_lower_bound = yellow_lower_bound - (1 + ((viewer_level - 5) // 8))
+        green_lower_bound = blue_lower_bound - (1 + ((viewer_level - 5) // 9))
+
+        if level_diff >= purple_threshold: color_category = "purple"
+        elif level_diff >= red_threshold: color_category = "red"
+        elif level_diff >= orange_threshold: color_category = "orange"
+        elif level_diff >= yellow_lower_bound: color_category = "yellow"
+        elif level_diff >= blue_lower_bound: color_category = "blue"
+        elif level_diff >= green_lower_bound: color_category = "green"
+        else: color_category = "gray"
+
+    return color_category
+# --- END NEW Function ---

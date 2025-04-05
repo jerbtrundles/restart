@@ -7,8 +7,8 @@ Configuration settings for the game with enhanced text system support.
 import os
 
 
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 720
 FONT_SIZE = 18
 LINE_SPACING = 5
 INPUT_HEIGHT = 30
@@ -18,6 +18,7 @@ TEXT_COLOR = (255, 255, 255)  # White
 BG_COLOR = (0, 0, 0)  # Black
 INPUT_BG_COLOR = (50, 50, 50)  # Dark gray
 
+COLOR_PURPLE = (255, 0, 255)
 COLOR_RED = (255, 0, 0)
 COLOR_ORANGE = (255, 165, 0)
 COLOR_YELLOW = (255, 255, 0)
@@ -25,13 +26,16 @@ COLOR_GREEN = (0, 255, 0)
 COLOR_BLUE = (0, 0, 255)
 COLOR_CYAN = (0, 255, 255)
 COLOR_WHITE = (255, 255, 255)
+COLOR_GRAY = (128, 128, 128)
 COLOR_DEFAULT = COLOR_WHITE # Explicit default
 
+FORMAT_PURPLE = "[[PURPLE]]"
 FORMAT_RED = "[[RED]]"
 FORMAT_ORANGE = "[[ORANGE]]"
 FORMAT_YELLOW = "[[YELLOW]]"
 FORMAT_GREEN = "[[GREEN]]"
 FORMAT_BLUE = "[[BLUE]]"
+FORMAT_GRAY = "[[GRAY]]"
 FORMAT_CYAN = "[[CYAN]]"
 FORMAT_WHITE = "[[WHITE]]"
 # Keep FORMAT_RESET for resetting to default, makes semantic sense
@@ -46,11 +50,13 @@ FORMAT_CATEGORY = FORMAT_CYAN
 # Default color values for format codes (RGB)
 DEFAULT_COLORS = {
     FORMAT_RESET: (255, 255, 255),     # White (default)
+    FORMAT_PURPLE: COLOR_PURPLE,
     FORMAT_RED: COLOR_RED,
     FORMAT_ORANGE: COLOR_ORANGE,
     FORMAT_YELLOW: COLOR_YELLOW,
     FORMAT_GREEN: COLOR_GREEN,
     FORMAT_BLUE: COLOR_CYAN,
+    FORMAT_GRAY: COLOR_GRAY,
     FORMAT_CYAN: COLOR_CYAN,
     FORMAT_WHITE: COLOR_WHITE,
     FORMAT_RESET: COLOR_DEFAULT, # Reset goes to the default color
@@ -90,3 +96,22 @@ SAVE_GAME_DIR = os.path.join(DATA_DIR, "saves")
 REGION_DIR = os.path.join(DATA_DIR, "regions")
 ITEM_TEMPLATE_DIR = os.path.join(DATA_DIR, "items")
 NPC_TEMPLATE_DIR = os.path.join(DATA_DIR, "npcs")
+
+# Multipliers applied based on Attacker's level relative to Target's level
+# Example: If Player attacks a RED target, player's hit chance is multiplied by 0.85, damage by 0.75.
+# Example: If Player defeats a GREEN target, XP gained is multiplied by 0.5.
+LEVEL_DIFF_COMBAT_MODIFIERS = {
+    # Tier:   (Hit Chance Multiplier, Damage Dealt Multiplier, XP Multiplier)
+    "purple": (0.70, 0.60, 2.50), # Hardest to hit, deal much less dmg, gain most XP
+    "red":    (0.85, 0.75, 1.75),
+    "orange": (0.95, 0.90, 1.25),
+    "yellow": (1.00, 1.00, 1.00), # Baseline
+    "blue":   (1.05, 1.10, 0.80),
+    "green":  (1.15, 1.25, 0.50),
+    "gray":   (1.25, 1.40, 0.20), # Easiest to hit, deal much more dmg, gain least XP
+}
+
+# Define Min/Max values for clamping
+MIN_HIT_CHANCE = 0.05 # 5% minimum chance to hit
+MAX_HIT_CHANCE = 0.95 # 95% maximum chance to hit
+MIN_XP_GAIN = 1       # Always gain at least 1 XP

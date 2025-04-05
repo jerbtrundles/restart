@@ -3,13 +3,16 @@ plugins/debug_plugin/commands.py
 Command module for the Debug plugin.
 """
 from commands.commands import command
+from core.config import FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS
+from items.item_factory import ItemFactory
 
 def register_commands(plugin):
     @command("debug", ["dbg"], "system", "Control debug mode and list available debug commands.\n\nUsage: debug [on|off|status]")
     def debug_command_handler(args, context):
+        available_commands = plugin.config["debug_commands"] + ["debuggear"]
         if not args:
             return "Debug plugin commands:\n" + "\n".join([
-                f"- {cmd}" for cmd in plugin.config["debug_commands"]
+                 f"- {cmd}" for cmd in available_commands
             ])
         subcommand = args[0].lower()
         subargs = args[1:]
@@ -433,3 +436,105 @@ def register_commands(plugin):
                 npc.last_moved = 0
                 updates += 1
             return f"Forced update for {updates} NPCs."
+
+    @command("debuggear", ["dbggear"], "debug", "Toggle powerful debug gear.\n\nUsage: debuggear <on|off>")
+    def debuggear_command_handler(args, context):
+        world = plugin.world
+        player = world.player if world else None
+
+        if not player:
+            return f"{FORMAT_ERROR}Player not found.{FORMAT_RESET}"
+        if not args or args[0].lower() not in ["on", "off"]:
+            return f"{FORMAT_ERROR}Usage: debuggear <on|off>{FORMAT_RESET}"
+
+        action = args[0].lower()
+        debug_sword_id = "debug_sword"
+        debug_armor_id = "debug_armor"
+        messages = []
+
+        if action == "on":
+            messages.append(f"{FORMAT_HIGHLIGHT}Equipping debug gear...{FORMAT_RESET}")
+
+            # --- Equip Sword ---
+            # Check if already has debug sword
+            existing_sword = player.inventory.find_item_by_name(debug_sword_id) or \
+                             player.equipment.get("main_hand") or \
+                             player.equipment.get("off_hand")
+            if existing_sword and existing_sword.obj_id == debug_sword_id:
+                 messages.append(f"- Debug Sword already present.")
+            else:
+                 sword = ItemFactory.create_item_from_template(debug_sword_id, world)
+                 if sword:
+                      added, msg = player.inventory.add_item(sword)
+                      if added:
+                           equipped, msg_equip = player.equip_item(sword)
+                           if equipped:
+                                messages.append(f"- {FORMAT_SUCCESS}Debug Sword equipped.{FORMAT_RESET}")
+                           else:
+                                messages.append(f"- {FORMAT_ERROR}Added Debug Sword to inventory, but failed to equip: {msg_equip}{FORMAT_RESET}")
+                      else:
+                           messages.append(f"- {FORMAT_ERROR}Failed to add Debug Sword to inventory: {msg}{FORMAT_RESET}")
+                 else:
+                      messages.append(f"- {FORMAT_ERROR}Failed to create Debug Sword.{FORMAT_RESET}")
+
+            # --- Equip Armor ---
+             # Check if already has debug armor
+            existing_armor = player.inventory.find_item_by_name(debug_armor_id) or \
+                              player.equipment.get("body")
+            if existing_armor and existing_armor.obj_id == debug_armor_id:
+                  messages.append(f"- Debug Armor already present.")
+            else:
+                  armor = ItemFactory.create_item_from_template(debug_armor_id, world)
+                  if armor:
+                       added, msg = player.inventory.add_item(armor)
+                       if added:
+                            equipped, msg_equip = player.equip_item(armor) # Equip to default slot (body)
+                            if equipped:
+                                 messages.append(f"- {FORMAT_SUCCESS}Debug Armor equipped.{FORMAT_RESET}")
+                            else:
+                                 messages.append(f"- {FORMAT_ERROR}Added Debug Armor to inventory, but failed to equip: {msg_equip}{FORMAT_RESET}")
+                       else:
+                            messages.append(f"- {FORMAT_ERROR}Failed to add Debug Armor to inventory: {msg}{FORMAT_RESET}")
+                  else:
+                       messages.append(f"- {FORMAT_ERROR}Failed to create Debug Armor.{FORMAT_RESET}")
+
+            return "\n".join(messages)
+
+        elif action == "off":
+            messages.append(f"{FORMAT_HIGHLIGHT}Removing debug gear...{FORMAT_RESET}")
+            items_removed = False
+
+            # --- Remove from Equipment ---
+            for slot, item in list(player.equipment.items()): # Iterate over a copy
+                if item and item.obj_id in [debug_sword_id, debug_armor_id]:
+                    # Unequip WITHOUT adding back to inventory
+                    player.equipment[slot] = None # Just remove reference directly
+                    messages.append(f"- Unequipped and removed {item.name} from {slot}.")
+                    items_removed = True
+                    # We don't need player.unequip_item because we don't want it back in inventory
+
+            # --- Remove from Inventory ---
+            sword_in_inv = player.inventory.find_item_by_name(debug_sword_id)
+            if sword_in_inv:
+                 # Remove all instances
+                 while sword_in_inv:
+                      removed_item, count, msg = player.inventory.remove_item(debug_sword_id, 999) # Remove all
+                      if removed_item:
+                           messages.append(f"- Removed {count}x {removed_item.name} from inventory.")
+                           items_removed = True
+                      sword_in_inv = player.inventory.find_item_by_name(debug_sword_id) # Check again
+
+            armor_in_inv = player.inventory.find_item_by_name(debug_armor_id)
+            if armor_in_inv:
+                 while armor_in_inv:
+                      removed_item, count, msg = player.inventory.remove_item(debug_armor_id, 999) # Remove all
+                      if removed_item:
+                           messages.append(f"- Removed {count}x {removed_item.name} from inventory.")
+                           items_removed = True
+                      armor_in_inv = player.inventory.find_item_by_name(debug_armor_id) # Check again
+
+            if not items_removed:
+                messages.append("- No debug gear found to remove.")
+
+            return "\n".join(messages)
+    # --- END ADD THE NEW COMMAND ---

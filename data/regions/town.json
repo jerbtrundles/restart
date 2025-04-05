@@ -1,356 +1,395 @@
 {
-    "region_id": "town",
-    "name": "Riverside Village",
-    "description": "A peaceful village nestled by the Silver River. The buildings are made of sturdy timber with thatched roofs, and the villagers are known for their hospitality.",
-    "properties": { "safe_zone": true },
-    "rooms": {
-      "town_square": {
-        "name": "Town Square",
-        "description": "The heart of Riverside Village. A large fountain sits in the center of the cobblestone square. Villagers come and go, some stopping to chat with their neighbors. Shops line the perimeter, and you can hear the distant sound of flowing water from the river.",
-        "exits": {
-          "north": "tavern",
-          "east": "market",
-          "south": "river_road",
-          "west": "blacksmith",
-          "northeast": "east_lane",
-          "southwest": "west_lane"
-        },
-        "items": [
-          {
-            "type": "Item",
-            "obj_id": "item_town_notice",
-            "name": "Town Notice",
-            "description": "A notice posted on the town bulletin board. It reads: 'MISSING: Supplies from the last merchant caravan. Anyone with information please speak to the Town Elder.'",
-            "weight": 0.1,
-            "value": 0,
-            "stackable": false,
-            "properties": {}
-          }
-        ],
-        "visited": true,
-        "properties": {}
+  "region_id": "town",
+  "name": "Riverside Village",
+  "description": "A peaceful village nestled by the Silver River. The buildings are made of sturdy timber with thatched roofs, and the villagers are known for their hospitality.",
+  "properties": { "safe_zone": true },
+  "rooms": {
+    "town_square": {
+      "name": "Town Square",
+      "description": "The heart of Riverside Village. A large fountain sits in the center of the cobblestone square. Villagers come and go, some stopping to chat with their neighbors. Shops line the perimeter, and you can hear the distant sound of flowing water from the river.",
+      "exits": {
+        "north": "tavern",
+        "east": "market",
+        "south": "river_road",
+        "west": "blacksmith",
+        "northeast": "east_lane",
+        "southwest": "west_lane"
       },
-      "tavern": {
-        "name": "The Drunken Dragon Tavern",
-        "description": "A warm, inviting tavern with a large hearth at one end. The smell of roasting meat and fresh bread fills the air. Patrons sit at wooden tables, drinking ale and sharing stories. A staircase leads up to the guest rooms, and you notice a locked door behind the bar.",
-        "exits": {
-          "south": "town_square",
-          "up": "tavern_rooms",
-          "behind_bar": "tavern_cellar",
-          "east": "tavern_kitchen"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {
-          "noisy": true
+      "initial_npcs": [
+        {
+          "template_id": "village_elder",
+          "instance_id": "elder_thorne_townsquare"
         }
-      },
-      "tavern_kitchen": {
-        "name": "Tavern Kitchen",
-        "description": "A bustling kitchen filled with the clatter of pots and pans. The air is thick with steam and the aroma of cooking food. A large oven dominates one wall.",
-        "exits": {
-          "west": "tavern"
-        },
-        "items": [
-           {
-            "type": "Consumable",
-            "obj_id": "item_hunk_bread",
-            "name": "Hunk of Bread",
-            "description": "A thick slice of fresh, crusty bread.",
-            "weight": 0.3,
-            "value": 1,
-            "stackable": true,
-            "properties": {
-              "uses": 1, "max_uses": 1, "effect_value": 3, "effect_type": "heal"
-            }
-          }
-        ],
-        "visited": false,
-        "properties": {
-          "noisy": true, "smell": "cooking food"
-        }
-      },
-      "tavern_rooms": {
-        "name": "Tavern Upper Floor",
-        "description": "A narrow hallway with several doors leading to guest rooms. The floor creaks underfoot, and you can hear the muffled sounds of conversation from below.",
-        "exits": {
-          "down": "tavern",
-          "north": "guest_room_1",
-          "south": "guest_room_2"
-        },
-        "items": [
-          {
-            "type": "Item",
-            "obj_id": "item_traveler_journal",
-            "name": "Traveler's Journal",
-            "description": "A leather-bound journal with entries from a merchant who passed through the village. The last entry mentions strange noises in the forest at night and missing supplies.",
-            "weight": 0.5,
-            "value": 5,
-            "stackable": false,
-            "properties": {}
-          }
-        ],
-        "visited": false,
-        "properties": {}
-      },
-      "guest_room_1": {
-          "name": "Guest Room (North)",
-          "description": "A simple but clean guest room containing a bed, a small table, and a washbasin. The window looks out over the tavern's back alley.",
-          "exits": {
-              "south": "tavern_rooms"
-          },
-          "items": [],
-          "visited": false,
+      ],
+      "items": [
+        {
+          "type": "Item",
+          "obj_id": "item_town_notice",
+          "name": "Town Notice",
+          "description": "A notice posted on the town bulletin board. It reads: 'MISSING: Supplies from the last merchant caravan. Anyone with information please speak to the Town Elder.'",
+          "weight": 0.1,
+          "value": 0,
+          "stackable": false,
           "properties": {}
-      },
-      "guest_room_2": {
-          "name": "Guest Room (South)",
-          "description": "This guest room is slightly larger, with a sturdy chest at the foot of the bed. A faded tapestry hangs on one wall.",
-          "exits": {
-              "north": "tavern_rooms"
-          },
-          "items": [
-               {
-                  "type": "Treasure",
-                  "obj_id": "item_lost_earring",
-                  "name": "Lost Earring",
-                  "description": "A small silver earring, likely forgotten by a previous guest.",
-                  "weight": 0.1,
-                  "value": 10,
-                  "stackable": false,
-                  "properties": {"treasure_type": "jewelry"}
-               }
-          ],
-          "visited": false,
-          "properties": {}
-      },
-      "tavern_cellar": {
-        "name": "Tavern Cellar",
-        "description": "A cool, damp cellar beneath the tavern, smelling strongly of ale and earth. Barrels are stacked against the walls, and sacks of grain sit on wooden pallets. A sturdy, locked door blocks entry.",
-        "exits": {
-          "up": "tavern"
-        },
-        "items": [
-          {
-            "type": "Item",
-            "obj_id": "item_barrel_ale",
-            "name": "Barrel of Ale",
-            "description": "A large wooden barrel, full of the Drunken Dragon's signature ale.",
-            "weight": 50.0,
-            "value": 100,
-            "stackable": false,
-            "properties": {}
-          }
-        ],
-        "visited": false,
-        "properties": {
-          "dark": true,
-          "locked_by": "item_tavern_cellar_key",
-          "lock_target_id": "tavern_cellar_door"
         }
+      ],
+      "visited": true,
+      "properties": {}
+    },
+    "tavern": {
+      "name": "The Drunken Dragon Tavern",
+      "description": "A warm, inviting tavern with a large hearth at one end. The smell of roasting meat and fresh bread fills the air. Patrons sit at wooden tables, drinking ale and sharing stories. A staircase leads up to the guest rooms, and you notice a locked door behind the bar.",
+      "exits": {
+        "south": "town_square",
+        "up": "tavern_rooms",
+        "behind_bar": "tavern_cellar",
+        "east": "tavern_kitchen"
       },
-      "market": {
-        "name": "Village Market",
-        "description": "The busy market area where villagers trade goods. Stalls sell everything from fresh produce to handcrafted goods. The air is filled with the shouts of merchants and the scent of spices.",
-        "exits": {
-          "west": "town_square",
-          "north": "general_store",
-          "east": "east_lane"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {}
-      },
-      "general_store": {
-        "name": "General Store",
-        "description": "A well-stocked shop with goods of all kinds. Shelves line the walls, filled with tools, preserved foods, clothing, and sundries. The shopkeeper keeps a careful eye on all the merchandise.",
-        "exits": {
-          "south": "market",
-          "east": "storage_room"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {}
-      },
-      "storage_room": {
-        "name": "Store Storage Room",
-        "description": "A cramped storage room behind the general store, filled with crates, sacks, and barrels. Dust motes dance in the dim light filtering through a small window.",
-        "exits": {
-          "west": "general_store"
-        },
-        "items": [
-          {
-            "type": "Junk",
-            "obj_id": "item_empty_crate",
-            "name": "Empty Crate",
-            "description": "A sturdy wooden crate, currently empty.",
-            "weight": 5.0,
-            "value": 1,
-            "stackable": false,
-            "properties": {}
-          }
-        ],
-        "visited": false,
-        "properties": {"dark": true}
-      },
-      "blacksmith": {
-        "name": "Blacksmith's Forge",
-        "description": "The heat from the forge hits you as you enter. The rhythmic sound of hammer on anvil rings through the air. Weapons and tools hang on the walls, and the blacksmith works tirelessly at their craft.",
-        "exits": {
-          "east": "town_square",
-          "west": "west_lane"
-        },
-        "items": [
-          {
-            "type": "Weapon",
-            "obj_id": "item_iron_sword",
-            "name": "Iron Sword",
-            "description": "A well-crafted iron sword with a leather-wrapped hilt. The blade is sharp and balanced.",
-            "weight": 3.0,
-            "value": 50,
-            "stackable": false,
-            "properties": {
-              "damage": 8,
-              "durability": 50,
-              "max_durability": 50
-            }
-          }
-        ],
-        "visited": false,
-        "properties": {
-          "noisy": true,
-          "smell": "smoky"
+      "initial_npcs": [
+        {
+          "template_id": "tavern_keeper",
+          "instance_id": "tavernkeeper_barlin_tavern"
         }
-      },
-      "east_lane": {
-        "name": "East Lane",
-        "description": "A narrow lane running behind the market and tavern. Laundry lines stretch between windows, and stray cats dart through the shadows.",
-        "exits": {
-          "west": "market",
-          "southwest": "town_square"
-        },
-        "items": [
-          {
-            "type": "Junk",
-            "obj_id": "item_bent_coin",
-            "name": "Bent Coin",
-            "description": "A copper coin, bent almost in half. Worthless now.",
-            "weight": 0.1,
-            "value": 0,
-            "stackable": false,
-            "properties": {}
-          }
-        ],
-        "visited": false,
-        "properties": {}
-      },
-      "west_lane": {
-        "name": "West Lane",
-        "description": "A quiet lane bordering the blacksmith's forge and leading towards the residential part of town. Children's chalk drawings mark the cobblestones.",
-        "exits": {
-          "east": "blacksmith",
-          "northeast": "town_square",
-          "south": "small_house"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {}
-      },
-      "small_house": {
-          "name": "Small House",
-          "description": "A modest timber-framed house with a small garden out front. The door is slightly ajar.",
-          "exits": {
-              "north": "west_lane"
-          },
-          "items": [],
-          "visited": false,
-          "properties": {}
-      },
-      "river_road": {
-        "name": "River Road",
-        "description": "A wide dirt road that runs parallel to the Silver River. The sound of flowing water is louder here, and you can see boats moving along the river. Trees provide shade along the path.",
-        "exits": {
-          "north": "town_square",
-          "south": "riverside",
-          "east": "forest:forest_path",
-          "downstream": "swamp:marsh_edge",
-          "west": "old_mill_path"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {}
-      },
-      "old_mill_path": {
-        "name": "Path to Old Mill",
-        "description": "A less-used path branching off the main road, heading towards the sound of rushing water near an old structure.",
-        "exits": {
-          "east": "river_road",
-          "west": "old_mill"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {}
-      },
-      "old_mill": {
-        "name": "Abandoned Mill",
-        "description": "An old water mill stands silently beside the river, its large wheel still and covered in moss. The building looks structurally sound but unused.",
-        "exits": {
-          "east": "old_mill_path"
-        },
-        "items": [],
-        "visited": false,
-        "properties": {"smell": "damp wood"}
-      },
-      "riverside": {
-        "name": "Riverside Dock",
-        "description": "A wooden dock extends into the river. Fishing boats are tied up, gently bobbing in the current. Fishermen sort their catches or repair nets, while river traders load and unload cargo. A sturdy stone bridge crosses the river to the east.",
-        "exits": {
-          "north": "river_road",
-          "east": "farmland:farm_bridge",
-          "south": "fishing_hut"
-        },
-        "items": [
-          {
-            "type": "Consumable",
-            "obj_id": "item_fresh_fish",
-            "name": "Fresh Fish",
-            "description": "A recently caught fish, still fresh and glistening. It would make a good meal.",
-            "weight": 1.0,
-            "value": 3,
-            "stackable": true,
-            "properties": {
-              "uses": 1,
-              "max_uses": 1,
-              "effect_value": 5,
-              "effect_type": "heal"
-            }
-          }
-        ],
-        "visited": false,
-        "properties": {
-          "smell": "fishy"
-        }
-      },
-      "fishing_hut": {
-          "name": "Fishing Hut",
-          "description": "A small wooden hut near the docks, smelling strongly of fish. Nets hang drying outside, and fishing rods lean against the wall.",
-          "exits": {
-              "north": "riverside"
-          },
-          "items": [
-               {
-                  "type": "Item",
-                  "obj_id": "item_fishing_net",
-                  "name": "Fishing Net",
-                  "description": "A sturdy net used for catching fish.",
-                  "weight": 2.0,
-                  "value": 15,
-                  "stackable": false,
-                  "properties": {}
-               }
-          ],
-          "visited": false,
-          "properties": {"smell": "fishy"}
+      ],
+      "items": [],
+      "visited": false,
+      "properties": {
+        "noisy": true
       }
+    },
+    "tavern_kitchen": {
+      "name": "Tavern Kitchen",
+      "description": "A bustling kitchen filled with the clatter of pots and pans. The air is thick with steam and the aroma of cooking food. A large oven dominates one wall.",
+      "exits": {
+        "west": "tavern"
+      },
+      "initial_npcs": [],
+      "items": [
+         {
+          "type": "Consumable",
+          "obj_id": "item_hunk_bread",
+          "name": "Hunk of Bread",
+          "description": "A thick slice of fresh, crusty bread.",
+          "weight": 0.3,
+          "value": 1,
+          "stackable": true,
+          "properties": {
+            "uses": 1, "max_uses": 1, "effect_value": 3, "effect_type": "heal"
+          }
+        }
+      ],
+      "visited": false,
+      "properties": {
+        "noisy": true, "smell": "cooking food"
+      }
+    },
+    "tavern_rooms": {
+      "name": "Tavern Upper Floor",
+      "description": "A narrow hallway with several doors leading to guest rooms. The floor creaks underfoot, and you can hear the muffled sounds of conversation from below.",
+      "exits": {
+        "down": "tavern",
+        "north": "guest_room_1",
+        "south": "guest_room_2"
+      },
+      "initial_npcs": [],
+      "items": [
+        {
+          "type": "Item",
+          "obj_id": "item_traveler_journal",
+          "name": "Traveler's Journal",
+          "description": "A leather-bound journal with entries from a merchant who passed through the village. The last entry mentions strange noises in the forest at night and missing supplies.",
+          "weight": 0.5,
+          "value": 5,
+          "stackable": false,
+          "properties": {}
+        }
+      ],
+      "visited": false,
+      "properties": {}
+    },
+    "guest_room_1": {
+        "name": "Guest Room (North)",
+        "description": "A simple but clean guest room containing a bed, a small table, and a washbasin. The window looks out over the tavern's back alley.",
+        "exits": {
+            "south": "tavern_rooms"
+        },
+        "initial_npcs": [],
+        "items": [],
+        "visited": false,
+        "properties": {}
+    },
+    "guest_room_2": {
+        "name": "Guest Room (South)",
+        "description": "This guest room is slightly larger, with a sturdy chest at the foot of the bed. A faded tapestry hangs on one wall.",
+        "exits": {
+            "north": "tavern_rooms"
+        },
+        "initial_npcs": [],
+        "items": [
+             {
+                "type": "Treasure",
+                "obj_id": "item_lost_earring",
+                "name": "Lost Earring",
+                "description": "A small silver earring, likely forgotten by a previous guest.",
+                "weight": 0.1,
+                "value": 10,
+                "stackable": false,
+                "properties": {"treasure_type": "jewelry"}
+             }
+        ],
+        "visited": false,
+        "properties": {}
+    },
+    "tavern_cellar": {
+      "name": "Tavern Cellar",
+      "description": "A cool, damp cellar beneath the tavern, smelling strongly of ale and earth. Barrels are stacked against the walls, and sacks of grain sit on wooden pallets. A sturdy, locked door blocks entry.",
+      "exits": {
+        "up": "tavern"
+      },
+      "initial_npcs": [],
+      "items": [
+        {
+          "type": "Item",
+          "obj_id": "item_barrel_ale",
+          "name": "Barrel of Ale",
+          "description": "A large wooden barrel, full of the Drunken Dragon's signature ale.",
+          "weight": 50.0,
+          "value": 100,
+          "stackable": false,
+          "properties": {}
+        }
+      ],
+      "visited": false,
+      "properties": {
+        "dark": true,
+        "locked_by": "item_tavern_cellar_key",
+        "lock_target_id": "tavern_cellar_door"
+      }
+    },
+    "market": {
+      "name": "Village Market",
+      "description": "The busy market area where villagers trade goods. Stalls sell everything from fresh produce to handcrafted goods. The air is filled with the shouts of merchants and the scent of spices.",
+      "exits": {
+        "west": "town_square",
+        "north": "general_store",
+        "east": "east_lane"
+      },
+      "initial_npcs": [
+        {
+          "template_id": "merchant",
+          "instance_id": "merchant_talia_market"
+        }
+      ],
+      "items": [],
+      "visited": false,
+      "properties": {}
+    },
+    "general_store": {
+      "name": "General Store",
+      "description": "A well-stocked shop with goods of all kinds. Shelves line the walls, filled with tools, preserved foods, clothing, and sundries. The shopkeeper keeps a careful eye on all the merchandise.",
+      "exits": {
+        "south": "market",
+        "east": "storage_room"
+      },
+      "initial_npcs": [],
+      "items": [],
+      "visited": false,
+      "properties": {}
+    },
+    "storage_room": {
+      "name": "Store Storage Room",
+      "description": "A cramped storage room behind the general store, filled with crates, sacks, and barrels. Dust motes dance in the dim light filtering through a small window.",
+      "exits": {
+        "west": "general_store"
+      },
+      "initial_npcs": [],
+      "items": [
+        {
+          "type": "Junk",
+          "obj_id": "item_empty_crate",
+          "name": "Empty Crate",
+          "description": "A sturdy wooden crate, currently empty.",
+          "weight": 5.0,
+          "value": 1,
+          "stackable": false,
+          "properties": {}
+        }
+      ],
+      "visited": false,
+      "properties": {"dark": true}
+    },
+    "blacksmith": {
+      "name": "Blacksmith's Forge",
+      "description": "The heat from the forge hits you as you enter. The rhythmic sound of hammer on anvil rings through the air. Weapons and tools hang on the walls, and the blacksmith works tirelessly at their craft.",
+      "exits": {
+        "east": "town_square",
+        "west": "west_lane"
+      },
+      "initial_npcs": [
+        {
+          "template_id": "blacksmith",
+          "instance_id": "blacksmith_grenda_forge"
+        }
+      ],
+      "items": [
+        {
+          "type": "Weapon",
+          "obj_id": "item_iron_sword",
+          "name": "Iron Sword",
+          "description": "A well-crafted iron sword with a leather-wrapped hilt. The blade is sharp and balanced.",
+          "weight": 3.0,
+          "value": 50,
+          "stackable": false,
+          "properties": {
+            "damage": 8,
+            "durability": 50,
+            "max_durability": 50
+          }
+        }
+      ],
+      "visited": false,
+      "properties": {
+        "noisy": true,
+        "smell": "smoky"
+      }
+    },
+    "east_lane": {
+      "name": "East Lane",
+      "description": "A narrow lane running behind the market and tavern. Laundry lines stretch between windows, and stray cats dart through the shadows.",
+      "exits": {
+        "west": "market",
+        "southwest": "town_square"
+      },
+      "initial_npcs": [],
+      "items": [
+        {
+          "type": "Junk",
+          "obj_id": "item_bent_coin",
+          "name": "Bent Coin",
+          "description": "A copper coin, bent almost in half. Worthless now.",
+          "weight": 0.1,
+          "value": 0,
+          "stackable": false,
+          "properties": {}
+        }
+      ],
+      "visited": false,
+      "properties": {}
+    },
+    "west_lane": {
+      "name": "West Lane",
+      "description": "A quiet lane bordering the blacksmith's forge and leading towards the residential part of town. Children's chalk drawings mark the cobblestones.",
+      "exits": {
+        "east": "blacksmith",
+        "northeast": "town_square",
+        "south": "small_house"
+      },
+      "initial_npcs": [],
+      "items": [],
+      "visited": false,
+      "properties": {}
+    },
+    "small_house": {
+        "name": "Small House",
+        "description": "A modest timber-framed house with a small garden out front. The door is slightly ajar.",
+        "exits": {
+            "north": "west_lane"
+        },
+        "initial_npcs": [],
+        "items": [],
+        "visited": false,
+        "properties": {}
+    },
+    "river_road": {
+      "name": "River Road",
+      "description": "A wide dirt road that runs parallel to the Silver River. The sound of flowing water is louder here, and you can see boats moving along the river. Trees provide shade along the path.",
+      "exits": {
+        "north": "town_square",
+        "south": "riverside",
+        "east": "forest:forest_path",
+        "downstream": "swamp:marsh_edge",
+        "west": "old_mill_path"
+      },
+      "initial_npcs": [],
+      "items": [],
+      "visited": false,
+      "properties": {}
+    },
+    "old_mill_path": {
+      "name": "Path to Old Mill",
+      "description": "A less-used path branching off the main road, heading towards the sound of rushing water near an old structure.",
+      "exits": {
+        "east": "river_road",
+        "west": "old_mill"
+      },
+      "initial_npcs": [],
+      "items": [],
+      "visited": false,
+      "properties": {}
+    },
+    "old_mill": {
+      "name": "Abandoned Mill",
+      "description": "An old water mill stands silently beside the river, its large wheel still and covered in moss. The building looks structurally sound but unused.",
+      "exits": {
+        "east": "old_mill_path"
+      },
+      "initial_npcs": [],
+      "items": [],
+      "visited": false,
+      "properties": {"smell": "damp wood"}
+    },
+    "riverside": {
+      "name": "Riverside Dock",
+      "description": "A wooden dock extends into the river. Fishing boats are tied up, gently bobbing in the current. Fishermen sort their catches or repair nets, while river traders load and unload cargo. A sturdy stone bridge crosses the river to the east.",
+      "exits": {
+        "north": "river_road",
+        "east": "farmland:farm_bridge",
+        "south": "fishing_hut"
+      },
+      "initial_npcs": [],
+      "items": [
+        {
+          "type": "Consumable",
+          "obj_id": "item_fresh_fish",
+          "name": "Fresh Fish",
+          "description": "A recently caught fish, still fresh and glistening. It would make a good meal.",
+          "weight": 1.0,
+          "value": 3,
+          "stackable": true,
+          "properties": {
+            "uses": 1,
+            "max_uses": 1,
+            "effect_value": 5,
+            "effect_type": "heal"
+          }
+        }
+      ],
+      "visited": false,
+      "properties": {
+        "smell": "fishy"
+      }
+    },
+    "fishing_hut": {
+        "name": "Fishing Hut",
+        "description": "A small wooden hut near the docks, smelling strongly of fish. Nets hang drying outside, and fishing rods lean against the wall.",
+        "exits": {
+            "north": "riverside"
+        },
+        "initial_npcs": [],
+        "items": [
+             {
+                "type": "Item",
+                "obj_id": "item_fishing_net",
+                "name": "Fishing Net",
+                "description": "A sturdy net used for catching fish.",
+                "weight": 2.0,
+                "value": 15,
+                "stackable": false,
+                "properties": {}
+             }
+        ],
+        "visited": false,
+        "properties": {"smell": "fishy"}
     }
   }
+}

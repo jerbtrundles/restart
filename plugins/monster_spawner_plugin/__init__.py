@@ -169,10 +169,6 @@ class MonsterSpawnerPlugin(PluginBase):
         # ==========================================
 
         if monster:
-            # Set level name here (factory doesn't do it)
-            if level > 1:
-                monster.name = f"{monster.name} (Level {level})"
-
             self.world.add_npc(monster) # Add to world.npcs using instance ID
             self.total_spawned += 1
 
@@ -249,10 +245,6 @@ class MonsterSpawnerPlugin(PluginBase):
 
         if not monster:
             return f"{FORMAT_ERROR}Failed to create monster from template: {monster_template_id}{FORMAT_RESET}"
-
-        # Set level name
-        if level > 1:
-            monster.name = f"{monster.name} (Level {level})"
 
         self.world.add_npc(monster)
         self.total_spawned += 1

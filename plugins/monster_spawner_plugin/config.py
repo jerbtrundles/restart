@@ -8,7 +8,7 @@ DEFAULT_CONFIG = {
     "spawn_interval": 1,
     
     # Maximum monsters per region
-    "max_monsters_per_region": 10,
+    "max_monsters_per_region": 8,
     
     # Chance to spawn a monster on each attempt (0.0-1.0)
     "spawn_chance": 1.0,
@@ -27,7 +27,7 @@ DEFAULT_CONFIG = {
             "goblin": 3
         },
         "town": { # Should not spawn due to safe_zone, but define anyway
-             "giant_rat": 1 # Maybe a rat occasionally?
+            "giant_rat": 1 # Maybe a rat occasionally?
         },
         "forest": {
             "wolf": 5,

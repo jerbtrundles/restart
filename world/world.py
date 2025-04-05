@@ -23,6 +23,8 @@ from npcs.npc_factory import NPCFactory
 # MonsterFactory might just use NPCFactory now
 # from npcs.monster_factory import MonsterFactory
 
+from utils.utils import _serialize_item_reference # If defined in utils/utils.py
+
 class World:
     def __init__(self):
         # --- Static Definitions ---
@@ -188,11 +190,12 @@ class World:
          self.plugin_data = {} # Reset plugin data
          print(f"New world initialized. Player at {start_region}:{start_room}")
 
+    # --- MODIFIED: World.load_save_game ---
     def load_save_game(self, filename: str = DEFAULT_SAVE_FILE) -> bool:
-        """Loads dynamic game state from a save file."""
-        save_path = self._resolve_save_path(filename, SAVE_GAME_DIR) # Use SAVE_GAME_DIR
+        """Loads dynamic game state from a save file using references."""
+        save_path = self._resolve_load_path(filename, SAVE_GAME_DIR) # Use SAVE_GAME_DIR
         if not save_path or not os.path.exists(save_path):
-            print(f"Save file not found: {save_path}. Starting new game.")
+            print(f"Save file not found: {filename}. Starting new game.")
             self.initialize_new_world() # Start new game if save doesn't exist
             return True # Technically successful, started new game
 
@@ -201,158 +204,211 @@ class World:
             with open(save_path, 'r') as f:
                 save_data = json.load(f)
 
-            # --- Load Player State ---
+            # --- Load Player State (passing world context) ---
             if "player" in save_data:
-                # Pass world context for item loading
                 self.player = Player.from_dict(save_data["player"], self)
                 # Set world's current location from player's loaded location
                 self.current_region_id = self.player.current_region_id
                 self.current_room_id = self.player.current_room_id
+                # Validate loaded location
+                if not self.get_current_room():
+                    print(f"Warning: Loaded player location {self.current_region_id}:{self.current_room_id} is invalid. Resetting to respawn point.")
+                    self.current_region_id = self.player.respawn_region_id
+                    self.current_room_id = self.player.respawn_room_id
+                    self.player.current_region_id = self.current_region_id
+                    self.player.current_room_id = self.current_room_id
+                    if not self.get_current_room(): # If respawn is also invalid...
+                         print(f"{FORMAT_ERROR}Critical: Respawn location invalid. Resetting to default.{FORMAT_RESET}")
+                         self.current_region_id = "town"
+                         self.current_room_id = "town_square"
+                         self.player.current_region_id = self.current_region_id
+                         self.player.current_room_id = self.current_room_id
+
             else:
                 print("Warning: Player data missing in save file. Creating default player.")
-                self.player = Player("Adventurer")
-                self.current_region_id = "town" # Default start
-                self.current_room_id = "town_square"
+                self.initialize_new_world() # Start new if player data missing
+                # We return true here because initialize_new_world sets up a valid state
+                print(f"Save game load failed (missing player data), new world started.")
+                return True
 
-            # --- Clear Dynamic World State ---
+            # --- Clear Dynamic World State (NPCs and Room Items) ---
             self.npcs = {}
             for region in self.regions.values():
                 for room in region.rooms.values():
-                    room.items = [] # Clear dynamic items from rooms
+                    room.items = [] # Clear dynamic items list
 
-            # --- Load NPC States ---
+            # --- Load Initial Room Items (defined in regions) ---
+            # This ensures base items are present before dynamic ones are added
+            for region_id, region in self.regions.items():
+                 for room_id, room in region.rooms.items():
+                      for item_ref in getattr(room, 'initial_item_refs', []):
+                           item_id = item_ref.get("item_id")
+                           qty = item_ref.get("quantity", 1)
+                           overrides = item_ref.get("properties_override", {}) # Load overrides if defined
+                           if item_id:
+                                item = ItemFactory.create_item_from_template(item_id, self, **overrides)
+                                if item:
+                                     if item.stackable:
+                                          for _ in range(qty): room.add_item(item)
+                                     else: room.add_item(item)
+                                else: print(f"Warning: Failed to create initial item '{item_id}' in {region_id}:{room_id} during load.")
+
+
+            # --- Load NPC States (using factory) ---
             for instance_id, npc_state in save_data.get("npc_states", {}).items():
                 template_id = npc_state.get("template_id")
                 if template_id:
-                    # Create NPC using factory with state overrides
+                    # Pass the entire npc_state dict as overrides
                     npc = NPCFactory.create_npc_from_template(template_id, self, instance_id, **npc_state)
                     if npc:
-                         self.add_npc(npc) # Adds to self.npcs with instance_id
+                         # Ensure NPC has world reference after creation
+                         npc.world = self
+                         self.add_npc(npc) # Adds to self.npcs dict
                     else:
                          print(f"Warning: Failed to load NPC instance '{instance_id}' (template: {template_id}).")
                 else:
                     print(f"Warning: NPC state for '{instance_id}' missing template_id.")
 
-            # --- Load Dynamic Items ---
+            # --- Load Dynamic Items (items saved explicitly) ---
             for location_key, item_refs in save_data.get("dynamic_items", {}).items():
-                region_id, room_id = location_key.split(":") # Assuming format "region:room"
-                region = self.get_region(region_id)
-                room = region.get_room(room_id) if region else None
-                if room:
-                    for item_ref in item_refs:
-                        item_id = item_ref.get("item_id")
-                        overrides = item_ref.get("properties_override", {})
-                        qty = item_ref.get("quantity", 1) # Get quantity if saved (for stacks dropped)
-                        if item_id:
-                             item = ItemFactory.create_item_from_template(item_id, self, **overrides)
-                             if item:
-                                  # Add quantity for stackables
-                                  if item.stackable:
-                                       for _ in range(qty): room.add_item(item)
-                                  else: room.add_item(item)
-                             else: print(f"Warning: Failed to load dynamic item '{item_id}' in {location_key}.")
-                else: print(f"Warning: Room '{location_key}' not found for dynamic items.")
+                try:
+                    region_id, room_id = location_key.split(":")
+                    region = self.get_region(region_id)
+                    room = region.get_room(room_id) if region else None
+                    if room:
+                        for item_ref in item_refs:
+                             if item_ref and isinstance(item_ref, dict) and "item_id" in item_ref:
+                                 item_id = item_ref["item_id"]
+                                 overrides = item_ref.get("properties_override", {})
+                                 qty = item_ref.get("quantity", 1)
+                                 item = ItemFactory.create_item_from_template(item_id, self, **overrides)
+                                 if item:
+                                     if item.stackable:
+                                         for _ in range(qty): room.add_item(item)
+                                     else: room.add_item(item)
+                                 else: print(f"Warning: Failed to load dynamic item '{item_id}' in {location_key}.")
+                             else: print(f"Warning: Invalid item reference found for {location_key}: {item_ref}")
+
+                    else: print(f"Warning: Room '{location_key}' not found for dynamic items during load.")
+                except ValueError:
+                     print(f"Warning: Invalid location key format for dynamic items: {location_key}")
+                except Exception as item_load_error:
+                    print(f"Error loading dynamic items for {location_key}: {item_load_error}")
+
 
             # --- Load World State & Plugin Data ---
-            # TODO: Apply world_state flags if implemented
             self.plugin_data = save_data.get("plugin_data", {})
 
             self.start_time = time.time() # Reset start time relative to load
             self.last_update_time = 0
-            print(f"Save game loaded. Player at {self.current_region_id}:{self.current_room_id}")
+            print(f"Save game '{filename}' loaded successfully. Player at {self.current_region_id}:{self.current_room_id}")
             return True
 
         except json.JSONDecodeError as json_err:
              print(f"{FORMAT_ERROR}FATAL: Error decoding JSON from save file {save_path}: {json_err}{FORMAT_RESET}")
-             # Optionally try to load backup or start new game
-             return False
+             self.initialize_new_world() # Attempt to start fresh
+             return False # Indicate load failure but allow game to continue
         except Exception as e:
-            print(f"{FORMAT_ERROR}Error loading save game: {e}{FORMAT_RESET}")
+            print(f"{FORMAT_ERROR}Error loading save game '{filename}': {e}{FORMAT_RESET}")
             import traceback
             traceback.print_exc()
-            return False
+            self.initialize_new_world() # Attempt to start fresh
+            return False # Indicate load failure but allow game to continue
+    # --- END MODIFIED ---
 
     def save_game(self, filename: str = DEFAULT_SAVE_FILE) -> bool:
-        """Saves the dynamic game state to a save file."""
+        """Saves the dynamic game state to a save file using references."""
         save_path = self._resolve_save_path(filename, SAVE_GAME_DIR) # Use SAVE_GAME_DIR
         if not save_path: return False
 
         print(f"Saving game to {save_path}...")
         try:
-            # --- Player State ---
+            # --- Player State (needs world context for serialization) ---
+            if not self.player:
+                 print(f"{FORMAT_ERROR}Error: Player object missing, cannot save.{FORMAT_RESET}")
+                 return False
             # Update player's tracked location before saving
             self.player.current_region_id = self.current_region_id
             self.player.current_room_id = self.current_room_id
-            player_data = self.player.to_dict()
+            player_data = self.player.to_dict(self) # Pass world context
 
-            # --- NPC States ---
+            # --- NPC States (only save essential state + template_id) ---
             npc_states = {}
             for instance_id, npc in self.npcs.items():
-                 # Basic state needed to recreate
-                 state = {
-                      "template_id": getattr(npc, 'template_id', instance_id.split('_')[0]), # Guess template if missing
-                      "current_region_id": npc.current_region_id,
-                      "current_room_id": npc.current_room_id,
-                      "health": npc.health,
-                      "is_alive": npc.is_alive,
-                      "ai_state": npc.ai_state,
-                      # Add inventory overrides if needed (complex, skip for now)
-                      # "inventory_overrides": npc.inventory.get_overrides(self.npc_templates.get(template_id))
-                 }
-                 npc_states[instance_id] = state
+                 # Use npc.to_dict() which now saves minimal state
+                 npc_states[instance_id] = npc.to_dict()
 
-            # --- Dynamic Items ---
+            # --- Dynamic Items (items not part of initial room def) ---
             dynamic_items = {}
             for region_id, region in self.regions.items():
                  for room_id, room in region.rooms.values():
-                      # Only save if items differ from initial state (or if initial state wasn't saved this way)
-                      # Simple approach: Save all current items in rooms.
-                      if room.items: # Only save rooms that currently have items
-                           item_refs = []
-                           # Group stackable items for saving quantity
-                           grouped_items = {}
-                           for item in room.items:
+                      # Identify items currently in the room that were *not* part of the initial definition
+                      current_item_ids_counts = {}
+                      for item in room.items:
+                           current_item_ids_counts[item.obj_id] = current_item_ids_counts.get(item.obj_id, 0) + 1
+
+                      initial_item_ids_counts = {}
+                      for item_ref in getattr(room, 'initial_item_refs', []):
+                            initial_item_ids_counts[item_ref["item_id"]] = initial_item_ids_counts.get(item_ref["item_id"], 0) + item_ref.get("quantity", 1)
+
+                      items_to_save = []
+                      items_processed_for_saving = set() # To handle stackables correctly
+
+                      for item in room.items:
+                            item_id = item.obj_id
+                            if item_id in items_processed_for_saving:
+                                 continue
+
+                            current_count = current_item_ids_counts.get(item_id, 0)
+                            initial_count = initial_item_ids_counts.get(item_id, 0)
+                            dynamic_count = current_count - initial_count
+
+                            if dynamic_count > 0:
+                                # Save the dynamically added items (or excess stack)
+                                quantity_to_save = dynamic_count if item.stackable else 1
+                                # Need to serialize potentially multiple non-stackables if dynamic_count > 1
+                                for _ in range(dynamic_count if not item.stackable else 1):
+                                     item_ref = _serialize_item_reference(item, quantity_to_save if item.stackable else 1, self)
+                                     if item_ref:
+                                          items_to_save.append(item_ref)
                                 if item.stackable:
-                                     if item.obj_id not in grouped_items:
-                                          grouped_items[item.obj_id] = {"item": item, "count": 0}
-                                     grouped_items[item.obj_id]["count"] += 1
-                                else:
-                                     # Save non-stackable individually
-                                     override_props = self._get_item_overrides(item)
-                                     ref = {"item_id": item.obj_id}
-                                     if override_props: ref["properties_override"] = override_props
-                                     item_refs.append(ref)
+                                     items_processed_for_saving.add(item_id) # Mark stackable as processed
 
-                           # Save grouped stackable items
-                           for group in grouped_items.values():
-                                item = group["item"]
-                                count = group["count"]
-                                override_props = self._get_item_overrides(item)
-                                ref = {"item_id": item.obj_id, "quantity": count}
-                                if override_props: ref["properties_override"] = override_props
-                                item_refs.append(ref)
+                            elif dynamic_count < 0:
+                                # Item was removed from initial state, no need to save absence explicitly
+                                pass
 
-                           if item_refs: # Only add if there are items to save
-                                dynamic_items[f"{region_id}:{room_id}"] = item_refs
+                            # If item is not in initial list at all, save all instances
+                            elif initial_count == 0 and current_count > 0:
+                                 quantity_to_save = current_count if item.stackable else 1
+                                 for _ in range(current_count if not item.stackable else 1):
+                                      item_ref = _serialize_item_reference(item, quantity_to_save if item.stackable else 1, self)
+                                      if item_ref:
+                                          items_to_save.append(item_ref)
+                                 if item.stackable:
+                                      items_processed_for_saving.add(item_id)
+
+
+                      if items_to_save:
+                           dynamic_items[f"{region_id}:{room_id}"] = items_to_save
 
             # --- Assemble Save Data ---
             save_data = {
+                "save_format_version": 2, # Increment version number
                 "save_name": filename.replace(".json", ""),
                 "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 "player": player_data,
                 "npc_states": npc_states,
                 "dynamic_items": dynamic_items,
-                # "world_state": {}, # Add world state flags if implemented
                 "plugin_data": self.plugin_data
             }
 
             # --- Write to File ---
-            # Ensure saves directory exists
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, 'w') as f:
                 json.dump(save_data, f, indent=2)
 
-            print(f"Game saved successfully.")
+            print(f"Game saved successfully to {save_path}.")
             return True
 
         except Exception as e:
@@ -360,6 +416,7 @@ class World:
             import traceback
             traceback.print_exc()
             return False
+    # --- END MODIFIED ---
         
     # --- Getters (mostly unchanged, verify they work with new structure) ---
     def get_region(self, region_id: str) -> Optional[Region]: return self.regions.get(region_id)
@@ -400,21 +457,48 @@ class World:
 
     # --- Update & Actions (minor changes) ---
     def update(self) -> List[str]:
-        current_time = time.time() - self.start_time
+        """Update NPCs and remove dead ones."""
+        current_time_abs = time.time() # Absolute time for NPC updates
         messages = []
-        if current_time - self.last_update_time < 0.5: return messages
-        self.last_update_time = current_time
+        if current_time_abs - self.last_update_time < 0.5: # Throttle updates
+             return messages
+        self.last_update_time = current_time_abs
 
-        # Update Player (for regen, effects)
+        # Update Player
         if self.player and self.player.is_alive:
-             self.player.update(current_time) # Pass absolute time for mana regen
+             self.player.update(current_time_abs) # Pass absolute time
 
-        # Update NPCs
-        for npc in list(self.npcs.values()):
-             # Pass relative time if NPC update expects that, or absolute
-             # Let's assume npc.update uses absolute time now
-             npc_message = npc.update(self, time.time()) # Pass absolute time
-             if npc_message: messages.append(npc_message)
+        # --- NPC Update and Removal ---
+        npcs_to_remove = [] # Store IDs of NPCs to remove
+        # Iterate over a copy of keys, as we might modify the dictionary
+        for npc_id in list(self.npcs.keys()):
+            npc = self.npcs.get(npc_id)
+            if not npc: continue # Should not happen, but safety check
+
+            if npc.is_alive:
+                # Update living NPCs
+                npc_message = npc.update(self, current_time_abs) # Pass absolute time
+                if npc_message:
+                     messages.append(npc_message)
+            else:
+                # Mark dead NPCs for removal
+                npcs_to_remove.append(npc_id)
+
+        # Remove the dead NPCs after the update loop
+        for npc_id in npcs_to_remove:
+             removed_npc = self.npcs.pop(npc_id, None)
+             if removed_npc:
+                  # Optional: Add a message if the player is in the same room
+                  if (self.player and self.player.is_alive and
+                      self.current_region_id == removed_npc.current_region_id and
+                      self.current_room_id == removed_npc.current_room_id):
+                       # Use plain name for removal message, color isn't needed
+                       messages.append(f"{FORMAT_HIGHLIGHT}The corpse of the {removed_npc.name} fades away.{FORMAT_RESET}")
+                  # Optional: Publish an event
+                  # if self.game and hasattr(self.game, 'plugin_manager'):
+                  #    self.game.plugin_manager.event_system.publish("npc_removed", {"npc_id": npc_id})
+        # --- End NPC Update and Removal ---
+
         return messages
 
     # ... (get_items_in_room, get_items_in_current_room - unchanged) ...
