@@ -139,3 +139,5 @@ VENDOR_CAN_BUY_ALL_ITEMS = False # Should vendors only buy certain types?
 
 REPAIR_COST_PER_VALUE_POINT = 0.1 # e.g., 10% of item value to repair fully
 REPAIR_MINIMUM_COST = 1
+
+DEBUG_SHOW_LEVEL = True

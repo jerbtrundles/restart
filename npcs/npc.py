@@ -505,24 +505,23 @@ class NPC(GameObject):
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the NPC state to a dictionary for serialization.
-        Saves only essential state and template reference.
+        Saves essential state, template reference, actual level, and CLEAN name.
         """
-
         state = {
-            "template_id": self.template_id, # Crucial reference
-            "obj_id": self.obj_id, # Instance ID is important
-            "name": self.name, # Save current name in case it changes
+            "template_id": self.template_id,
+            "obj_id": self.obj_id,
+            "name": self.name,               # <<< SAVE CURRENT CLEAN NAME
             "current_region_id": self.current_region_id,
             "current_room_id": self.current_room_id,
             "health": self.health,
+            "level": self.level,             # <<< SAVE ACTUAL LEVEL
             "is_alive": self.is_alive,
-            "stats": self.stats.copy(), # --- SAVE STATS ---
-            "ai_state": self.ai_state,
-            "spell_cooldowns": self.spell_cooldowns,
+            "stats": self.stats.copy(),
+            "ai_state": self.ai_state.copy(),
+            "spell_cooldowns": self.spell_cooldowns.copy(),
             "faction": self.faction,
-            "inventory": self.inventory.to_dict(self.world)
+            "inventory": self.inventory.to_dict(self.world) if self.world else {}
         }
-
         return state
         
     # [All the behavior methods (_wander_behavior, etc.) would remain unchanged]

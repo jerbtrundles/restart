@@ -1,6 +1,6 @@
 # utils/utils.py
 import re
-from core.config import FORMAT_RESET
+from core.config import DEBUG_SHOW_LEVEL, FORMAT_CATEGORY, FORMAT_RESET
 from items.item import Item
 from typing import Dict, Any, Optional, Union
 
@@ -115,7 +115,11 @@ def simple_plural(word: str) -> str:
 if TYPE_CHECKING:
     from player import Player
     from npcs.npc import NPC
-def format_name_for_display(viewer: Optional[Union['Player', 'NPC']], target: Optional[Union['Player', 'NPC', Item]], start_of_sentence: bool = False) -> str:
+def format_name_for_display(
+    viewer: Optional[Union['Player', 'NPC']],
+    target: Optional[Union['Player', 'NPC', Item]],
+    start_of_sentence: bool = False
+) -> str:
     """
     Formats an entity's name for display with level-based color (for hostiles),
     articles for generic names, and context-aware capitalization.
@@ -133,48 +137,52 @@ def format_name_for_display(viewer: Optional[Union['Player', 'NPC']], target: Op
     if not target or not hasattr(target, 'name') or not target.name:
         return "something" # Fallback
 
-    full_name = target.name # Name might include "(Level X)"
-    base_name = re.sub(r'\s*\(level \d+\)$', '', full_name, flags=re.IGNORECASE).strip()
-    if not base_name: base_name = full_name # Use full name if stripping failed
+    base_name = target.name # <<< ASSUME target.name is CLEAN BASE NAME
+    target_level = getattr(target, 'level', None) # Get level if it exists
+    is_npc = isinstance(target, NPC)
+    is_hostile = is_npc and getattr(target, 'faction', 'neutral') == 'hostile'
+    # is_generic = base_name == base_name.lower() # Check base name for generic article use
+    # Determine if generic based on whether it starts with an uppercase letter
+    # (Simple check, assumes proper nouns are capitalized in templates)
+    is_generic = not base_name[0].isupper() if base_name else True
 
-    is_hostile = isinstance(target, NPC) and getattr(target, 'faction', 'neutral') == 'hostile'
-    is_generic = base_name == base_name.lower() # Check if base name is lowercase
     color_code = FORMAT_RESET # Default color
 
-    if is_hostile and viewer:
+    # --- Determine Level Suffix ---
+    level_suffix = ""
+    if is_npc and target_level is not None and DEBUG_SHOW_LEVEL:
+        # Add level suffix for ALL NPCs for consistency during display
+        level_suffix = f" (Level {target_level})"
+
+    # --- Determine Color ---
+    if is_hostile and viewer and target_level is not None:
         viewer_level = getattr(viewer, 'level', 1)
-        target_level = getattr(target, 'level', 1)
         color_category = get_level_diff_category(viewer_level, target_level)
         color_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
+    elif isinstance(target, Item):
+        color_code = FORMAT_CATEGORY # Items use category color
 
-    # Construct the core name part with color
-    formatted_name = f"{color_code}{full_name}{FORMAT_RESET}"
+    # Construct the name part including level suffix *before* color
+    name_with_level = f"{base_name}{level_suffix}"
+    formatted_name_part = f"{color_code}{name_with_level}{FORMAT_RESET}"
 
     # Prepend article if generic
     result = ""
-    if is_generic:
-        article = get_article(base_name) # Get article based on base name
-        result = f"{article} {formatted_name}"
+    if is_generic: # Add article if name seems generic (lowercase start)
+        article = get_article(base_name) # Article based on base name
+        result = f"{article} {formatted_name_part}"
     else:
-        result = formatted_name # Proper name, just use the colored version
+        result = formatted_name_part
 
-    # Capitalize if start of sentence
+    # Capitalize if start of sentence (same logic as before)
     if start_of_sentence and result:
-        # Find the first actual letter after potential article and color codes
-        first_letter_index = -1
-        in_code = False
+        first_letter_index = -1; in_code = False
         for i, char in enumerate(result):
              if char == '[': in_code = True
              elif char == ']': in_code = False
-             elif not in_code and char.isalpha():
-                  first_letter_index = i
-                  break
-
+             elif not in_code and char.isalpha(): first_letter_index = i; break
         if first_letter_index != -1:
-             # Capitalize the found letter and reconstruct
              result = result[:first_letter_index] + result[first_letter_index].upper() + result[first_letter_index+1:]
-        elif result: # Fallback if no letter found (e.g., just symbols?), capitalize first char
-             result = result[0].upper() + result[1:]
-
+        elif result: result = result[0].upper() + result[1:]
 
     return result

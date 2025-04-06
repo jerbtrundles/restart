@@ -159,13 +159,11 @@ class NPCFactory:
 
             # 2. Create base NPC instance
             init_args = {
-                 "obj_id": npc_instance_id,
-                 "name": creation_args.get("name", "Unknown NPC"),
-                 "description": creation_args.get("description", "No description"),
-                 # Pass level from creation_args, NPC.__init__ uses it for initial health calc
-                 "level": creation_args.get("level", 1),
-                 # Health is handled below after stats are set
-                 "friendly": creation_args.get("friendly", True),
+                "obj_id": npc_instance_id,
+                "name": template.get("name", "Unknown NPC"), # <<< CONFIRMED: Uses template name
+                "description": creation_args.get("description", template.get("description", "No description")),
+                "level": overrides.get("level", template.get("level", 1)),
+                "friendly": creation_args.get("friendly", template.get("friendly", True)),
             }
             npc = NPC(**init_args)
             npc.template_id = template_id # Store template reference
