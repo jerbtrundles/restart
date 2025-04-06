@@ -37,19 +37,47 @@ class TimePlugin(PluginBase):
         self.year = 1
     
     def initialize(self):
-        """Initialize the plugin."""
-        # Register event listeners
+        """Initialize the plugin, loading saved state if available."""
+
+        loaded_from_save = False
+        # --- Load Saved State ---
+        if self.world and hasattr(self.world, 'plugin_data'):
+            # Load the entire time_state block saved by _update_world_time_data
+            plugin_state = self.world.get_plugin_data(self.plugin_id, "time_state", {}) # Use get_plugin_data
+
+            if plugin_state: # Check if data was actually loaded
+                self.game_time = plugin_state.get("game_time", 0) # Load game_time preferentially
+                self.hour = plugin_state.get("hour", 12)
+                self.minute = plugin_state.get("minute", 0)
+                self.day = plugin_state.get("day", 1)
+                self.month = plugin_state.get("month", 1)
+                self.year = plugin_state.get("year", 1)
+                # Time period will be recalculated below based on loaded hour
+                print(f"[TimePlugin] Loaded time state: Y{self.year} M{self.month} D{self.day} {self.hour:02d}:{self.minute:02d} (game_time: {self.game_time})")
+                loaded_from_save = True
+            else:
+                 print("[TimePlugin] No saved time state found in world data, using defaults.")
+                 self.game_time = 0 # Ensure default if no state loaded
+        else:
+            print("[TimePlugin] Warning: World or plugin_data not available during init, starting with default time.")
+            self.game_time = 0 # Ensure default if world missing
+
+        # Register event listeners AFTER potentially loading state
         if self.event_system:
             self.event_system.subscribe("on_tick", self._on_tick)
-        
-        # Register commands
+
+        # Register commands (as before)
         from .commands import register_commands
         register_commands(self)
-        
-        # Store initial time data in the world
-        self._update_world_time_data()
-        
-        print(f"Time plugin initialized. Current time period: {self.current_time_period}")
+
+        # Set last_real_time *after* potentially loading game_time
+        self.last_real_time = time.time()
+
+        # Ensure time period and world data reflect loaded/current state
+        self._update_time_period() # Recalculate period based on loaded hour
+        self._update_world_time_data() # Push the (potentially loaded) state back to world data
+
+        print(f"Time plugin initialized. Current time: {self.hour:02d}:{self.minute:02d}. Period: {self.current_time_period}")
     
     def _on_tick(self, event_type, data):
         """Update time on each game tick."""
@@ -158,16 +186,14 @@ class TimePlugin(PluginBase):
         """Store time data in the world for other plugins to access."""
         day_name = self.config["day_names"][(self.day - 1) % len(self.config["day_names"])]
         month_name = self.config["month_names"][self.month - 1]
-        
         time_str = f"{self.hour:02d}:{self.minute:02d}"
         date_str = f"{day_name}, {self.day} {month_name}, Year {self.year}"
-        
-        # Get season
         seasons = ["winter", "spring", "summer", "fall"]
         season_idx = ((self.month - 1) // 3) % 4
         current_season = seasons[season_idx]
         
         time_data = {
+            "game_time": self.game_time,
             "hour": self.hour,
             "minute": self.minute,
             "day": self.day,
@@ -183,12 +209,12 @@ class TimePlugin(PluginBase):
         
         # Store in world plugin data
         if self.world:
-            for key, value in time_data.items():
-                self.world.set_plugin_data(self.plugin_id, key, value)
-        
-        # Publish time data event
+            # Use set_plugin_data for the whole block for efficiency
+            self.world.set_plugin_data(self.plugin_id, "time_state", time_data) # Save as one block
+
+        # Publish time data event (consider publishing the whole block)
         if self.event_system:
-            self.event_system.publish("time_data", time_data)
+            self.event_system.publish("time_data", time_data) # Publish the whole dict
     
     def cleanup(self):
         """Clean up plugin resources."""

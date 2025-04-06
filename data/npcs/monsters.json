@@ -1,58 +1,74 @@
 {
   "goblin": {
-    "name": "Goblin",
+    "name": "goblin",
     "description": "A small, green-skinned creature with sharp teeth and claws.",
     "health": 30,
     "level": 1,
     "friendly": false,
     "faction": "hostile",
     "behavior_type": "aggressive",
-    "attack_power": 5,
-    "defense": 2,
-    "dialog": {
-      "greeting": "The {name} snarls at you!",
-      "threat": "The {name} raises its rusty dagger!",
-      "flee": "The {name} tries to escape!"
+    "stats": {
+      "strength": 6,
+      "dexterity": 11,
+      "constitution": 8,
+      "agility": 13,
+      "intelligence": 5,
+      "wisdom": 4,
+      "spell_power": 1,
+      "magic_resist": 1
     },
-    "default_dialog": "The {name} snarls aggressively.",
+    "attack_power": 2,
+    "defense": 1,
+    "dialog": {
+      "greeting": "{name} snarls at you!",
+      "threat": "{name} raises its rusty dagger!",
+      "flee": "{name} tries to escape!"
+    },
+    "default_dialog": "{name} snarls aggressively.",
     "loot_table": {
-      "item_gold_coin": {         
-        "chance": 0.8,
-        "quantity": [1, 5]        
-      },
-      "item_starter_dagger": {    
-        "chance": 0.3
-                                  
-      },
-      "item_goblin_ear": {        
-        "chance": 0.9
-      }
+      "gold_value": { "chance": 0.8, "quantity": [1, 5] },
+      "item_starter_dagger": { "chance": 0.3 },
+      "item_goblin_ear": { "chance": 0.9 }
     },
     "usable_spells": ["zap"],
     "properties": {
       "aggression": 0.1,
       "flee_threshold": 0.2,
       "respawn_cooldown": 300,
-      "spell_cast_chance": 0.2
+      "spell_cast_chance": 0.2,
+      "wander_chance": 0.5,
+      "move_cooldown": 8
     }
   },
   "wolf": {
-    "name": "Wolf",
+    "name": "wolf",
     "description": "A fierce wolf with sharp fangs and a hungry look.",
     "health": 25,
     "level": 1,
     "friendly": false,
     "faction": "hostile",
     "behavior_type": "aggressive",
-    "attack_power": 6,
+    "stats": {
+      "strength": 9,
+      "dexterity": 12,
+      "constitution": 10,
+      "agility": 14,
+      "intelligence": 3,
+      "wisdom": 6,
+      "spell_power": 0,
+      "magic_resist": 0
+    },
+    "attack_power": 3,
     "defense": 1,
     "dialog": {
-      "greeting": "The {name} growls menacingly!",
-      "threat": "The {name} bares its fangs!",
-      "flee": "The {name} whimpers and tries to escape!"
+      "greeting": "{name} growls menacingly!",
+      "threat": "{name} bares its fangs!",
+      "flee": "{name} whimpers and tries to escape!"
     },
-    "default_dialog": "The {name} growls.",
+    "default_dialog": "{name} growls.",
     "loot_table": {
+     
+     
       "item_wolf_pelt": { "chance": 0.9 },
       "item_wolf_fang": { "chance": 0.7 },
       "item_raw_meat": { "chance": 0.5 }
@@ -62,55 +78,83 @@
       "aggression": 0.1,
       "flee_threshold": 0.3,
       "respawn_cooldown": 360,
-      "spell_cast_chance": 0.0
+      "spell_cast_chance": 0.0,
+      "wander_chance": 0.6,
+      "move_cooldown": 6
     }
   },
   "skeleton": {
-    "name": "Skeleton",
+    "name": "skeleton",
     "description": "A walking skeleton animated by dark magic.",
     "health": 40,
     "level": 2,
     "friendly": false,
     "faction": "hostile",
     "behavior_type": "aggressive",
-    "attack_power": 7,
+    "stats": {
+      "strength": 10,
+      "dexterity": 7,
+      "constitution": 5,
+      "agility": 6,
+      "intelligence": 0,
+      "wisdom": 0,
+      "spell_power": 2,
+      "magic_resist": 3
+    },
+    "attack_power": 4,
     "defense": 3,
     "dialog": {
-      "greeting": "The {name} rattles its bones!",
-      "threat": "The {name} raises its weapon!",
-      "flee": "The {name} retreats!"
+      "greeting": "{name} rattles its bones!",
+      "threat": "{name} raises its weapon!",
+      "flee": "{name} retreats!"
     },
     "default_dialog": "A clattering sound comes from the {name}.",
     "loot_table": {
+     
       "item_bone": { "chance": 0.9, "quantity": [1, 2] },
       "item_rusty_sword": { "chance": 0.4 },
       "item_old_coin": { "chance": 0.2 }
+     
+     
     },
     "usable_spells": ["zap"],
     "properties": {
       "aggression": 0.1,
       "flee_threshold": 0.1,
       "respawn_cooldown": 420,
-      "spell_cast_chance": 0.25
+      "spell_cast_chance": 0.25,
+      "wander_chance": 0.4,
+      "move_cooldown": 10
     }
   },
   "giant_rat": {
-    "name": "Giant Rat",
+    "name": "giant rat",
     "description": "An oversized rodent with mangy fur and sharp teeth.",
     "health": 15,
     "level": 1,
     "friendly": false,
     "faction": "hostile",
     "behavior_type": "aggressive",
-    "attack_power": 3,
+    "stats": {
+      "strength": 4,
+      "dexterity": 13,
+      "constitution": 7,
+      "agility": 15,
+      "intelligence": 2,
+      "wisdom": 3,
+      "spell_power": 0,
+      "magic_resist": 0
+    },
+    "attack_power": 2,
     "defense": 1,
     "dialog": {
-      "greeting": "The {name} squeaks aggressively!",
-      "threat": "The {name} bares its teeth!",
-      "flee": "The {name} scurries away!"
+      "greeting": "{name} squeaks aggressively!",
+      "threat": "{name} bares its teeth!",
+      "flee": "{name} scurries away!"
     },
-    "default_dialog": "The {name} squeaks.",
+    "default_dialog": "{name} squeaks.",
     "loot_table": {
+     
       "item_rat_tail": { "chance": 0.8 },
       "item_rat_fur": { "chance": 0.6 }
     },
@@ -119,27 +163,39 @@
       "aggression": 0.1,
       "flee_threshold": 0.4,
       "respawn_cooldown": 240,
-      "spell_cast_chance": 0.0
+      "spell_cast_chance": 0.0,
+      "wander_chance": 0.7,
+      "move_cooldown": 5
     }
   },
   "bandit": {
-    "name": "Bandit",
+    "name": "bandit",
     "description": "A rough-looking human armed with weapons.",
     "health": 45,
     "level": 2,
     "friendly": false,
     "faction": "hostile",
     "behavior_type": "aggressive",
-    "attack_power": 8,
+    "stats": {
+      "strength": 11,
+      "dexterity": 12,
+      "constitution": 11,
+      "agility": 10,
+      "intelligence": 8,
+      "wisdom": 7,
+      "spell_power": 0,
+      "magic_resist": 1
+    },
+    "attack_power": 5,
     "defense": 4,
     "dialog": {
       "greeting": "\"Your money or your life!\" threatens the {name}.",
       "threat": "\"You'll regret this!\" shouts the {name}.",
       "flee": "\"This isn't worth dying for!\" cries the {name}."
     },
-    "default_dialog": "The {name} eyes you warily.",
+    "default_dialog": "{name} eyes you warily.",
     "loot_table": {
-      "item_gold_coin": { "chance": 0.9, "quantity": [5, 15] },
+      "gold_value": { "chance": 0.9, "quantity": [5, 15] },
       "item_dagger": { "chance": 0.5 },
       "item_stolen_pouch": { "chance": 0.2 },
       "item_leather_tunic": { "chance": 0.15 }
@@ -149,37 +205,51 @@
       "aggression": 0.1,
       "flee_threshold": 0.25,
       "respawn_cooldown": 600,
-      "spell_cast_chance": 0.0
+      "spell_cast_chance": 0.0,
+      "wander_chance": 0.5,
+      "move_cooldown": 10
     }
   },
   "troll": {
-    "name": "Troll",
+    "name": "troll",
     "description": "A massive, green-skinned brute with regenerative abilities.",
     "health": 80,
     "level": 5,
     "friendly": false,
     "faction": "hostile",
     "behavior_type": "aggressive",
-    "attack_power": 12,
+    "stats": {
+      "strength": 17,
+      "dexterity": 6,
+      "constitution": 19,
+      "agility": 5,
+      "intelligence": 3,
+      "wisdom": 4,
+      "spell_power": 0,
+      "magic_resist": 2
+    },
+    "attack_power": 7,
     "defense": 6,
     "dialog": {
-      "greeting": "The {name} roars loudly!",
-      "threat": "The {name} pounds its chest!",
-      "flee": "The {name} retreats, looking for easier prey!"
+      "greeting": "{name} roars loudly!",
+      "threat": "{name} pounds its chest!",
+      "flee": "{name} retreats, looking for easier prey!"
     },
-    "default_dialog": "The {name} grunts.",
+    "default_dialog": "{name} grunts.",
     "loot_table": {
+      "gold_value": { "chance": 0.4, "quantity": [10, 30] },
       "item_troll_hide": { "chance": 0.9 },
       "item_crude_club": { "chance": 0.5 },
-      "item_shiny_rock": { "chance": 0.7, "quantity": [1, 3] },
-      "item_gold_coin": { "chance": 0.4, "quantity": [10, 30] }
+      "item_shiny_rock": { "chance": 0.7, "quantity": [1, 3] }
     },
     "usable_spells": [],
     "properties": {
       "aggression": 0.1,
       "flee_threshold": 0.15,
       "respawn_cooldown": 900,
-      "spell_cast_chance": 0.0
+      "spell_cast_chance": 0.0,
+      "wander_chance": 0.3,
+      "move_cooldown": 15
     }
   }
 }

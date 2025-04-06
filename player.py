@@ -8,7 +8,9 @@ import random
 from core.config import (
     FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GREEN, FORMAT_HIGHLIGHT,
     FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_ATTACK_COOLDOWN,
-    MIN_HIT_CHANCE, MAX_HIT_CHANCE, MIN_XP_GAIN
+    MIN_HIT_CHANCE, MAX_HIT_CHANCE, MIN_XP_GAIN,
+    PLAYER_BASE_HEALTH, PLAYER_CON_HEALTH_MULTIPLIER,
+    PLAYER_LEVEL_HEALTH_BASE_INCREASE, PLAYER_LEVEL_CON_HEALTH_MULTIPLIER
 )
 
 from items.inventory import Inventory
@@ -18,7 +20,7 @@ from items.item import Item
 from magic.spell import Spell
 from magic.spell_registry import get_spell
 from magic.effects import apply_spell_effect
-from utils.utils import _serialize_item_reference, get_article, simple_plural # If defined in utils/utils.py
+from utils.utils import _serialize_item_reference, format_name_for_display, get_article, simple_plural # If defined in utils/utils.py
 from utils.text_formatter import format_target_name, get_level_diff_category # Import category calculation
 
 from typing import TYPE_CHECKING
@@ -30,16 +32,17 @@ class Player:
     def __init__(self, name: str):
         self.name = name
         self.inventory = Inventory(max_slots=20, max_weight=100.0)
-        self.health = 100
-        self.max_health = 100
-        self.mana = 50
         self.max_mana = 50
+        self.mana = self.max_mana
         self.mana_regen_rate = 1.0
         self.last_mana_regen_time = 0
         self.stats = {
             "strength": 10, "dexterity": 10, "intelligence": 10,
-            "wisdom": 10, "spell_power": 5, "magic_resist": 2
+            "wisdom": 10, "constitution": 10, "agility": 10, # Added CON, AGI
+            "spell_power": 5, "magic_resist": 2
         }
+        self.max_health = PLAYER_BASE_HEALTH + int(self.stats.get('constitution', 10)) * PLAYER_CON_HEALTH_MULTIPLIER
+        self.health = self.max_health
         self.level = 1
         self.experience = 0
         self.experience_to_level = 100
@@ -75,6 +78,8 @@ class Player:
         self.world: Optional['World'] = None
         self.current_region_id: Optional[str] = None # Tracked by player for saving
         self.current_room_id: Optional[str] = None
+        self.gold: int = 0 # <<< ADDED GOLD ATTRIBUTE
+        self.trading_with: Optional[str] = None # <<< ADDED for Phase 3
 
     # *** NEW: Update method for regeneration ***
     def update(self, current_time: float):
@@ -135,18 +140,20 @@ class Player:
         status += f"{FORMAT_CATEGORY}Mana:{FORMAT_RESET} {mana_display}\n"
         # --- End Basic Info ---
 
-        # --- Stats ---
+        # --- Stats - ADD CON & AGI ---
         status += f"{FORMAT_CATEGORY}Stats:{FORMAT_RESET} "
         stat_parts = []
-        # Define which stats to show
-        stats_to_show = ["strength", "dexterity", "intelligence", "wisdom", "spell_power", "magic_resist"]
+        # Define which stats to show - ADDED CON, AGI
+        stats_to_show = ["strength", "dexterity", "constitution", "agility", "intelligence", "wisdom", "spell_power", "magic_resist"]
         for stat_name in stats_to_show:
             stat_value = self.stats.get(stat_name, 0)
             # Abbreviate common stats
-            abbr = stat_name[:3].upper() if stat_name in ["strength", "dexterity", "intelligence", "wisdom"] else stat_name.upper()
+            abbr = stat_name[:3].upper() if stat_name in ["strength", "dexterity", "intelligence", "wisdom", "constitution", "agility"] else stat_name.upper() # Added CON, AGI to abbr
             stat_parts.append(f"{abbr} {stat_value}")
         status += ", ".join(stat_parts) + "\n"
         # --- End Stats ---
+
+        status += f"{FORMAT_CATEGORY}Gold:{FORMAT_RESET} {self.gold}\n"
 
         # --- Combat Stats (with Effective Cooldown) ---
         effective_cd = self.get_effective_attack_cooldown()
@@ -264,14 +271,19 @@ class Player:
         self.stats["strength"] += 1
         self.stats["dexterity"] += 1
         self.stats["intelligence"] += 1
-        self.stats["wisdom"] += 1 # Increase wisdom on level up
-        self.max_health = int(self.max_health * 1.1)
-        self.health = self.max_health
-        # *** ADD Mana Increase ***
+        self.stats["wisdom"] += 1
+        self.stats["constitution"] += 1 # Increase CON on level up
+        self.stats["agility"] += 1      # Increase AGI on level up
+
+        old_max_health = self.max_health
+        health_increase = PLAYER_LEVEL_HEALTH_BASE_INCREASE + int(self.stats.get('constitution', 10) * PLAYER_LEVEL_CON_HEALTH_MULTIPLIER)
+        self.max_health += health_increase
+        self.health += (self.max_health - old_max_health) # Add the gained max health to current health
+
         old_max_mana = self.max_mana
         self.max_mana = int(self.max_mana * 1.15 + self.stats["intelligence"] / 2) # Increase based on level and INT
         self.mana += (self.max_mana - old_max_mana)
-        # *** END ADD ***
+
 
     def add_effect(self, name: str, description: str, duration: int,
                   stat_modifiers: Dict[str, int] = None) -> None:
@@ -398,19 +410,18 @@ class Player:
         return attack
 
     def get_defense(self) -> int:
-        defense = self.defense + self.stats.get("dexterity", 0) // 4
+        defense = self.defense + self.stats.get("dexterity", 10) // 4
         armor_bonus = 0
         for item in self.equipment.values():
             if item:
                  item_defense = item.get_property("defense", 0)
                  # Check item durability if applicable
-                 # if item.get_property("durability", 1) > 0:
-                 if item_defense > 0: armor_bonus += item_defense
+                 if item.get_property("durability", 1) > 0:
+                    if item_defense > 0: armor_bonus += item_defense
         defense += armor_bonus
         # Add effects bonus if implemented
         return defense
 
-    # ... (enter_combat, exit_combat, can_attack, get_combat_status, _add_combat_message - unchanged) ...
     def enter_combat(self, target) -> None:
         if not self.is_alive: return # Cannot enter combat if dead
         self.in_combat = True
@@ -456,7 +467,7 @@ class Player:
             # self.in_combat = False
         else:
             for target in valid_targets:
-                formatted_name = format_target_name(self, target)
+                formatted_name = format_name_for_display(self, target, start_of_sentence=True)
                 if hasattr(target, "health") and hasattr(target, "max_health") and target.max_health > 0:
                     health_percent = (target.health / target.max_health) * 100
                     if health_percent <= 25: health_display = f"{FORMAT_ERROR}{target.health}/{target.max_health}{FORMAT_RESET}"
@@ -498,17 +509,23 @@ class Player:
         final_hit_chance = 1.0 # Default to 1.0 if always_hits is true
         if not always_hits:
             base_hit_chance = 0.85
-            # ... (rest of dex calculation for dex_modified_hit_chance) ...
-            attacker_dex = self.stats.get("dexterity", 10)
-            target_dex = getattr(target, "stats", {}).get("dexterity", 10)
-            dex_modified_hit_chance = max(0.10, min(base_hit_chance + (attacker_dex - target_dex) * 0.02, 0.98))
 
+            # Calculate hit chance modifier based on Agility difference
+            # Increase hit chance by 2% for each point of AGI advantage
+            # Decrease hit chance by 2% for each point of AGI disadvantage
+            attacker_agi = self.stats.get("agility", 10)
+            target_agi = getattr(target, "stats", {}).get("agility", 8)
+            agi_modifier = (attacker_agi - target_agi) * 0.02
+            agi_modified_hit_chance = base_hit_chance + agi_modifier
+
+            # Level difference modifier
             hit_chance_mod, _, _ = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
+            level_modified_hit_chance = agi_modified_hit_chance * hit_chance_mod
 
-            final_hit_chance = dex_modified_hit_chance * hit_chance_mod
-            final_hit_chance = max(MIN_HIT_CHANCE, min(final_hit_chance, MAX_HIT_CHANCE))
+            # Clamp final hit chance
+            final_hit_chance = max(MIN_HIT_CHANCE, min(level_modified_hit_chance, MAX_HIT_CHANCE))
 
-        formatted_target_name = format_target_name(self, target) # <<< Format name
+        formatted_target_name = format_name_for_display(self, target, start_of_sentence=False)
 
         if not always_hits and random.random() > final_hit_chance:
             # --- Miss ---
@@ -564,20 +581,19 @@ class Player:
         }
         self._add_combat_message(result["message"])
 
-        # ... (Check Target Death & XP/Loot - unchanged) ...
+        # ... (Check Target Death & XP/Loot ) ...
         if hasattr(target, "health") and target.health <= 0:
             if hasattr(target, 'is_alive'): target.is_alive = False
-            death_message = f"{formatted_target_name} has been defeated!"
+            formatted_target_name_start = format_name_for_display(self, target, start_of_sentence=True)
+            death_message = f"{formatted_target_name_start} has been defeated!"
             self._add_combat_message(death_message)
             self.exit_combat(target)
             result["target_defeated"] = True
             result["message"] += "\n" + death_message
 
-            # Calculate Base XP
+            # Calculate XP
             base_xp_gained = max(1, getattr(target, "max_health", 10) // 5) + getattr(target, "level", 1) * 5
-
-            # Apply XP Modifier based on level difference category
-            _, _, xp_mod = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
+            _, _, xp_mod = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0)) # Apply XP Modifier based on level difference category
             final_xp_gained = int(base_xp_gained * xp_mod)
             final_xp_gained = max(MIN_XP_GAIN, final_xp_gained) # Ensure minimum XP
 
@@ -590,6 +606,25 @@ class Player:
                 level_up_msg = f"You leveled up to level {self.level}!"
                 self._add_combat_message(level_up_msg)
                 result["message"] += "\n" + level_up_msg
+
+            # --- NEW: Gold Award Logic ---
+            gold_awarded = 0
+            if hasattr(target, "loot_table"):
+                 # Check specifically for a 'gold_value' entry in the loot table
+                 gold_loot_data = target.loot_table.get("gold_value") # Use a specific key like 'gold_value'
+                 if isinstance(gold_loot_data, dict) and "chance" in gold_loot_data:
+                      if random.random() < gold_loot_data["chance"]:
+                           qty_range = gold_loot_data.get("quantity", [1, 1])
+                           if isinstance(qty_range, (list, tuple)) and len(qty_range) == 2:
+                                gold_awarded = random.randint(qty_range[0], qty_range[1])
+                           else: # Fallback if quantity format is wrong
+                                gold_awarded = 1
+                           if gold_awarded > 0:
+                                self.gold += gold_awarded
+                                gold_message = f"You receive {gold_awarded} gold from the remains of {formatted_target_name}." # Target NOT start here
+                                self._add_combat_message(gold_message)
+                                result["message"] += "\n" + gold_message
+                                result["gold_awarded"] = gold_awarded # Add to result dict
 
             if hasattr(target, "die"):
                 # NPC.die now returns List[Item]
@@ -623,16 +658,16 @@ class Player:
                     loot_str = ""
                     if not loot_message_parts:
                         # Should not happen if dropped_loot_items was not empty, but safety check
-                        loot_str = f"{formatted_target_name} dropped something."
+                        loot_str = f"{formatted_target_name_start} dropped something."
                     elif len(loot_message_parts) == 1:
-                        loot_str = f"{formatted_target_name} dropped {loot_message_parts[0]}."
+                        loot_str = f"{formatted_target_name_start} dropped {loot_message_parts[0]}."
                     elif len(loot_message_parts) == 2:
-                        loot_str = f"{formatted_target_name} dropped {loot_message_parts[0]} and {loot_message_parts[1]}."
+                        loot_str = f"{formatted_target_name_start} dropped {loot_message_parts[0]} and {loot_message_parts[1]}."
                     else: # More than 2 items
                         # Join all but the last with commas, then add "and" before the last one
                         all_but_last = ", ".join(loot_message_parts[:-1])
                         last_item = loot_message_parts[-1]
-                        loot_str = f"{formatted_target_name} dropped {all_but_last}, and {last_item}."
+                        loot_str = f"{formatted_target_name_start} dropped {all_but_last}, and {last_item}."
 
                     if loot_str: # Check if loot_str was generated
                         self._add_combat_message(loot_str)
@@ -782,10 +817,10 @@ class Player:
 
         # Check target death (similar to attack)
         if spell.effect_type == "damage" and hasattr(target, "health") and target.health <= 0:
-            formatted_target_name = format_target_name(self, target) # <<< Format name
+            formatted_target_name_start = format_name_for_display(self, target, start_of_sentence=True)
             
             if hasattr(target, 'is_alive'): target.is_alive = False # Make sure state is updated
-            death_message = f"{formatted_target_name} has been defeated by {spell.name}!"
+            death_message = f"{formatted_target_name_start} has been defeated by {spell.name}!"
             self._add_combat_message(death_message)
             self.exit_combat(target)
             result["target_defeated"] = True
@@ -808,6 +843,23 @@ class Player:
                 level_up_msg = f"You leveled up to level {self.level}!"
                 self._add_combat_message(level_up_msg)
                 result["message"] += "\n" + level_up_msg
+
+            # --- NEW: Gold Award Logic (Identical to attack method's) ---
+            gold_awarded = 0
+            if hasattr(target, "loot_table"):
+                 gold_loot_data = target.loot_table.get("gold_value")
+                 if isinstance(gold_loot_data, dict) and "chance" in gold_loot_data:
+                      if random.random() < gold_loot_data["chance"]:
+                           qty_range = gold_loot_data.get("quantity", [1, 1])
+                           if isinstance(qty_range, (list, tuple)) and len(qty_range) == 2:
+                                gold_awarded = random.randint(qty_range[0], qty_range[1])
+                           else: gold_awarded = 1
+                           if gold_awarded > 0:
+                                self.gold += gold_awarded
+                                gold_message = f"You receive {gold_awarded} gold."
+                                self._add_combat_message(gold_message)
+                                result["message"] += "\n" + gold_message
+                                result["gold_awarded"] = gold_awarded
 
             if hasattr(target, "die"):
                 # NPC.die now returns List[Item]
@@ -841,16 +893,16 @@ class Player:
                     loot_str = ""
                     if not loot_message_parts:
                         # Should not happen if dropped_loot_items was not empty, but safety check
-                        loot_str = f"{formatted_target_name} dropped something."
+                        loot_str = f"{formatted_target_name_start} dropped something."
                     elif len(loot_message_parts) == 1:
-                        loot_str = f"{formatted_target_name} dropped {loot_message_parts[0]}."
+                        loot_str = f"{formatted_target_name_start} dropped {loot_message_parts[0]}."
                     elif len(loot_message_parts) == 2:
-                        loot_str = f"{formatted_target_name} dropped {loot_message_parts[0]} and {loot_message_parts[1]}."
+                        loot_str = f"{formatted_target_name_start} dropped {loot_message_parts[0]} and {loot_message_parts[1]}."
                     else: # More than 2 items
                         # Join all but the last with commas, then add "and" before the last one
                         all_but_last = ", ".join(loot_message_parts[:-1])
                         last_item = loot_message_parts[-1]
-                        loot_str = f"{formatted_target_name} dropped {all_but_last}, and {last_item}."
+                        loot_str = f"{formatted_target_name_start} dropped {all_but_last}, and {last_item}."
 
                     if loot_str: # Check if loot_str was generated
                         self._add_combat_message(loot_str)
@@ -880,21 +932,21 @@ class Player:
         }
 
         return {
+            "gold": self.gold, # <<< ADDED GOLD
             "name": self.name,
             "health": self.health, "max_health": self.max_health,
             "mana": self.mana, "max_mana": self.max_mana,
             "stats": self.stats,
             "level": self.level, "experience": self.experience, "experience_to_level": self.experience_to_level,
             "skills": self.skills,
-            "effects": self.effects, # Assumes effects are simple serializable dicts
+            "effects": self.effects,
             "quest_log": self.quest_log,
             "is_alive": self.is_alive,
-            "current_location": current_location, # Store resolved location
+            "current_location": current_location,
             "respawn_region_id": self.respawn_region_id,
             "respawn_room_id": self.respawn_room_id,
             "known_spells": list(self.known_spells),
             "spell_cooldowns": self.spell_cooldowns,
-            # --- Embed serialized inventory and equipment references ---
             "inventory": inventory_data,
             "equipment": equipped_items_data,
         }
@@ -913,17 +965,23 @@ class Player:
              return player
 
         player = cls(data["name"])
-        # --- Load Basic Stats (mostly unchanged) ---
-        player.health = data.get("health", 100)
-        player.max_health = data.get("max_health", 100)
-        player.mana = data.get("mana", 50)
-        player.max_mana = data.get("max_mana", 50)
-        player.stats = data.get("stats", {"strength": 10, "dexterity": 10, "intelligence": 10, "wisdom": 10, "spell_power": 5, "magic_resist": 2})
-        # Ensure new stats have defaults
+        player.gold = data.get("gold", 0) # <<< ADDED GOLD (default to 0)
+        player.trading_with = None # <<< Ensure trading state is reset on load
+
+        player.stats = data.get("stats", {"strength": 10, "dexterity": 10, "intelligence": 10, "wisdom": 10, "spell_power": 5, "magic_resist": 2, "constitution": 10, "agility": 10})
         player.stats.setdefault("wisdom", 10)
         player.stats.setdefault("spell_power", 5)
         player.stats.setdefault("magic_resist", 2)
+        player.stats.setdefault("constitution", 10)
+        player.stats.setdefault("agility", 10)
         player.level = data.get("level", 1)
+
+        player.max_health = PLAYER_BASE_HEALTH + int(player.stats.get('constitution', 10) * PLAYER_CON_HEALTH_MULTIPLIER)
+        player.health = data.get("health", player.max_health)
+        player.health = min(player.health, player.max_health) # Clamp loaded health
+        player.mana = data.get("mana", 50)
+        player.max_mana = data.get("max_mana", 50)
+
         player.experience = data.get("experience", 0)
         player.experience_to_level = data.get("experience_to_level", 100)
         player.skills = data.get("skills", {})
@@ -947,30 +1005,25 @@ class Player:
         player.combat_messages = []
         player.last_attack_time = 0
 
-        # --- Load Inventory (using its modified from_dict) ---
+        # Load inventory
         if "inventory" in data:
-            # Pass world context to Inventory.from_dict
             player.inventory = Inventory.from_dict(data["inventory"], world)
         else:
             player.inventory = Inventory() # Default empty
 
-        # --- Load Equipment (using references) ---
-        player.equipment = { "main_hand": None, "off_hand": None, "body": None, "head": None, "feet": None, "hands": None, "neck": None } # Initialize empty
+        # Load equipment
+        player.equipment = { "main_hand": None, "off_hand": None, "body": None, "head": None, "feet": None, "hands": None, "neck": None }
         if "equipment" in data:
-            from items.item_factory import ItemFactory # Local import needed
+            from items.item_factory import ItemFactory # Local import
             for slot, item_ref in data["equipment"].items():
-                 # Check if item_ref is a valid reference dictionary
                  if item_ref and isinstance(item_ref, dict) and "item_id" in item_ref:
                      item_id = item_ref["item_id"]
                      overrides = item_ref.get("properties_override", {})
-                     # Use ItemFactory with world context
                      item = ItemFactory.create_item_from_template(item_id, world, **overrides)
                      if item and slot in player.equipment:
                           player.equipment[slot] = item
-                     elif item:
-                          print(f"Warning: Invalid equipment slot '{slot}' found in save data for item '{item.name}'.")
-                     else:
-                          print(f"Warning: Failed to load equipped item '{item_id}' for slot '{slot}'.")
+                     elif item: print(f"Warning: Invalid equip slot '{slot}' in save.")
+                     else: print(f"Warning: Failed to load equipped item '{item_id}'.")
 
         return player
     # --- END MODIFIED ---

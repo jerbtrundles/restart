@@ -1,0 +1,7924 @@
+{
+  "save_format_version": 3,
+  "save_name": "default_save",
+  "timestamp": "2025-04-06T21:40:31Z",
+  "player": {
+    "gold": 147,
+    "name": "Adventurer",
+    "health": 108,
+    "max_health": 108,
+    "mana": 116,
+    "max_mana": 116,
+    "stats": {
+      "strength": 14,
+      "dexterity": 14,
+      "intelligence": 14,
+      "wisdom": 14,
+      "constitution": 14,
+      "agility": 14,
+      "spell_power": 5,
+      "magic_resist": 2
+    },
+    "level": 5,
+    "experience": 120,
+    "experience_to_level": 505,
+    "skills": {},
+    "effects": [],
+    "quest_log": {},
+    "is_alive": true,
+    "current_location": {
+      "region_id": "swamp",
+      "room_id": "marsh_edge"
+    },
+    "respawn_region_id": "town",
+    "respawn_room_id": "town_square",
+    "known_spells": [
+      "minor_heal",
+      "magic_missile"
+    ],
+    "spell_cooldowns": {},
+    "inventory": {
+      "max_slots": 20,
+      "max_weight": 100.0,
+      "slots": [
+        {
+          "item_id": "item_starter_dagger",
+          "properties_override": {
+            "durability": 20
+          }
+        },
+        {
+          "item_id": "item_healing_potion_small",
+          "quantity": 2,
+          "properties_override": {
+            "uses": 1
+          }
+        },
+        {
+          "item_id": "item_rat_tail",
+          "quantity": 5
+        },
+        {
+          "item_id": "item_rat_fur",
+          "quantity": 2
+        },
+        {
+          "item_id": "item_goblin_ear"
+        },
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    "equipment": {
+      "main_hand": {
+        "item_id": "debug_sword",
+        "properties_override": {
+          "durability": 999970
+        }
+      },
+      "off_hand": null,
+      "body": {
+        "item_id": "debug_armor",
+        "properties_override": {
+          "durability": 100,
+          "max_durability": 100
+        }
+      },
+      "head": null,
+      "feet": null,
+      "hands": null,
+      "neck": null
+    }
+  },
+  "npc_states": {
+    "elder_thorne_townsquare": {
+      "template_id": "village_elder",
+      "obj_id": "elder_thorne_townsquare",
+      "name": "Elder Thorne",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 7,
+        "intelligence": 14,
+        "wisdom": 16,
+        "constitution": 8,
+        "agility": 7,
+        "spell_power": 3,
+        "magic_resist": 4
+      },
+      "ai_state": {
+        "original_behavior_type": "scheduled",
+        "current_activity": "observing"
+      },
+      "spell_cooldowns": {},
+      "faction": "friendly",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "tavernkeeper_barlin_tavern": {
+      "template_id": "tavern_keeper",
+      "obj_id": "tavernkeeper_barlin_tavern",
+      "name": "Barlin the Tavern Keeper",
+      "current_region_id": "town",
+      "current_room_id": "tavern",
+      "health": 55,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 10,
+        "intelligence": 10,
+        "wisdom": 11,
+        "constitution": 13,
+        "agility": 9,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {
+        "original_behavior_type": "stationary",
+        "current_activity": "working"
+      },
+      "spell_cooldowns": {},
+      "faction": "friendly",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          {
+            "item_id": "item_ale",
+            "quantity": 10,
+            "properties_override": {
+              "uses": 1
+            }
+          },
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "merchant_talia_market": {
+      "template_id": "merchant",
+      "obj_id": "merchant_talia_market",
+      "name": "Talia the Merchant",
+      "current_region_id": "town",
+      "current_room_id": "market",
+      "health": 48,
+      "is_alive": true,
+      "stats": {
+        "strength": 8,
+        "dexterity": 10,
+        "intelligence": 12,
+        "wisdom": 12,
+        "constitution": 9,
+        "agility": 11,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {
+        "original_behavior_type": "wanderer",
+        "current_activity": "working"
+      },
+      "spell_cooldowns": {},
+      "faction": "friendly",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "blacksmith_grenda_forge": {
+      "template_id": "blacksmith",
+      "obj_id": "blacksmith_grenda_forge",
+      "name": "Grenda the Blacksmith",
+      "current_region_id": "town",
+      "current_room_id": "blacksmith",
+      "health": 65,
+      "is_alive": true,
+      "stats": {
+        "strength": 15,
+        "dexterity": 11,
+        "intelligence": 10,
+        "wisdom": 10,
+        "constitution": 14,
+        "agility": 9,
+        "spell_power": 0,
+        "magic_resist": 2
+      },
+      "ai_state": {
+        "original_behavior_type": "stationary",
+        "current_activity": "working"
+      },
+      "spell_cooldowns": {},
+      "faction": "friendly",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_94f3503b": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_94f3503b",
+      "name": "skeleton (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_003a088c": {
+      "template_id": "bandit",
+      "obj_id": "bandit_003a088c",
+      "name": "bandit (Level 2)",
+      "current_region_id": "foothills",
+      "current_room_id": "windy_ridge",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_4ffc684a": {
+      "template_id": "wolf",
+      "obj_id": "wolf_4ffc684a",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_be7f2607": {
+      "template_id": "wolf",
+      "obj_id": "wolf_be7f2607",
+      "name": "wolf (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_8a359b3b": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_8a359b3b",
+      "name": "skeleton (Level 7)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_a24719df": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_a24719df",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_538bf3b3": {
+      "template_id": "wolf",
+      "obj_id": "wolf_538bf3b3",
+      "name": "wolf (Level 3)",
+      "current_region_id": "foothills",
+      "current_room_id": "rocky_outcrop",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_f29ac7de": {
+      "template_id": "wolf",
+      "obj_id": "wolf_f29ac7de",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_7525afa5": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_7525afa5",
+      "name": "skeleton (Level 6)",
+      "current_region_id": "caves",
+      "current_room_id": "deep_tunnel",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_2edea3b9": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_2edea3b9",
+      "name": "skeleton (Level 7)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_3f42f3d2": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_3f42f3d2",
+      "name": "skeleton (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_fee76f82": {
+      "template_id": "wolf",
+      "obj_id": "wolf_fee76f82",
+      "name": "wolf (Level 4)",
+      "current_region_id": "foothills",
+      "current_room_id": "hilltop_cave_entrance",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_a30356d7": {
+      "template_id": "wolf",
+      "obj_id": "wolf_a30356d7",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_df324b26": {
+      "template_id": "wolf",
+      "obj_id": "wolf_df324b26",
+      "name": "wolf (Level 4)",
+      "current_region_id": "mountains",
+      "current_room_id": "hidden_valley_entrance",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_4733a9c3": {
+      "template_id": "bandit",
+      "obj_id": "bandit_4733a9c3",
+      "name": "bandit (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_dd779288": {
+      "template_id": "goblin",
+      "obj_id": "goblin_dd779288",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_de1215ff": {
+      "template_id": "wolf",
+      "obj_id": "wolf_de1215ff",
+      "name": "wolf (Level 4)",
+      "current_region_id": "foothills",
+      "current_room_id": "shepherds_hut",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_87e968a1": {
+      "template_id": "wolf",
+      "obj_id": "wolf_87e968a1",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_0f549f1e": {
+      "template_id": "goblin",
+      "obj_id": "goblin_0f549f1e",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_cfb8147d": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_cfb8147d",
+      "name": "skeleton (Level 7)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_a6ea98ae": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_a6ea98ae",
+      "name": "skeleton (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_5e539c44": {
+      "template_id": "wolf",
+      "obj_id": "wolf_5e539c44",
+      "name": "wolf (Level 2)",
+      "current_region_id": "foothills",
+      "current_room_id": "windy_ridge",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_b259f969": {
+      "template_id": "wolf",
+      "obj_id": "wolf_b259f969",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_965e57d4": {
+      "template_id": "goblin",
+      "obj_id": "goblin_965e57d4",
+      "name": "goblin (Level 8)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_7f9eeb9d": {
+      "template_id": "goblin",
+      "obj_id": "goblin_7f9eeb9d",
+      "name": "goblin (Level 5)",
+      "current_region_id": "caves",
+      "current_room_id": "main_cavern",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_5dd83505": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_5dd83505",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_c97b388b": {
+      "template_id": "wolf",
+      "obj_id": "wolf_c97b388b",
+      "name": "wolf (Level 2)",
+      "current_region_id": "foothills",
+      "current_room_id": "hilltop_cave",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_e5535cbf": {
+      "template_id": "goblin",
+      "obj_id": "goblin_e5535cbf",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_7a2d32c9": {
+      "template_id": "goblin",
+      "obj_id": "goblin_7a2d32c9",
+      "name": "goblin (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_3828cab5": {
+      "template_id": "goblin",
+      "obj_id": "goblin_3828cab5",
+      "name": "goblin (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "troll_f21f764a": {
+      "template_id": "troll",
+      "obj_id": "troll_f21f764a",
+      "name": "troll (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "crypt_lower_level",
+      "health": 90,
+      "is_alive": true,
+      "stats": {
+        "strength": 17,
+        "dexterity": 6,
+        "intelligence": 3,
+        "wisdom": 4,
+        "constitution": 19,
+        "agility": 5,
+        "spell_power": 0,
+        "magic_resist": 2
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_bf0a2d9c": {
+      "template_id": "goblin",
+      "obj_id": "goblin_bf0a2d9c",
+      "name": "goblin (Level 3)",
+      "current_region_id": "foothills",
+      "current_room_id": "hilltop_cave",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_84387cb9": {
+      "template_id": "wolf",
+      "obj_id": "wolf_84387cb9",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_0b541be0": {
+      "template_id": "wolf",
+      "obj_id": "wolf_0b541be0",
+      "name": "wolf (Level 7)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_5b101667": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_5b101667",
+      "name": "skeleton (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "troll_4e4a6e57": {
+      "template_id": "troll",
+      "obj_id": "troll_4e4a6e57",
+      "name": "troll (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 90,
+      "is_alive": true,
+      "stats": {
+        "strength": 17,
+        "dexterity": 6,
+        "intelligence": 3,
+        "wisdom": 4,
+        "constitution": 19,
+        "agility": 5,
+        "spell_power": 0,
+        "magic_resist": 2
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_eecfbfe1": {
+      "template_id": "goblin",
+      "obj_id": "goblin_eecfbfe1",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_edd27dde": {
+      "template_id": "wolf",
+      "obj_id": "wolf_edd27dde",
+      "name": "wolf (Level 5)",
+      "current_region_id": "mountains",
+      "current_room_id": "frozen_waterfall",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_5d53132d": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_5d53132d",
+      "name": "skeleton (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_f08bd0c3": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_f08bd0c3",
+      "name": "giant rat (Level 6)",
+      "current_region_id": "caves",
+      "current_room_id": "forgotten_mine",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_77f503dd": {
+      "template_id": "goblin",
+      "obj_id": "goblin_77f503dd",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_c108c98f": {
+      "template_id": "wolf",
+      "obj_id": "wolf_c108c98f",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_6304ca97": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_6304ca97",
+      "name": "skeleton (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_1efdeaac": {
+      "template_id": "goblin",
+      "obj_id": "goblin_1efdeaac",
+      "name": "goblin (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_b1fef532": {
+      "template_id": "goblin",
+      "obj_id": "goblin_b1fef532",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_a345c6ea": {
+      "template_id": "goblin",
+      "obj_id": "goblin_a345c6ea",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_894a33bd": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_894a33bd",
+      "name": "skeleton (Level 3)",
+      "current_region_id": "caves",
+      "current_room_id": "underground_pool",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_60926b90": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_60926b90",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_a8049cff": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_a8049cff",
+      "name": "skeleton (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_12868be7": {
+      "template_id": "bandit",
+      "obj_id": "bandit_12868be7",
+      "name": "bandit (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_c9afe4c3": {
+      "template_id": "wolf",
+      "obj_id": "wolf_c9afe4c3",
+      "name": "wolf (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_7242cdde": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_7242cdde",
+      "name": "skeleton (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_bfaf1303": {
+      "template_id": "goblin",
+      "obj_id": "goblin_bfaf1303",
+      "name": "goblin",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_442741f0": {
+      "template_id": "wolf",
+      "obj_id": "wolf_442741f0",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_19d7f031": {
+      "template_id": "bandit",
+      "obj_id": "bandit_19d7f031",
+      "name": "bandit (Level 6)",
+      "current_region_id": "mountains",
+      "current_room_id": "ice_cave",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_6cb10fc2": {
+      "template_id": "wolf",
+      "obj_id": "wolf_6cb10fc2",
+      "name": "wolf (Level 3)",
+      "current_region_id": "mountains",
+      "current_room_id": "rocky_ledge",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_ac2c04d9": {
+      "template_id": "wolf",
+      "obj_id": "wolf_ac2c04d9",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_6658fd3c": {
+      "template_id": "bandit",
+      "obj_id": "bandit_6658fd3c",
+      "name": "bandit (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_ff3d8e4a": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_ff3d8e4a",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_4a95a92f": {
+      "template_id": "goblin",
+      "obj_id": "goblin_4a95a92f",
+      "name": "goblin (Level 8)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_4d1a3b0f": {
+      "template_id": "bandit",
+      "obj_id": "bandit_4d1a3b0f",
+      "name": "bandit (Level 4)",
+      "current_region_id": "mountains",
+      "current_room_id": "summit",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_c0156e8f": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_c0156e8f",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_af193f63": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_af193f63",
+      "name": "skeleton (Level 7)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_bfd4a87e": {
+      "template_id": "wolf",
+      "obj_id": "wolf_bfd4a87e",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_a8006139": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_a8006139",
+      "name": "skeleton (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_fb0711b5": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_fb0711b5",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_a5beba21": {
+      "template_id": "goblin",
+      "obj_id": "goblin_a5beba21",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_84af869d": {
+      "template_id": "wolf",
+      "obj_id": "wolf_84af869d",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_07cc9e03": {
+      "template_id": "goblin",
+      "obj_id": "goblin_07cc9e03",
+      "name": "goblin",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_8b148964": {
+      "template_id": "wolf",
+      "obj_id": "wolf_8b148964",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_014c12b9": {
+      "template_id": "wolf",
+      "obj_id": "wolf_014c12b9",
+      "name": "wolf (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_8874e7dc": {
+      "template_id": "bandit",
+      "obj_id": "bandit_8874e7dc",
+      "name": "bandit (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_a5e124c9": {
+      "template_id": "bandit",
+      "obj_id": "bandit_a5e124c9",
+      "name": "bandit (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_57723220": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_57723220",
+      "name": "giant rat",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_cb32643e": {
+      "template_id": "wolf",
+      "obj_id": "wolf_cb32643e",
+      "name": "wolf (Level 8)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_18fc11ed": {
+      "template_id": "wolf",
+      "obj_id": "wolf_18fc11ed",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_13409195": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_13409195",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "caves",
+      "current_room_id": "narrow_passage",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_9eadc9dd": {
+      "template_id": "bandit",
+      "obj_id": "bandit_9eadc9dd",
+      "name": "bandit (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_9c6b99f3": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_9c6b99f3",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_e6ac2f5b": {
+      "template_id": "wolf",
+      "obj_id": "wolf_e6ac2f5b",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_e5f0a233": {
+      "template_id": "goblin",
+      "obj_id": "goblin_e5f0a233",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_536ac04a": {
+      "template_id": "wolf",
+      "obj_id": "wolf_536ac04a",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_6757149b": {
+      "template_id": "wolf",
+      "obj_id": "wolf_6757149b",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_5290e444": {
+      "template_id": "wolf",
+      "obj_id": "wolf_5290e444",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_8025f291": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_8025f291",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_07d6fe7c": {
+      "template_id": "wolf",
+      "obj_id": "wolf_07d6fe7c",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_9c88e72e": {
+      "template_id": "bandit",
+      "obj_id": "bandit_9c88e72e",
+      "name": "bandit (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "scriptorium",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_29af3849": {
+      "template_id": "wolf",
+      "obj_id": "wolf_29af3849",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_d906f1a7": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_d906f1a7",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_8e21040c": {
+      "template_id": "goblin",
+      "obj_id": "goblin_8e21040c",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_5884ac1e": {
+      "template_id": "goblin",
+      "obj_id": "goblin_5884ac1e",
+      "name": "goblin",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_ceffe572": {
+      "template_id": "goblin",
+      "obj_id": "goblin_ceffe572",
+      "name": "goblin (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_7cee89eb": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_7cee89eb",
+      "name": "giant rat (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_ba8d45ce": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_ba8d45ce",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_dabc5835": {
+      "template_id": "wolf",
+      "obj_id": "wolf_dabc5835",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_178ca8ef": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_178ca8ef",
+      "name": "giant rat",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_b6c3445b": {
+      "template_id": "goblin",
+      "obj_id": "goblin_b6c3445b",
+      "name": "goblin (Level 7)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_7ab0b629": {
+      "template_id": "goblin",
+      "obj_id": "goblin_7ab0b629",
+      "name": "goblin (Level 5)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_c9e043df": {
+      "template_id": "goblin",
+      "obj_id": "goblin_c9e043df",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_50573249": {
+      "template_id": "bandit",
+      "obj_id": "bandit_50573249",
+      "name": "bandit",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 46,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_547980f1": {
+      "template_id": "wolf",
+      "obj_id": "wolf_547980f1",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_e5a8dcff": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_e5a8dcff",
+      "name": "giant rat",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_74912ffe": {
+      "template_id": "wolf",
+      "obj_id": "wolf_74912ffe",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_eaef0c78": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_eaef0c78",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "mountains",
+      "current_room_id": "summit",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_e271356e": {
+      "template_id": "goblin",
+      "obj_id": "goblin_e271356e",
+      "name": "goblin",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_5d4782d1": {
+      "template_id": "wolf",
+      "obj_id": "wolf_5d4782d1",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_a376ed51": {
+      "template_id": "goblin",
+      "obj_id": "goblin_a376ed51",
+      "name": "goblin",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_cb3dfbbb": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_cb3dfbbb",
+      "name": "skeleton (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_e883d907": {
+      "template_id": "goblin",
+      "obj_id": "goblin_e883d907",
+      "name": "goblin (Level 4)",
+      "current_region_id": "mountains",
+      "current_room_id": "ice_cave_chamber",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_1448cbed": {
+      "template_id": "goblin",
+      "obj_id": "goblin_1448cbed",
+      "name": "goblin (Level 2)",
+      "current_region_id": "caves",
+      "current_room_id": "crystal_room",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_c5a25faa": {
+      "template_id": "bandit",
+      "obj_id": "bandit_c5a25faa",
+      "name": "bandit (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_3a5b38d8": {
+      "template_id": "goblin",
+      "obj_id": "goblin_3a5b38d8",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_da5dc046": {
+      "template_id": "wolf",
+      "obj_id": "wolf_da5dc046",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_06aa1d0f": {
+      "template_id": "wolf",
+      "obj_id": "wolf_06aa1d0f",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_bc0e1282": {
+      "template_id": "wolf",
+      "obj_id": "wolf_bc0e1282",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_6ef1c7a4": {
+      "template_id": "goblin",
+      "obj_id": "goblin_6ef1c7a4",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_0a933039": {
+      "template_id": "goblin",
+      "obj_id": "goblin_0a933039",
+      "name": "goblin (Level 2)",
+      "current_region_id": "caves",
+      "current_room_id": "main_cavern",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_f1ea1ce5": {
+      "template_id": "wolf",
+      "obj_id": "wolf_f1ea1ce5",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_0697348e": {
+      "template_id": "goblin",
+      "obj_id": "goblin_0697348e",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_85a2c829": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_85a2c829",
+      "name": "skeleton (Level 2)",
+      "current_region_id": "caves",
+      "current_room_id": "forgotten_mine",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_5c73eb9f": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_5c73eb9f",
+      "name": "skeleton (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_3a943543": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_3a943543",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_355e1643": {
+      "template_id": "bandit",
+      "obj_id": "bandit_355e1643",
+      "name": "bandit (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_ec1213ea": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_ec1213ea",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_129a2bc4": {
+      "template_id": "wolf",
+      "obj_id": "wolf_129a2bc4",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_36b89274": {
+      "template_id": "wolf",
+      "obj_id": "wolf_36b89274",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_74daae13": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_74daae13",
+      "name": "giant rat",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_59c45d05": {
+      "template_id": "goblin",
+      "obj_id": "goblin_59c45d05",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_11567c26": {
+      "template_id": "bandit",
+      "obj_id": "bandit_11567c26",
+      "name": "bandit (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_08fa203e": {
+      "template_id": "wolf",
+      "obj_id": "wolf_08fa203e",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "guard_tower_top",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_3be64223": {
+      "template_id": "wolf",
+      "obj_id": "wolf_3be64223",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_7731bba8": {
+      "template_id": "goblin",
+      "obj_id": "goblin_7731bba8",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_f941e491": {
+      "template_id": "goblin",
+      "obj_id": "goblin_f941e491",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_d491554a": {
+      "template_id": "goblin",
+      "obj_id": "goblin_d491554a",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_83d83be1": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_83d83be1",
+      "name": "giant rat",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_def13b4d": {
+      "template_id": "goblin",
+      "obj_id": "goblin_def13b4d",
+      "name": "goblin (Level 2)",
+      "current_region_id": "mountains",
+      "current_room_id": "ice_cave_entrance",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_2b274c61": {
+      "template_id": "goblin",
+      "obj_id": "goblin_2b274c61",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_84059841": {
+      "template_id": "wolf",
+      "obj_id": "wolf_84059841",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_577674df": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_577674df",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_706f8971": {
+      "template_id": "wolf",
+      "obj_id": "wolf_706f8971",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_b9540913": {
+      "template_id": "goblin",
+      "obj_id": "goblin_b9540913",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_439ef36a": {
+      "template_id": "goblin",
+      "obj_id": "goblin_439ef36a",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_5c70d810": {
+      "template_id": "wolf",
+      "obj_id": "wolf_5c70d810",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_43767e19": {
+      "template_id": "wolf",
+      "obj_id": "wolf_43767e19",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_1977a380": {
+      "template_id": "goblin",
+      "obj_id": "goblin_1977a380",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_41f5dcf8": {
+      "template_id": "wolf",
+      "obj_id": "wolf_41f5dcf8",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_d2572e23": {
+      "template_id": "wolf",
+      "obj_id": "wolf_d2572e23",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_cf002322": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_cf002322",
+      "name": "giant rat",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_9c938cee": {
+      "template_id": "wolf",
+      "obj_id": "wolf_9c938cee",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_c6bd31d3": {
+      "template_id": "bandit",
+      "obj_id": "bandit_c6bd31d3",
+      "name": "bandit",
+      "current_region_id": "mountains",
+      "current_room_id": "mine_exit",
+      "health": 46,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_c4d9768b": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_c4d9768b",
+      "name": "giant rat (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_f1d4de62": {
+      "template_id": "wolf",
+      "obj_id": "wolf_f1d4de62",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_1ad70d63": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_1ad70d63",
+      "name": "skeleton (Level 5)",
+      "current_region_id": "caves",
+      "current_room_id": "hidden_passage",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_fc6f9ba3": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_fc6f9ba3",
+      "name": "giant rat (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_6216b387": {
+      "template_id": "wolf",
+      "obj_id": "wolf_6216b387",
+      "name": "wolf (Level 4)",
+      "current_region_id": "forest",
+      "current_room_id": "ancient_tree",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_f171c874": {
+      "template_id": "wolf",
+      "obj_id": "wolf_f171c874",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_727aee9a": {
+      "template_id": "bandit",
+      "obj_id": "bandit_727aee9a",
+      "name": "bandit",
+      "current_region_id": "mountains",
+      "current_room_id": "ice_cave_chamber",
+      "health": 46,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_67d6192d": {
+      "template_id": "wolf",
+      "obj_id": "wolf_67d6192d",
+      "name": "wolf",
+      "current_region_id": "forest",
+      "current_room_id": "deep_forest_2",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_953b125e": {
+      "template_id": "bandit",
+      "obj_id": "bandit_953b125e",
+      "name": "bandit (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_77740034": {
+      "template_id": "bandit",
+      "obj_id": "bandit_77740034",
+      "name": "bandit",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 46,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_f3f64c64": {
+      "template_id": "goblin",
+      "obj_id": "goblin_f3f64c64",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_b130e9e7": {
+      "template_id": "goblin",
+      "obj_id": "goblin_b130e9e7",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "skeleton_8ffcdf70": {
+      "template_id": "skeleton",
+      "obj_id": "skeleton_8ffcdf70",
+      "name": "skeleton (Level 6)",
+      "current_region_id": "ruins",
+      "current_room_id": "crypt_lower_level",
+      "health": 41,
+      "is_alive": true,
+      "stats": {
+        "strength": 10,
+        "dexterity": 7,
+        "intelligence": 0,
+        "wisdom": 0,
+        "constitution": 5,
+        "agility": 6,
+        "spell_power": 2,
+        "magic_resist": 3
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_4014879b": {
+      "template_id": "goblin",
+      "obj_id": "goblin_4014879b",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_803aca07": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_803aca07",
+      "name": "giant rat (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_821ac75d": {
+      "template_id": "wolf",
+      "obj_id": "wolf_821ac75d",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_628d03b5": {
+      "template_id": "wolf",
+      "obj_id": "wolf_628d03b5",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_2a1cc946": {
+      "template_id": "wolf",
+      "obj_id": "wolf_2a1cc946",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_9bb2ba1a": {
+      "template_id": "wolf",
+      "obj_id": "wolf_9bb2ba1a",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_d4bf999d": {
+      "template_id": "wolf",
+      "obj_id": "wolf_d4bf999d",
+      "name": "wolf (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_ad46fb22": {
+      "template_id": "wolf",
+      "obj_id": "wolf_ad46fb22",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_f60797f8": {
+      "template_id": "wolf",
+      "obj_id": "wolf_f60797f8",
+      "name": "wolf",
+      "current_region_id": "caves",
+      "current_room_id": "main_cavern",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_ee89cafb": {
+      "template_id": "wolf",
+      "obj_id": "wolf_ee89cafb",
+      "name": "wolf",
+      "current_region_id": "caves",
+      "current_room_id": "main_cavern",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_f8b86cd1": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_f8b86cd1",
+      "name": "giant rat (Level 2)",
+      "current_region_id": "caves",
+      "current_room_id": "main_cavern",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_6e8187f1": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_6e8187f1",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "swamp",
+      "current_room_id": "deep_swamp",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_6a3adaff": {
+      "template_id": "wolf",
+      "obj_id": "wolf_6a3adaff",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_5ad109d1": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_5ad109d1",
+      "name": "giant rat (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_26e0da73": {
+      "template_id": "wolf",
+      "obj_id": "wolf_26e0da73",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_59029ce9": {
+      "template_id": "goblin",
+      "obj_id": "goblin_59029ce9",
+      "name": "goblin (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_7ecf99f5": {
+      "template_id": "wolf",
+      "obj_id": "wolf_7ecf99f5",
+      "name": "wolf (Level 2)",
+      "current_region_id": "forest",
+      "current_room_id": "dense_woods",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_0b87dc4c": {
+      "template_id": "wolf",
+      "obj_id": "wolf_0b87dc4c",
+      "name": "wolf (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_86639b78": {
+      "template_id": "goblin",
+      "obj_id": "goblin_86639b78",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_a91146ec": {
+      "template_id": "wolf",
+      "obj_id": "wolf_a91146ec",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_24bbde89": {
+      "template_id": "wolf",
+      "obj_id": "wolf_24bbde89",
+      "name": "wolf (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "crumbling_wall",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_3f17ff1f": {
+      "template_id": "wolf",
+      "obj_id": "wolf_3f17ff1f",
+      "name": "wolf",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "giant_rat_fc234d79": {
+      "template_id": "giant_rat",
+      "obj_id": "giant_rat_fc234d79",
+      "name": "giant rat (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 40,
+      "is_alive": true,
+      "stats": {
+        "strength": 4,
+        "dexterity": 13,
+        "intelligence": 2,
+        "wisdom": 3,
+        "constitution": 7,
+        "agility": 15,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_23ee3257": {
+      "template_id": "goblin",
+      "obj_id": "goblin_23ee3257",
+      "name": "goblin (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "wolf_15f593cb": {
+      "template_id": "wolf",
+      "obj_id": "wolf_15f593cb",
+      "name": "wolf (Level 3)",
+      "current_region_id": "mountains",
+      "current_room_id": "rocky_ledge",
+      "health": 45,
+      "is_alive": true,
+      "stats": {
+        "strength": 9,
+        "dexterity": 12,
+        "intelligence": 3,
+        "wisdom": 6,
+        "constitution": 10,
+        "agility": 14,
+        "spell_power": 0,
+        "magic_resist": 0
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_4f2d228f": {
+      "template_id": "bandit",
+      "obj_id": "bandit_4f2d228f",
+      "name": "bandit (Level 3)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_1e387d3b": {
+      "template_id": "bandit",
+      "obj_id": "bandit_1e387d3b",
+      "name": "bandit (Level 4)",
+      "current_region_id": "mountains",
+      "current_room_id": "summit",
+      "health": 52,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_c48aa95e": {
+      "template_id": "goblin",
+      "obj_id": "goblin_c48aa95e",
+      "name": "goblin (Level 3)",
+      "current_region_id": "mountains",
+      "current_room_id": "summit",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_15585f9c": {
+      "template_id": "goblin",
+      "obj_id": "goblin_15585f9c",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "goblin_1c293e2d": {
+      "template_id": "goblin",
+      "obj_id": "goblin_1c293e2d",
+      "name": "goblin (Level 2)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 42,
+      "is_alive": true,
+      "stats": {
+        "strength": 6,
+        "dexterity": 11,
+        "intelligence": 5,
+        "wisdom": 4,
+        "constitution": 8,
+        "agility": 13,
+        "spell_power": 1,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    },
+    "bandit_a7d591fb": {
+      "template_id": "bandit",
+      "obj_id": "bandit_a7d591fb",
+      "name": "bandit (Level 4)",
+      "current_region_id": "ruins",
+      "current_room_id": "deep_forest_1",
+      "health": 64,
+      "is_alive": true,
+      "stats": {
+        "strength": 11,
+        "dexterity": 12,
+        "intelligence": 8,
+        "wisdom": 7,
+        "constitution": 11,
+        "agility": 10,
+        "spell_power": 0,
+        "magic_resist": 1
+      },
+      "ai_state": {},
+      "spell_cooldowns": {},
+      "faction": "hostile",
+      "inventory": {
+        "max_slots": 10,
+        "max_weight": 50.0,
+        "slots": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  },
+  "room_items_state": {
+    "swamp:marsh_edge": [
+      {
+        "item_id": "item_rat_tail",
+        "quantity": 31
+      },
+      {
+        "item_id": "item_rat_fur",
+        "quantity": 17
+      },
+      {
+        "item_id": "item_starter_dagger",
+        "properties_override": {
+          "durability": 20
+        }
+      },
+      {
+        "item_id": "item_starter_dagger",
+        "properties_override": {
+          "durability": 20
+        }
+      },
+      {
+        "item_id": "item_starter_dagger",
+        "properties_override": {
+          "durability": 20
+        }
+      },
+      {
+        "item_id": "item_starter_dagger",
+        "properties_override": {
+          "durability": 20
+        }
+      },
+      {
+        "item_id": "item_starter_dagger",
+        "properties_override": {
+          "durability": 20
+        }
+      },
+      {
+        "item_id": "item_goblin_ear",
+        "quantity": 9
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_stolen_pouch",
+        "quantity": 2
+      },
+      {
+        "item_id": "item_bone",
+        "quantity": 4
+      },
+      {
+        "item_id": "item_leather_tunic",
+        "properties_override": {
+          "durability": 50
+        }
+      },
+      {
+        "item_id": "item_leather_tunic",
+        "properties_override": {
+          "durability": 50
+        }
+      }
+    ],
+    "swamp:mangrove_thicket": [
+      {
+        "item_id": "item_rat_tail",
+        "quantity": 5
+      },
+      {
+        "item_id": "item_rat_fur",
+        "quantity": 4
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_dagger",
+        "properties_override": {
+          "durability": 30
+        }
+      },
+      {
+        "item_id": "item_leather_tunic",
+        "properties_override": {
+          "durability": 50
+        }
+      },
+      {
+        "item_id": "item_bone"
+      },
+      {
+        "item_id": "item_old_coin"
+      }
+    ],
+    "swamp:deep_swamp": [
+      {
+        "item_id": "item_rat_tail"
+      },
+      {
+        "item_id": "item_rat_fur"
+      }
+    ]
+  },
+  "plugin_data": {
+    "quest_system_plugin": {
+      "quest_board_data": {
+        "available_quests": [
+          {
+            "instance_id": "kill_blacksmith_e41d3b",
+            "type": "kill",
+            "giver_instance_id": "blacksmith_grenda_forge",
+            "objective": {
+              "target_template_id": "bandit",
+              "target_name_plural": "bandits",
+              "required_quantity": 4,
+              "current_quantity": 0,
+              "location_hint": "the area around Riverside Village",
+              "difficulty_level": 2
+            },
+            "state": "available",
+            "rewards": {
+              "xp": 100,
+              "gold": 28
+            },
+            "title": "Bounty: bandits",
+            "description": "Grenda the Blacksmith is offering a bounty for slaying 4 bandits sighted in the area around Riverside Village."
+          },
+          {
+            "instance_id": "fetch_tavern_keeper_ca8ca3",
+            "type": "fetch",
+            "giver_instance_id": "tavernkeeper_barlin_tavern",
+            "objective": {
+              "item_id": "item_goblin_ear",
+              "item_name": "goblin ear",
+              "item_name_plural": "goblin ears",
+              "required_quantity": 12,
+              "current_quantity": 0,
+              "source_enemy_name_plural": "goblins",
+              "location_hint": "default",
+              "difficulty_level": 6
+            },
+            "state": "available",
+            "rewards": {
+              "xp": 200,
+              "gold": 64
+            },
+            "title": "Gather: goblin ears",
+            "description": "Barlin the Tavern Keeper needs 12 goblin ears. They believe goblins in default may carry them."
+          },
+          {
+            "instance_id": "deliver_tavern_keeper_b01430",
+            "type": "deliver",
+            "giver_instance_id": "tavernkeeper_barlin_tavern",
+            "objective": {
+              "item_template_id": "quest_package_generic",
+              "item_instance_id": "delivery_tave_blac_6ec4",
+              "item_to_deliver_name": "Sealed Package",
+              "item_to_deliver_description": "A package to be delivered to Grenda the Blacksmith. Seems to be from Barlin the Tavern Keeper.",
+              "recipient_instance_id": "blacksmith_grenda_forge",
+              "recipient_name": "Grenda the Blacksmith",
+              "recipient_location_description": "Riverside Village (Blacksmith's Forge)",
+              "difficulty_level": 5
+            },
+            "state": "available",
+            "rewards": {
+              "xp": 187,
+              "gold": 42
+            },
+            "title": "Delivery: Sealed Package to Grenda the Blacksmith",
+            "description": "Barlin the Tavern Keeper asks you to deliver a Sealed Package to Grenda the Blacksmith, who can be found in Riverside Village (Blacksmith's Forge)."
+          },
+          {
+            "instance_id": "fetch_tavern_keeper_c334b2",
+            "type": "fetch",
+            "giver_instance_id": "tavernkeeper_barlin_tavern",
+            "objective": {
+              "item_id": "item_raw_meat",
+              "item_name": "raw meat",
+              "item_name_plural": "raw meats",
+              "required_quantity": 11,
+              "current_quantity": 0,
+              "source_enemy_name_plural": "wolfs",
+              "location_hint": "Whispering Woods",
+              "difficulty_level": 5
+            },
+            "state": "available",
+            "rewards": {
+              "xp": 180,
+              "gold": 57
+            },
+            "title": "Gather: raw meats",
+            "description": "Barlin the Tavern Keeper needs 11 raw meats. They believe wolfs in Whispering Woods may carry them."
+          },
+          {
+            "instance_id": "fetch_blacksmith_92109a",
+            "type": "fetch",
+            "giver_instance_id": "blacksmith_grenda_forge",
+            "objective": {
+              "item_id": "item_rat_tail",
+              "item_name": "rat tail",
+              "item_name_plural": "rat tails",
+              "required_quantity": 11,
+              "current_quantity": 0,
+              "source_enemy_name_plural": "giant rats",
+              "location_hint": "default",
+              "difficulty_level": 5
+            },
+            "state": "available",
+            "rewards": {
+              "xp": 180,
+              "gold": 57
+            },
+            "title": "Gather: rat tails",
+            "description": "Grenda the Blacksmith needs 11 rat tails. They believe giant rats in default may carry them."
+          }
+        ]
+      }
+    },
+    "time_plugin": {
+      "time_state": {
+        "game_time": 57096.14474487305,
+        "hour": 15,
+        "minute": 51,
+        "day": 1,
+        "month": 1,
+        "year": 1,
+        "day_name": "Moonday",
+        "month_name": "Deepwinter",
+        "season": "winter",
+        "time_period": "day",
+        "time_str": "15:51",
+        "date_str": "Moonday, 1 Deepwinter, Year 1"
+      }
+    },
+    "weather_plugin": {
+      "current_weather": "cloudy",
+      "current_intensity": "mild"
+    }
+  }
+}

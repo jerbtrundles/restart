@@ -270,8 +270,8 @@ def register_commands(plugin):
             result += f"- {stat_name}: {old_value} -> {new_value}\n"
         return result
     
-    @command("give", ["giveitem"], "debug", "Give an item to the player.\n\nUsage: give <item_type> <n> [quantity]")
-    def give_command_handler(args, context):
+    @command("debuggive", [], "debug", "Give an item to the player.\n\nUsage: give <item_type> <n> [quantity]")
+    def debuggive_command_handler(args, context):
         if not plugin.world or not plugin.world.player:
             return "Player not available"
         if not args or len(args) < 2:

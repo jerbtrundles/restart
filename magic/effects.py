@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from utils.text_formatter import get_level_diff_category, format_target_name
 from magic.spell import Spell
-from core.config import LEVEL_DIFF_COMBAT_MODIFIERS # Import modifiers
+from core.config import LEVEL_DIFF_COMBAT_MODIFIERS
+from utils.utils import format_name_for_display # Import modifiers
 
 if TYPE_CHECKING:
     from player import Player
@@ -81,8 +82,8 @@ def apply_spell_effect(caster: CasterTargetType, target: CasterTargetType, spell
 
     # --- Format the final message ---
     # Use format_target_name, passing the viewer if available
-    formatted_caster_name = format_target_name(viewer, caster) if viewer else getattr(caster, 'name', 'Someone')
-    formatted_target_name = format_target_name(viewer, target) if viewer else getattr(target, 'name', 'target')
+    formatted_caster_name = format_name_for_display(viewer, caster, start_of_sentence=True) if viewer else getattr(caster, 'name', 'Someone')
+    formatted_target_name = format_name_for_display(viewer, target, start_of_sentence=False) if viewer else target_name_raw
 
     # Only generate message if not already set (e.g., by fizzle/no effect/resisted)
     if not message:

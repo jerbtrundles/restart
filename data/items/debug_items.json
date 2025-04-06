@@ -17,7 +17,7 @@
     }
   },
   "debug_armor": {
-    "type": "Item",
+    "type": "Armor",
     "name": "Debug Armor",
     "description": "Impossibly protective armor for testing. Grants near immunity and regeneration.",
     "weight": 0.1,

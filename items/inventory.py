@@ -322,3 +322,28 @@ class Inventory:
         empty_slots = [slot for slot in self.slots if not slot.item]
         item_slots.sort(key=lambda slot: (type(slot.item).__name__, slot.item.name))
         self.slots = item_slots + empty_slots
+
+    def count_item(self, obj_id: str) -> int:
+        """Counts the total quantity of items with a specific obj_id."""
+        count = 0
+        for slot in self.slots:
+            if slot.item and slot.item.obj_id == obj_id:
+                count += slot.quantity
+        return count
+
+    def find_item_by_id(self, obj_id: str) -> Optional[Item]:
+        """Finds the first item instance matching a specific obj_id."""
+        for slot in self.slots:
+            if slot.item and slot.item.obj_id == obj_id:
+                return slot.item # Return the specific instance
+        return None
+
+    def remove_item_instance(self, item_instance: Item) -> bool:
+        """Removes a specific item *instance* from the inventory."""
+        if not item_instance: return False
+
+        for slot in self.slots:
+            # Use 'is' for identity check first
+            if slot.item is item_instance:
+                removed_type, removed_count = slot.remove(1) # Remove just this one instance
+                return removed_type is not None and removed_count == 1

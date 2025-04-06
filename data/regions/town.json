@@ -6,7 +6,7 @@
   "rooms": {
     "town_square": {
       "name": "Town Square",
-      "description": "The heart of Riverside Village. A large fountain sits in the center of the cobblestone square. Villagers come and go, some stopping to chat with their neighbors. Shops line the perimeter, and you can hear the distant sound of flowing water from the river.",
+      "description": "The heart of Riverside Village. A large fountain sits in the center of the cobblestone square. Villagers come and go, some stopping to chat with their neighbors. Shops line the perimeter, and you can hear the distant sound of flowing water from the river. A sturdy wooden Quest Board stands near the fountain, covered in notices.",
       "exits": {
         "north": "tavern",
         "east": "market",
@@ -21,18 +21,7 @@
           "instance_id": "elder_thorne_townsquare"
         }
       ],
-      "items": [
-        {
-          "type": "Item",
-          "obj_id": "item_town_notice",
-          "name": "Town Notice",
-          "description": "A notice posted on the town bulletin board. It reads: 'MISSING: Supplies from the last merchant caravan. Anyone with information please speak to the Town Elder.'",
-          "weight": 0.1,
-          "value": 0,
-          "stackable": false,
-          "properties": {}
-        }
-      ],
+      "items": [],
       "visited": true,
       "properties": {}
     },

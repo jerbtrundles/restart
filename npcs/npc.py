@@ -2,17 +2,18 @@
 from typing import TYPE_CHECKING, Dict, List, Optional, Any, Tuple, Callable, Set # Added Set
 import random
 import time
-from core.config import LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE
 from game_object import GameObject
 from items.inventory import Inventory
 from items.item import Item
 from items.item_factory import ItemFactory
 from magic.spell import Spell # Import Spell
 from magic.spell_registry import get_spell # Import registry access
-from magic.effects import apply_spell_effect
-from player import Player
-from utils.text_formatter import TextFormatter, format_target_name, get_level_diff_category
-from utils.utils import _serialize_item_reference # If defined in utils/utils.py
+from utils.utils import format_name_for_display
+from core.config import (
+    LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE,
+    NPC_BASE_HEALTH, NPC_CON_HEALTH_MULTIPLIER,
+    NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER
+)
 
 if TYPE_CHECKING:
     from world.world import World
@@ -20,16 +21,30 @@ if TYPE_CHECKING:
 
 class NPC(GameObject):
     def __init__(self, obj_id: str = None, name: str = "Unknown NPC",
-                 description: str = "No description", health: int = 100,
-                 friendly: bool = True, level: int = 1):
+                    description: str = "No description", health: int = 100,
+                    friendly: bool = True, level: int = 1):
         # Add template_id storage
         self.template_id: Optional[str] = None # Will be set by factory
         # ... rest of __init__ mostly unchanged ...
         super().__init__(obj_id if obj_id else f"npc_{random.randint(1000, 9999)}", name, description)
-        self.health = health
-        self.max_health = health
-        self.friendly = friendly
+
+        self.stats = {
+            "strength": 8, "dexterity": 8, "intelligence": 5,
+            "wisdom": 5, "constitution": 8, "agility": 8, # Added CON, AGI defaults
+            "spell_power": 0, "magic_resist": 0
+        }
+
         self.level = level
+        self.is_trading: bool = False # <<< ADDED: Flag to indicate trading state
+
+        base_hp = NPC_BASE_HEALTH + int(self.stats.get('constitution', 8) * NPC_CON_HEALTH_MULTIPLIER)
+        level_hp_bonus = (self.level - 1) * (NPC_LEVEL_HEALTH_BASE_INCREASE + int(self.stats.get('constitution', 8) * NPC_LEVEL_CON_HEALTH_MULTIPLIER))
+        self.max_health = base_hp + level_hp_bonus
+        self.health = min(health, self.max_health) # Use provided health arg, clamped by calculated max
+
+        self.friendly = friendly
+        self.faction = "neutral"
+
         self.inventory = Inventory(max_slots=10, max_weight=50.0)
         self.current_region_id = None
         self.current_room_id = None
@@ -64,7 +79,6 @@ class NPC(GameObject):
         self.combat_targets = set()
         self.combat_messages = []
         self.max_combat_messages = 5
-        self.faction = "neutral"
         self.faction_relations = {"friendly": 100, "neutral": 0, "hostile": -100}
         self.usable_spells: List[str] = []
         self.spell_cast_chance: float = 0.3
@@ -96,8 +110,8 @@ class NPC(GameObject):
             combat_desc = f"The {self.name} is engaged in combat!"
         
         return f"{self.name}\n\n{self.description}\n\n{health_desc}" + \
-               (f"\n{faction_desc}" if faction_desc else "") + \
-               (f"\n{combat_desc}" if combat_desc else "")
+                (f"\n{faction_desc}" if faction_desc else "") + \
+                (f"\n{combat_desc}" if combat_desc else "")
         
     def talk(self, topic: str = None) -> str:
         """Get dialog from the NPC based on a topic."""
@@ -147,26 +161,34 @@ class NPC(GameObject):
         
         # Default response
         return self.default_dialog.format(name=self.name)
-    
+
     def attack(self, target) -> Dict[str, Any]:
         """NPC attacks a target, modified by level difference."""
+        from utils.text_formatter import format_target_name, get_level_diff_category
 
         viewer = self.world.player if self.world and hasattr(self.world, 'player') else None
         target_level = getattr(target, 'level', 1)
         category = get_level_diff_category(self.level, target_level) # NPC vs Target
 
-        # --- Calculate Hit Chance ---
-        base_hit_chance = 0.80
-        attacker_dex = getattr(self, "stats", {}).get("dexterity", 8)
-        target_dex = getattr(target, "stats", {}).get("dexterity", 10)
-        dex_modified_hit_chance = max(0.10, min(base_hit_chance + (attacker_dex - target_dex) * 0.02, 0.95))
+        # --- Calculate Hit Chance using Agility ---
+        base_hit_chance = 0.80 # Base chance for NPCs
+        attacker_agi = self.stats.get("agility", 8) # Use NPC's agility
+        # Safely get target stats, default agility if missing
+        target_agi = getattr(target, "stats", {}).get("agility", 10) # Assume player default AGI is 10
 
+        agi_modifier = (attacker_agi - target_agi) * 0.02
+        agi_modified_hit_chance = base_hit_chance + agi_modifier
+        # --- End Agility Use ---
+
+        # Apply level difference modifier
         hit_chance_mod, _, _ = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
-        final_hit_chance = max(MIN_HIT_CHANCE, min(dex_modified_hit_chance * hit_chance_mod, MAX_HIT_CHANCE))
-        # --- End Hit Chance ---
+        level_modified_hit_chance = agi_modified_hit_chance * hit_chance_mod
 
-        formatted_caster_name = format_target_name(viewer, self) if viewer else self.name
-        formatted_target_name = format_target_name(viewer, target) if viewer else getattr(target, 'name', 'target')
+        # Clamp the final hit chance
+        final_hit_chance = max(MIN_HIT_CHANCE, min(level_modified_hit_chance, MAX_HIT_CHANCE))
+
+        formatted_caster_name = format_name_for_display(viewer, self, start_of_sentence=True)
+        formatted_target_name = format_name_for_display(viewer, target, start_of_sentence=False)
 
         if random.random() > final_hit_chance:
             # --- MISS ---
@@ -182,8 +204,7 @@ class NPC(GameObject):
 
         # Calculate base damage (No durability check for NPCs for now)
         base_damage = self.attack_power
-        if hasattr(self, "stats") and "strength" in self.stats: base_damage += self.stats["strength"] // 3
-        damage_variation = random.randint(-1, 2)
+        damage_variation = random.randint(-1, 1)
         base_damage += damage_variation
 
         _, damage_dealt_mod, _ = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
@@ -192,7 +213,7 @@ class NPC(GameObject):
         # Apply damage to target
         actual_damage = 0
         if hasattr(target, "take_damage"):
-             actual_damage = target.take_damage(modified_attack_damage, damage_type="physical")
+                actual_damage = target.take_damage(modified_attack_damage, damage_type="physical")
         elif hasattr(target, "health"):
             old_health = target.health
             target.health = max(0, target.health - modified_attack_damage)
@@ -204,7 +225,7 @@ class NPC(GameObject):
 
         # Return attack results
         return {"attacker": self.name, "target": getattr(target, 'name', 'target'), "damage": actual_damage, "missed": False, "message": hit_message, "hit_chance": final_hit_chance}
-    
+
     def take_damage(self, amount: int, damage_type: str) -> int:
         """
         Handle taking damage from combat
@@ -226,7 +247,7 @@ class NPC(GameObject):
             self.update_property("is_alive", False)
             self.health = 0
         return old_health - self.health
-    
+
     def heal(self, amount: int) -> int:
         """
         Heal the NPC for the specified amount
@@ -245,27 +266,44 @@ class NPC(GameObject):
         # If health below threshold, consider fleeing
         health_percent = self.health / self.max_health
         return health_percent <= self.flee_threshold
-    
+
     def get_relation_to(self, other) -> int:
         """Get relationship value to another entity"""
         # If other has faction, use faction relations
         if hasattr(other, "faction"):
             return self.faction_relations.get(other.faction, 0)
         return 0
-    
+
     def is_hostile_to(self, other) -> bool:
         """Check if NPC is hostile to another entity"""
         relation = self.get_relation_to(other)
         return relation < 0
-    
+
     def update(self, world, current_time: float) -> Optional[str]:
         """
         Update the NPC's state and perform actions.
         Dead NPCs no longer respawn via this method.
         """
+        from utils.text_formatter import format_target_name
+
         # Dead NPCs simply do nothing until removed by the World update cycle.
         if not self.is_alive:
             return None
+
+        # Check if we need to keep trading
+        if self.is_trading:
+                # Check if still trading with *this* NPC and in same room
+                player = world.player
+                if (player and player.trading_with == self.obj_id and
+                    player.current_region_id == self.current_region_id and
+                    player.current_room_id == self.current_room_id):
+                    # Player still here and trading, so do nothing
+                    return None
+                else:
+                    # Player stopped trading (moved, targeted someone else, etc.)
+                    # or is no longer present. Resume normal AI.
+                    self.is_trading = False
+                    print(f"NPC {self.name} resuming AI as player stopped trading.")
             
         # Check if NPC is sleeping - no movement or combat
         if hasattr(self, "ai_state") and self.ai_state.get("is_sleeping", False):
@@ -310,11 +348,13 @@ class NPC(GameObject):
                                 else: self.current_room_id = destination
                                 self.exit_combat()
                                 self.last_moved = time.time() # Update move timer after fleeing
-                            
+
+                                npc_display_name = format_name_for_display(player, self, start_of_sentence=True)
+                                
                                 # Message if player is in the room
                                 if (world.current_region_id == old_region_id and 
                                     world.current_room_id == old_room_id):
-                                    return combat_message or f"{format_target_name(world.player, self)} flees to the {direction}!"
+                                    return combat_message or f"{npc_display_name} flees to the {direction}!"
                             
                             return None
             if self.in_combat:
@@ -331,7 +371,7 @@ class NPC(GameObject):
                 # Immediately try an action after entering combat
                 action_result_message = self.try_attack(world, current_time)
                 if action_result_message:
-                     combat_message = action_result_message # This is shown to player
+                        combat_message = action_result_message # This is shown to player
                 else:
                     viewer = world.player # Viewer is player here
                     combat_message = f"{format_target_name(viewer, self)} prepares to attack you!"
@@ -352,9 +392,9 @@ class NPC(GameObject):
             move_message = self._patrol_behavior(world, current_time)
         # ... (handle follower, scheduled, aggressive movement) ...
         elif self.behavior_type == "follower":
-             move_message = self._follower_behavior(world, current_time)
+                move_message = self._follower_behavior(world, current_time)
         elif self.behavior_type == "scheduled":
-             move_message = self._schedule_behavior(world, current_time)
+                move_message = self._schedule_behavior(world, current_time)
         elif self.behavior_type == "aggressive":
             # # Aggressive NPCs actively seek out the player if nearby
             # if self.current_region_id == world.current_region_id:
@@ -401,6 +441,9 @@ class NPC(GameObject):
         dropped_items: List[Item] = []
         if self.loot_table:
             for item_id, loot_data in self.loot_table.items():
+                if item_id == "gold_value":
+                    continue # Gold is handled directly on kill, not as a dropped item
+
                 # Check if loot_data is a dictionary (new format)
                 if isinstance(loot_data, dict):
                     chance = loot_data.get("chance", 0)
@@ -420,9 +463,9 @@ class NPC(GameObject):
                                     if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
                                         dropped_items.append(item)
                                     elif not world:
-                                         print(f"Warning: World object missing in die() for {self.name}, cannot drop {item_id}")
+                                            print(f"Warning: World object missing in die() for {self.name}, cannot drop {item_id}")
                                 else:
-                                     print(f"Warning: ItemFactory failed to create loot item '{item_id}' for {self.name}.")
+                                        print(f"Warning: ItemFactory failed to create loot item '{item_id}' for {self.name}.")
 
                         except Exception as e:
                             print(f"Error processing loot item '{item_id}' for {self.name}: {e}")
@@ -432,39 +475,39 @@ class NPC(GameObject):
                     # Handle old format (direct chance) - DEPRECATED?
                     chance = loot_data
                     if random.random() < chance:
-                         print(f"Warning: Deprecated loot format for {item_id} in {self.name}. Use object format.")
-                         # Attempt to create item assuming item_id is the template ID
-                         item = ItemFactory.create_item_from_template(item_id, world)
-                         if item:
-                              if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
-                                   dropped_items.append(item)
+                            print(f"Warning: Deprecated loot format for {item_id} in {self.name}. Use object format.")
+                            # Attempt to create item assuming item_id is the template ID
+                            item = ItemFactory.create_item_from_template(item_id, world)
+                            if item:
+                                if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
+                                    dropped_items.append(item)
 
 
         # Drop inventory items (optional, based on game design)
         if hasattr(self, 'inventory'):
-             for slot in self.inventory.slots:
-                 if slot.item and random.random() < 0.1: # Low chance to drop inventory
-                     item_to_drop = slot.item
-                     qty_to_drop = slot.quantity if slot.item.stackable else 1
-                     # Create copies to drop if needed, or drop instance? Dropping instance is simpler
-                     for _ in range(qty_to_drop):
-                          # Need to handle removing from NPC inventory vs dropping instance
-                          # Let's just add the item type to the room for now
-                          item_copy = ItemFactory.create_item_from_template(item_to_drop.obj_id, world) # Create a fresh copy
-                          if item_copy:
-                              if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item_copy):
-                                   dropped_items.append(item_copy)
-                          elif not world:
-                              print(f"Warning: World object missing in die() for {self.name}, cannot drop inventory item {item_to_drop.name}")
+                for slot in self.inventory.slots:
+                    if slot.item and random.random() < 0.1: # Low chance to drop inventory
+                        item_to_drop = slot.item
+                        qty_to_drop = slot.quantity if slot.item.stackable else 1
+                        # Create copies to drop if needed, or drop instance? Dropping instance is simpler
+                        for _ in range(qty_to_drop):
+                            # Need to handle removing from NPC inventory vs dropping instance
+                            # Let's just add the item type to the room for now
+                            item_copy = ItemFactory.create_item_from_template(item_to_drop.obj_id, world) # Create a fresh copy
+                            if item_copy:
+                                if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item_copy):
+                                    dropped_items.append(item_copy)
+                            elif not world:
+                                print(f"Warning: World object missing in die() for {self.name}, cannot drop inventory item {item_to_drop.name}")
 
         return dropped_items # Return the list of actual Item instances dropped
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert the NPC state to a dictionary for serialization.
         Saves only essential state and template reference.
         """
-        # Essential state to save
+
         state = {
             "template_id": self.template_id, # Crucial reference
             "obj_id": self.obj_id, # Instance ID is important
@@ -473,24 +516,20 @@ class NPC(GameObject):
             "current_room_id": self.current_room_id,
             "health": self.health,
             "is_alive": self.is_alive,
+            "stats": self.stats.copy(), # --- SAVE STATS ---
             "ai_state": self.ai_state,
-            # Save combat state? Usually reset on load, but could save targets if needed
-            # "combat_targets": [t.obj_id for t in self.combat_targets if hasattr(t, 'obj_id')],
             "spell_cooldowns": self.spell_cooldowns,
-            # Optionally save inventory if it changes dynamically
-            # "inventory": self.inventory.to_dict(self.world) # Requires world reference
+            "faction": self.faction,
+            "inventory": self.inventory.to_dict(self.world)
         }
-        # Add properties ONLY if they differ from template? Complex.
-        # Simpler: Assume properties don't change or are handled by ai_state.
-        # Or save specific stateful properties like faction if they can change.
-        # state["properties_override"] = self._get_property_overrides()
 
         return state
-    # --- END MODIFIED ---
-       
+        
     # [All the behavior methods (_wander_behavior, etc.) would remain unchanged]
     def _reverse_direction(self, direction: str) -> str:
         """Get the opposite direction."""
+        from utils.text_formatter import format_target_name
+
         opposites = {
             "north": "south", "south": "north",
             "east": "west", "west": "east",
@@ -505,6 +544,8 @@ class NPC(GameObject):
         Implement schedule-based behavior.
         This improved version better coordinates with the NPC Schedule plugin.
         """
+        from utils.text_formatter import format_target_name
+
         if not self.schedule:
             return None
             
@@ -560,20 +601,24 @@ class NPC(GameObject):
                 
                 # Update last notified activity
                 self.ai_state["last_notified_activity"] = f"{current_hour}_{activity}"
+
+            npc_display_name = format_name_for_display(world.player, self)
             
             # Only return a message if the player is in either the old or new room
             if (world.current_region_id == old_region_id and 
                 world.current_room_id == old_room_id):
-                return f"{format_target_name(world.player, self)} leaves{activity_msg}."
+                return f"{npc_display_name} leaves{activity_msg}."
                 
             if (world.current_region_id == self.current_region_id and 
                 world.current_room_id == self.current_room_id):
-                return f"{format_target_name(world.player, self)} arrives{activity_msg}."
+                return f"{npc_display_name} arrives{activity_msg}."
         
         return None
 
     def _wander_behavior(self, world, current_time: float) -> Optional[str]:
         """Implement wandering behavior, avoiding safe zones for hostile NPCs."""
+        from utils.text_formatter import format_target_name
+        
         # Only wander sometimes
         if random.random() > self.wander_chance:
             return None
@@ -625,13 +670,15 @@ class NPC(GameObject):
         else:
             self.current_room_id = destination
 
+        npc_display_name = format_name_for_display(world.player, self, start_of_sentence=True)
+
         # Update last_moved in the main update() loop after the behavior returns a message
 
         # Return message if player can see the movement
         if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
-            return f"{format_target_name(world.player, self)} leaves to the {direction}."
+            return f"{npc_display_name} leaves to the {direction}."
         if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-            return f"{format_target_name(world.player, self)} arrives from the {self._reverse_direction(direction)}."
+            return f"{npc_display_name} arrives from the {self._reverse_direction(direction)}."
 
         return None # Return None if player didn't see the movement directly
 
@@ -669,24 +716,24 @@ class NPC(GameObject):
         # Look for a direct path first
         for direction, destination in room.exits.items():
             if destination == next_point_room_id: # Assuming same region for now
-                 # *** ADD SAFETY CHECK ***
-                 next_region_id = self.current_region_id
-                 next_room_id = destination
-                 if ":" in destination:
-                     next_region_id, next_room_id = destination.split(":")
+                    # *** ADD SAFETY CHECK ***
+                    next_region_id = self.current_region_id
+                    next_room_id = destination
+                    if ":" in destination:
+                        next_region_id, next_room_id = destination.split(":")
 
-                 if is_hostile and world.is_location_safe(next_region_id, next_room_id):
-                     continue # Don't choose this path if it leads directly into a safe zone
+                    if is_hostile and world.is_location_safe(next_region_id, next_room_id):
+                        continue # Don't choose this path if it leads directly into a safe zone
 
-                 chosen_direction = direction
-                 chosen_destination = destination
-                 break # Found a direct, valid path
+                    chosen_direction = direction
+                    chosen_destination = destination
+                    break # Found a direct, valid path
 
 
         # If no direct path found OR direct path was into safe zone, maybe wander?
         if not chosen_direction:
-             # Fallback to wandering *away* from safe zones if possible
-             return self._wander_behavior(world, current_time)
+                # Fallback to wandering *away* from safe zones if possible
+                return self._wander_behavior(world, current_time)
 
         # --- Move using the chosen direction ---
         old_region_id = self.current_region_id # Save before changing
@@ -700,12 +747,13 @@ class NPC(GameObject):
         else:
             self.current_room_id = chosen_destination
 
+        npc_display_name = format_name_for_display(world.player, self)
 
         # Return message if player can see
         if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
-            return f"{self.name} leaves to the {chosen_direction}."
+            return f"{npc_display_name} leaves to the {chosen_direction}."
         if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-            return f"{self.name} arrives from the {self._reverse_direction(chosen_direction)}."
+            return f"{npc_display_name} arrives from the {self._reverse_direction(chosen_direction)}."
 
         return None
 
@@ -727,7 +775,7 @@ class NPC(GameObject):
 
             # Find path to player
             path = world.find_path(self.current_region_id, self.current_room_id,
-                                   player_region_id, player_room_id)
+                                    player_region_id, player_room_id)
 
             if path and len(path) > 0:
                 # Get the first step (direction)
@@ -761,11 +809,13 @@ class NPC(GameObject):
                 self.current_region_id = next_region_id
                 self.current_room_id = next_room_id
 
+                npc_display_name = format_name_for_display(world.player, self)
+
                 # Return message if player can see
                 if world.current_region_id == old_region_id and world.current_room_id == old_room_id:
-                    return f"{self.name} leaves to the {direction}."
+                    return f"{npc_display_name} leaves to the {direction}."
                 if world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-                    return f"{self.name} arrives from the {self._reverse_direction(direction)}."
+                    return f"{npc_display_name} arrives from the {self._reverse_direction(direction)}."
 
         return None # No path or other issue
 
@@ -828,15 +878,17 @@ class NPC(GameObject):
         """
         Try to perform a combat action (attack or spell) based on cooldowns and chance.
         """
+        from utils.text_formatter import format_target_name
+        
         # General action cooldown check
         if current_time - self.last_combat_action < self.combat_cooldown:
-             return None
+                return None
 
         # Filter out invalid targets
         player = getattr(world, 'player', None)
         valid_targets = [t for t in self.combat_targets
-                         if hasattr(t, "is_alive") and t.is_alive
-                         and hasattr(t, "health") and t.health > 0]
+                            if hasattr(t, "is_alive") and t.is_alive
+                            and hasattr(t, "health") and t.health > 0]
         if not valid_targets:
             self.exit_combat()
             return None
@@ -848,16 +900,16 @@ class NPC(GameObject):
         target_in_room = False
         # ... (same room check logic as before) ...
         if target == player:
-             if world and world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
-                  target_in_room = True
+                if world and world.current_region_id == self.current_region_id and world.current_room_id == self.current_room_id:
+                    target_in_room = True
         elif (hasattr(target, "current_region_id") and hasattr(target, "current_room_id") and
-               target.current_region_id == self.current_region_id and
-               target.current_room_id == self.current_room_id):
-             target_in_room = True
+                target.current_region_id == self.current_region_id and
+                target.current_room_id == self.current_room_id):
+                target_in_room = True
 
         if not target_in_room:
-             self.exit_combat(target)
-             return None # Target not here
+                self.exit_combat(target)
+                return None # Target not here
 
         # --- Spellcasting Logic ---
         chosen_spell = None
@@ -865,23 +917,23 @@ class NPC(GameObject):
             # Try to cast a spell
             available_spells = []
             for spell_id in self.usable_spells:
-                 spell = get_spell(spell_id)
-                 cooldown_end = self.spell_cooldowns.get(spell_id, 0)
-                 if spell and current_time >= cooldown_end:
-                      # Basic target type check
-                      is_enemy = (hasattr(target, 'faction') and target.faction != self.faction) # Simple enemy check
-                      is_friendly = (target == self or (hasattr(target, 'faction') and target.faction == self.faction))
+                    spell = get_spell(spell_id)
+                    cooldown_end = self.spell_cooldowns.get(spell_id, 0)
+                    if spell and current_time >= cooldown_end:
+                        # Basic target type check
+                        is_enemy = (hasattr(target, 'faction') and target.faction != self.faction) # Simple enemy check
+                        is_friendly = (target == self or (hasattr(target, 'faction') and target.faction == self.faction))
 
-                      if spell.target_type == "enemy" and is_enemy:
-                           available_spells.append(spell)
-                      elif spell.target_type == "friendly" and is_friendly:
-                           available_spells.append(spell)
-                      elif spell.target_type == "self":
-                           # Allow casting self-targeted spell if any valid spell is available
-                           available_spells.append(spell) # NPC casts on self
+                        if spell.target_type == "enemy" and is_enemy:
+                            available_spells.append(spell)
+                        elif spell.target_type == "friendly" and is_friendly:
+                            available_spells.append(spell)
+                        elif spell.target_type == "self":
+                            # Allow casting self-targeted spell if any valid spell is available
+                            available_spells.append(spell) # NPC casts on self
 
             if available_spells:
-                 chosen_spell = random.choice(available_spells)
+                    chosen_spell = random.choice(available_spells)
 
         # --- Perform Action ---
         action_message = None
@@ -911,8 +963,8 @@ class NPC(GameObject):
             if hasattr(target, "health") and target.health <= 0:
                 if hasattr(target, 'is_alive'): target.is_alive = False
                 self.exit_combat(target)
-                formatted_target_name = format_target_name(world.player, target)
-                death_message = f"{formatted_target_name} has been defeated!"
+                formatted_target_name_start = format_name_for_display(world.player, target, start_of_sentence=True)
+                death_message = f"{formatted_target_name_start} has been defeated!"
                 self._add_combat_message(death_message)
                 if not self.combat_targets: self.in_combat = False
 
@@ -936,38 +988,35 @@ class NPC(GameObject):
             self.combat_messages.pop(0)
 
     def cast_spell(self, spell: Spell, target, current_time: float) -> Dict[str, Any]:
-         """Applies spell effect and sets cooldown. NPCs don't use mana."""
+            """Applies spell effect and sets cooldown. NPCs don't use mana."""
+            from magic.effects import apply_spell_effect
+            from utils.text_formatter import format_target_name
 
-         # Set cooldown
-         self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
+            # Set cooldown
+            self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
 
-         # --- Get the Player as the Viewer ---
-         viewer: Optional['Player'] = None
-         if self.world and hasattr(self.world, 'player'):
-             viewer = self.world.player
-         # --- End Get Viewer ---
+            formatted_caster_name = format_name_for_display(self.world.player, self, start_of_sentence=True)
+            formatted_target_name = format_name_for_display(self.world.player, target, start_of_sentence=False)
 
-         formatted_caster_name = format_target_name(viewer, self) if viewer else self.name
+            # Apply effect, passing the viewer context
+            value, effect_message = apply_spell_effect(self, target, spell, self.world.player) # Pass viewer
 
-         # Apply effect, passing the viewer context
-         value, effect_message = apply_spell_effect(self, target, spell, viewer) # Pass viewer
+            # Format the initial cast message (usually doesn't need coloring)
+            # The caster name here is plain, which is often fine for the cast part.
+            base_cast_message = spell.format_cast_message(self) # This uses the *plain* name
 
-         # Format the initial cast message (usually doesn't need coloring)
-         # The caster name here is plain, which is often fine for the cast part.
-         base_cast_message = spell.format_cast_message(self) # This uses the *plain* name
+            # The effect_message now contains correctly formatted names relative to the viewer
+            formatted_cast_message = base_cast_message.replace(self.name, formatted_caster_name, 1)
 
-         # The effect_message now contains correctly formatted names relative to the viewer
-         formatted_cast_message = base_cast_message.replace(self.name, formatted_caster_name, 1)
+            full_message = formatted_cast_message + "\n" + effect_message
 
-         full_message = formatted_cast_message + "\n" + effect_message
-
-         return {
-              "success": True,
-              "message": full_message, # This now contains the formatted effect message
-              "cast_message": formatted_cast_message, # Keep the simpler cast message separate if needed
-              "effect_message": effect_message, # The detailed, formatted effect message
-              "target": getattr(target, 'name', 'target'), # Keep raw target name here
-              "value": value,
-              "spell": spell.name
-         }
+            return {
+                "success": True,
+                "message": full_message, # This now contains the formatted effect message
+                "cast_message": formatted_cast_message, # Keep the simpler cast message separate if needed
+                "effect_message": effect_message, # The detailed, formatted effect message
+                "target": getattr(target, 'name', 'target'), # Keep raw target name here
+                "value": value,
+                "spell": spell.name
+            }
 

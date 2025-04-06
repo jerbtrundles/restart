@@ -97,6 +97,18 @@ REGION_DIR = os.path.join(DATA_DIR, "regions")
 ITEM_TEMPLATE_DIR = os.path.join(DATA_DIR, "items")
 NPC_TEMPLATE_DIR = os.path.join(DATA_DIR, "npcs")
 
+# --- Player Health Calculation ---
+PLAYER_BASE_HEALTH = 80
+PLAYER_CON_HEALTH_MULTIPLIER = 2.0 # HP gained per point of CON at level 1
+PLAYER_LEVEL_HEALTH_BASE_INCREASE = 5 # Base HP gain per level (before CON)
+PLAYER_LEVEL_CON_HEALTH_MULTIPLIER = 0.5 # Extra HP gain per level per point of CON
+
+# --- NPC Health Calculation ---
+NPC_BASE_HEALTH = 30 # Lower base for NPCs?
+NPC_CON_HEALTH_MULTIPLIER = 1.5
+NPC_LEVEL_HEALTH_BASE_INCREASE = 3
+NPC_LEVEL_CON_HEALTH_MULTIPLIER = 0.3
+
 # Multipliers applied based on Attacker's level relative to Target's level
 # Example: If Player attacks a RED target, player's hit chance is multiplied by 0.85, damage by 0.75.
 # Example: If Player defeats a GREEN target, XP gained is multiplied by 0.5.
@@ -118,3 +130,12 @@ MIN_XP_GAIN = 1       # Always gain at least 1 XP
 MIN_ATTACK_COOLDOWN = 0.5 # Prevent excessively fast attacks
 
 MAX_BUFFER_LINES = 50 # keep this much history
+
+# --- Trading Settings ---
+DEFAULT_VENDOR_SELL_MULTIPLIER = 2.0  # Player Buys: Item Value * 2.0 (default)
+DEFAULT_VENDOR_BUY_MULTIPLIER = 0.4   # Player Sells: Item Value * 0.4 (default)
+VENDOR_CAN_BUY_JUNK = True
+VENDOR_CAN_BUY_ALL_ITEMS = False # Should vendors only buy certain types?
+
+REPAIR_COST_PER_VALUE_POINT = 0.1 # e.g., 10% of item value to repair fully
+REPAIR_MINIMUM_COST = 1

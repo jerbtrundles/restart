@@ -38,6 +38,9 @@ class MonsterSpawnerPlugin(PluginBase):
         self.data_provider = data_provider
         self.service_locator = service_locator
 
+        if self.service_locator:
+            self.service_locator.register_service(f"plugin:{self.plugin_id}", self)
+
         # Import config from the config.py file within this plugin's directory
         try:
             from .config import DEFAULT_CONFIG

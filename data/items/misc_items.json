@@ -106,5 +106,16 @@
     "value": 8,
     "stackable": false,
     "properties": {}
+  },
+  "quest_package_generic": {
+    "type": "Item",
+    "name": "Sealed Package",
+    "description": "A package that needs delivering. Its contents are unknown.",
+    "weight": 1.0,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+        "is_quest_item": true
+    }
   }
 }

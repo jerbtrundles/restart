@@ -1,4 +1,5 @@
 # core/game_manager.py
+import math
 import time
 import pygame
 import sys
@@ -98,37 +99,115 @@ class GameManager:
         self.text_buffer.append(self._sanitize_text(welcome_message))
         self._trim_text_buffer() # Trim after adding initial messages
 
+    # Ensure handle_input still resets scroll_offset = 0
     def handle_input(self, text: str) -> str:
-        """Process user input and get the result."""
-        input_text = "> " + text
-        self.text_buffer.append(input_text)
-        self._trim_text_buffer() # <-- Call trim
+        # ... (add input to buffer, trim) ...
+        input_text_formatted = f"> {text}"
+        self.text_buffer.append(input_text_formatted)
+        self._trim_text_buffer()
 
         if text.strip():
+            # ... (add to history) ...
             self.command_history.append(text)
             self.history_index = -1
 
-        context = {
-            "game": self,
-            "world": self.world,
-            "command_processor": self.command_processor,
-            "current_save_file": self.current_save_file # Pass current save name
-        }
+            # ... (get context, process command) ...
+            context = { "game": self, "world": self.world, "command_processor": self.command_processor, "current_save_file": self.current_save_file }
+            command_result = ""
+            if not self.world.player.is_alive: command_result = f"{FORMAT_ERROR}You are dead. You cannot do that.{FORMAT_RESET}"
+            else: command_result = self.command_processor.process_input(text, context)
 
-        if not self.world.player.is_alive:
-             result = f"{FORMAT_ERROR}You are dead. You cannot do that.{FORMAT_RESET}"
-             self.text_buffer.append(result)
-             self._trim_text_buffer() # <-- Call trim after adding error message
-             return "" # Return empty as the message is already in buffer
+            if command_result:
+                sanitized_result = self._sanitize_text(command_result)
+                self.text_buffer.append(sanitized_result)
+                self._trim_text_buffer()
 
-        command_result = self.command_processor.process_input(text, context)
-        if command_result:
-            # Sanitize and add command result to buffer
-            sanitized_result = self._sanitize_text(command_result)
-            self.text_buffer.append(sanitized_result)
-            self._trim_text_buffer() # <-- Call trim after adding command result
+            # <<< --- CRITICAL: Reset scroll offset --- >>>
+            self.scroll_offset = 0
+            # <<< --- END CRITICAL --- >>>
 
-        return ""
+            self.input_text = ""
+            return ""
+        else:
+            self.input_text = ""
+            return ""
+
+    # ... (rest of GameManager, ensure _draw_status_indicators uses layout correctly) ...
+    def _draw_status_indicators(self):
+        if not hasattr(self.world, 'player') or not self.world.player:
+            # If no player, we can't draw status, so return early
+            return
+        player = self.world.player
+
+        status_y_offset = 5
+        bar_height = 10
+        bar_width = 100
+        text_padding = 10
+        bar_padding = 25
+
+        # --- Health Bar ---
+        health_x = self.text_formatter.margin
+        # <<< Use layout Y position for status area >>>
+        health_y = self.layout["status_area"]["y"] + status_y_offset
+        # ... (rest of health bar drawing logic) ...
+        pygame.draw.rect(self.screen, (80, 0, 0), (health_x, health_y, bar_width, bar_height))
+        # ... (calculate filled_health_width, health_color) ...
+        health_percent = player.health / player.max_health if player.max_health > 0 else 0
+        filled_health_width = int(bar_width * health_percent)
+        if health_percent < 0.3: health_color = (200, 0, 0)
+        elif health_percent < 0.7: health_color = (200, 200, 0)
+        else: health_color = (0, 200, 0)
+        pygame.draw.rect(self.screen, health_color, (health_x, health_y, filled_health_width, bar_height))
+        # ... (Health Text drawing logic) ...
+        health_text = f"HP: {player.health}/{player.max_health}"
+        health_surface = self.font.render(health_text, True, TEXT_COLOR)
+        hp_text_x = health_x + bar_width + text_padding
+        hp_text_y = health_y + (bar_height // 2) - (health_surface.get_height() // 2)
+        self.screen.blit(health_surface, (hp_text_x, hp_text_y))
+
+
+        # --- Mana Bar ---
+        mana_x = hp_text_x + health_surface.get_width() + bar_padding
+        # <<< Use layout Y position >>>
+        mana_y = self.layout["status_area"]["y"] + status_y_offset
+        # ... (rest of mana bar drawing logic) ...
+        mana_bg_color = (0, 0, 80); pygame.draw.rect(self.screen, mana_bg_color, (mana_x, mana_y, bar_width, bar_height))
+        # ... (calculate filled_mana_width, mana_fill_color) ...
+        mana_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
+        filled_mana_width = int(bar_width * mana_percent)
+        mana_fill_color = (50, 100, 255)
+        pygame.draw.rect(self.screen, mana_fill_color, (mana_x, mana_y, filled_mana_width, bar_height))
+        # ... (Mana Text drawing logic) ...
+        mana_text = f"MP: {player.mana}/{player.max_mana}"
+        mana_surface = self.font.render(mana_text, True, TEXT_COLOR)
+        mp_text_x = mana_x + bar_width + text_padding
+        mp_text_y = mana_y + (bar_height // 2) - (mana_surface.get_height() // 2)
+        self.screen.blit(mana_surface, (mp_text_x, mp_text_y))
+
+
+        # --- XP Bar ---
+        xp_x = mp_text_x + mana_surface.get_width() + bar_padding
+        # <<< Use layout Y position >>>
+        xp_y = self.layout["status_area"]["y"] + status_y_offset
+        # ... (rest of XP bar drawing logic) ...
+        xp_bg_color = (100, 60, 0); pygame.draw.rect(self.screen, xp_bg_color, (xp_x, xp_y, bar_width, bar_height))
+        # ... (calculate xp_percent, filled_xp_width, xp_fill_color) ...
+        xp = player.experience; xp_needed = player.experience_to_level
+        xp_percent = xp / xp_needed if xp_needed > 0 else 0
+        filled_xp_width = int(bar_width * min(1.0, xp_percent))
+        xp_fill_color = COLOR_ORANGE
+        pygame.draw.rect(self.screen, xp_fill_color, (xp_x, xp_y, filled_xp_width, bar_height))
+        # ... (XP Text drawing logic) ...
+        xp_text = f"XP: {xp}/{xp_needed} (Lvl {player.level})"
+        xp_surface = self.font.render(xp_text, True, TEXT_COLOR)
+        xp_text_x = xp_x + bar_width + text_padding
+        xp_text_y = xp_y + (bar_height // 2) - (xp_surface.get_height() // 2)
+        self.screen.blit(xp_surface, (xp_text_x, xp_text_y))
+
+        # --- Separator Line (Above Status Area) ---
+        line_y = self.layout["status_area"]["y"]
+        # Draw line slightly above the status area Y
+        pygame.draw.line(self.screen, (80, 80, 100), (0, line_y - 1), (self.layout["screen_width"], line_y - 1), 1)
 
     # ... (_sanitize_text - unchanged) ...
     def _sanitize_text(self, text: str) -> str:
@@ -194,71 +273,92 @@ class GameManager:
             self.cursor_timer = 0
 
     def draw(self):
-        """Render the game to the screen with proper layout."""
-        self._calculate_layout()
+        """Render the game to the screen with corrected layout and scrolling."""
+        # --- 1. Calculate Layout ---
+        self._calculate_layout() # Ensures layout dimensions are current
+
         self.screen.fill(BG_COLOR)
         self._draw_time_bar()
+        self._draw_status_indicators()
 
-        # --- MODIFIED: Handle Game Over Screen ---
         if self.game_state == "game_over":
-            # Render a specific game over message centered
+            # ... (game over rendering - unchanged) ...
+            # (Render centered "YOU HAVE DIED" and instructions)
             game_over_font = pygame.font.SysFont("monospace", 36, bold=True)
             death_text = "YOU HAVE DIED"
             respawn_text = "Press 'R' to Respawn or 'Q' to Quit"
-
             death_surface = game_over_font.render(death_text, True, DEFAULT_COLORS[FORMAT_ERROR])
             respawn_surface = self.font.render(respawn_text, True, TEXT_COLOR)
-
             death_rect = death_surface.get_rect(center=(self.layout["screen_width"] // 2, self.layout["screen_height"] // 2 - 20))
             respawn_rect = respawn_surface.get_rect(center=(self.layout["screen_width"] // 2, self.layout["screen_height"] // 2 + 20))
-
             self.screen.blit(death_surface, death_rect)
             self.screen.blit(respawn_surface, respawn_rect)
 
-        else:
-            full_text_to_render = "\n\n".join(self.text_buffer)
-
-            # --- Render to get total height ---
-            # Make buffer surface taller just in case
-            estimated_max_height = len(self.text_buffer) * 6 * self.text_formatter.line_height # Even more space
-            buffer_surface_height = max(self.layout["text_area"]["height"] + 500, estimated_max_height)
-
-            buffer_surface = pygame.Surface((self.layout["text_area"]["width"], buffer_surface_height), pygame.SRCALPHA)
-            buffer_surface.fill((0, 0, 0, 0))
-
-            # Render the entire buffer
-            final_y = self.text_formatter.render(
-                surface=buffer_surface,
-                text=full_text_to_render,
-                position=(0, 0)
+        else: # --- Playing State Rendering ---
+            visible_text_area_rect = pygame.Rect(
+                self.layout["text_area"]["x"], self.layout["text_area"]["y"],
+                self.layout["text_area"]["width"], self.layout["text_area"]["height"]
             )
-            # Use the final_y directly, assuming it's the coord *below* the last line
-            # Clamp it to be at least the visible height for calculation safety
-            self.total_rendered_height = max(self.layout["text_area"]["height"], final_y)
 
-            # --- Scrolling Calculation (Same as before) ---
-            visible_height = self.layout["text_area"]["height"]
-            max_scroll = max(0, self.total_rendered_height - visible_height)
-            self.scroll_offset = max(0, min(self.scroll_offset, max_scroll))
-            source_y = max(0, self.total_rendered_height - visible_height - self.scroll_offset)
-            source_rect = pygame.Rect(
-                0, source_y,
-                self.layout["text_area"]["width"],
-                min(visible_height, self.total_rendered_height - source_y) # Height to actually copy
-            )
-            dest_pos = (self.layout["text_area"]["x"], self.layout["text_area"]["y"])
-            self.screen.blit(buffer_surface, dest_pos, source_rect)
-            # --- End Rendering with Scrolling ---
+            # --- 2. Render Text to a potentially large surface ---
+            if self.text_buffer:
+                full_text_to_render = "\n\n".join(self.text_buffer)
 
-            self._draw_scroll_indicator()
+                # Estimate required height (could refine this, but start large)
+                estimated_lines = len(full_text_to_render.split('\n')) * 2 # Rough guess, doubles lines
+                buffer_surface_height = max(visible_text_area_rect.height, estimated_lines * self.text_formatter.line_height) + 500 # Generous buffer
+
+                buffer_surface = pygame.Surface((visible_text_area_rect.width, buffer_surface_height), pygame.SRCALPHA)
+                buffer_surface.fill((0, 0, 0, 0)) # Transparent
+
+                # Render *all* text and get the actual height used
+                content_height = self.text_formatter.render(
+                    surface=buffer_surface,
+                    text=full_text_to_render,
+                    position=(0, 0)
+                    # Optional: Pass max_height=buffer_surface_height to formatter if it supports clipping
+                )
+                # Ensure content height is at least the visible height for calculations
+                content_height = max(visible_text_area_rect.height, content_height)
+                self.total_rendered_height = content_height # Store for scroll indicator
+
+                # --- 3. Calculate Scrolling ---
+                max_scroll_offset = max(0, content_height - visible_text_area_rect.height)
+
+                # Clamp the current scroll offset
+                self.scroll_offset = max(0, min(self.scroll_offset, max_scroll_offset))
+
+                # Determine the Y position within the buffer_surface to start copying from.
+                # This should be the top of the visible portion.
+                # If content fits, source_y is 0. If content is taller, source_y is
+                # calculated based on how far from the bottom we are scrolled.
+                source_y = content_height - visible_text_area_rect.height - self.scroll_offset
+                source_y = max(0, source_y) # Ensure source_y is not negative
+
+                # --- 4. Blit the visible portion ---
+                source_rect = pygame.Rect(
+                    0, source_y,
+                    visible_text_area_rect.width,
+                    # Blit height is minimum of visible area height and remaining content height from source_y
+                    min(visible_text_area_rect.height, content_height - source_y)
+                )
+
+                # Destination is the top-left of the text area on the main screen
+                dest_pos = (visible_text_area_rect.x, visible_text_area_rect.y)
+
+                self.screen.blit(buffer_surface, dest_pos, source_rect)
+
+            # --- 5. Draw Other UI Elements ---
+            self._draw_scroll_indicator() # Uses self.total_rendered_height
             self._draw_input_area()
-            self._draw_status_indicators()
 
-        if self.debug_mode: # ... (debug indicator - unchanged) ...
-            debug_text = "DEBUG MODE"
-            debug_surface = self.font.render(debug_text, True, (255, 0, 0))
-            self.screen.blit(debug_surface,
-                            (self.layout["screen_width"] - debug_surface.get_width() - 10, 40))
+        # Debug indicator (unchanged)
+        if self.debug_mode:
+             # ... debug text rendering ...
+             debug_text = "DEBUG MODE"
+             debug_surface = self.font.render(debug_text, True, (255, 0, 0))
+             self.screen.blit(debug_surface, (self.layout["screen_width"] - debug_surface.get_width() - 10, 40))
+
 
         pygame.display.flip()
 
@@ -342,48 +442,40 @@ class GameManager:
 
 
     def run(self):
-        """Main game loop."""
         running = True
-
         while running:
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
-
-                if self.game_state == "game_over":
+                if event.type == pygame.QUIT: running = False
+                if self.game_state == "game_over": # ... (game over input) ...
                     if event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_r: # Respawn
-                            self.handle_respawn()
-                        elif event.key == pygame.K_q: # Quit
-                            running = False
+                        if event.key == pygame.K_r: self.handle_respawn()
+                        elif event.key == pygame.K_q: running = False
                 elif self.game_state == "playing":
-                     if event.type == pygame.KEYDOWN:
-                          if event.key == pygame.K_RETURN:
-                               result = self.handle_input(self.input_text)
-                               if result: self.text_buffer.append(result)
-                               self.input_text = ""
-                               self.scroll_offset = 0
-                          elif event.key == pygame.K_BACKSPACE:
-                              self.input_text = self.input_text[:-1]
-                          elif event.key == pygame.K_UP:
-                              self.navigate_history(1)
-                          elif event.key == pygame.K_DOWN:
-                              self.navigate_history(-1)
-                          elif event.key == pygame.K_TAB:
-                              self.handle_tab_completion()
+                     if event.type == pygame.KEYDOWN: # ... (keyboard input including RETURN calls handle_input) ...
+                          if event.key == pygame.K_RETURN: self.handle_input(self.input_text)
+                          elif event.key == pygame.K_BACKSPACE: self.input_text = self.input_text[:-1]
+                          elif event.key == pygame.K_UP: self.navigate_history(1)
+                          elif event.key == pygame.K_DOWN: self.navigate_history(-1)
+                          elif event.key == pygame.K_TAB: self.handle_tab_completion()
                           elif event.key == pygame.K_PAGEUP:
+                              # Scroll UP (show older)
                               scroll_amount = self.layout["text_area"]["height"] // 2
-                              max_scroll = max(0, self.total_rendered_height - self.layout["text_area"]["height"])
+                              content_height = self.total_rendered_height
+                              visible_height = self.layout["text_area"]["height"]
+                              max_scroll = max(0, content_height - visible_height)
                               self.scroll_offset = min(max_scroll, self.scroll_offset + scroll_amount)
                           elif event.key == pygame.K_PAGEDOWN:
-                              # Scroll down by roughly half the text area height
+                              # Scroll DOWN (show newer)
                               scroll_amount = self.layout["text_area"]["height"] // 2
                               self.scroll_offset = max(0, self.scroll_offset - scroll_amount)
                           elif event.key == pygame.K_HOME:
                               # Go to the very top (max scroll)
-                              max_scroll = max(0, self.total_rendered_height - self.layout["text_area"]["height"])
+                              content_height = self.total_rendered_height
+                              visible_height = self.layout["text_area"]["height"]
+                              max_scroll = max(0, content_height - visible_height)
                               self.scroll_offset = max_scroll
                           elif event.key == pygame.K_END:
+                              # Go to the very bottom (no scroll)
                               self.scroll_offset = 0
                           elif event.key == pygame.K_F1: # ... (debug toggle - unchanged) ...
                                self.debug_mode = not self.debug_mode
@@ -395,20 +487,27 @@ class GameManager:
                                if event.unicode.isprintable():
                                    self.input_text += event.unicode
                      elif event.type == pygame.MOUSEWHEEL:
-                          # Scroll up/down by a fixed pixel amount per wheel tick
-                          scroll_amount = SCROLL_SPEED * self.text_formatter.line_height # Scroll by lines
-                          max_scroll = max(0, self.total_rendered_height - self.layout["text_area"]["height"])
-                          if event.y > 0: # Scroll up (show older)
-                              self.scroll_offset = min(max_scroll, self.scroll_offset + scroll_amount)
-                          elif event.y < 0: # Scroll down (show newer)
-                              self.scroll_offset = max(0, self.scroll_offset - scroll_amount)
-                     elif event.type == pygame.VIDEORESIZE: self.resize_screen(event.w, event.h)
+                         # --- MOUSE WHEEL SCROLLING ---
+                         scroll_amount = SCROLL_SPEED * self.text_formatter.line_height
+                         content_height = self.total_rendered_height
+                         visible_height = self.layout["text_area"]["height"]
+                         max_scroll = max(0, content_height - visible_height)
+                         if event.y > 0: # Scroll up (show older)
+                             self.scroll_offset = min(max_scroll, self.scroll_offset + scroll_amount)
+                         elif event.y < 0: # Scroll down (show newer)
+                             self.scroll_offset = max(0, self.scroll_offset - scroll_amount)
+                         # --- END MOUSE WHEEL ---
+                     elif event.type == pygame.VIDEORESIZE:
+                          # Store new size and let _calculate_layout handle it next frame
+                          SCREEN_WIDTH, SCREEN_HEIGHT = event.w, event.h
+                          self.screen = pygame.display.set_mode((event.w, event.h), pygame.RESIZABLE)
+                          # No need to call _calculate_layout here, draw() does it.
 
             self.update()
             self.draw()
-            self.clock.tick(30)
+            self.clock.tick(30) # Keep FPS limit
 
-        self.quit_game()
+        self.quit_game() # Cleanup
 
     def _on_display_message(self, event_type: str, data: Any) -> None:
         """Handles messages published by plugins/events."""
@@ -543,69 +642,78 @@ class GameManager:
     # --- Scroll Indicator uses max_scroll ---
     def _draw_scroll_indicator(self):
         """Draws arrows if scrolling is possible."""
-        # Ensure layout and total_rendered_height are calculated before calling this
+        # Check if necessary attributes exist
         if not hasattr(self, 'layout') or not hasattr(self, 'total_rendered_height'):
-            return # Cannot draw indicators without layout/height info
+            return
 
-        visible_height = self.layout["text_area"]["height"]
-        max_scroll = max(0, self.total_rendered_height - visible_height)
+        # Check if text_area is defined in layout
+        text_area = self.layout.get("text_area")
+        if not text_area or not isinstance(text_area, dict):
+            return
 
-        # Show up arrow if scrolling up is possible (not at the very top)
+        visible_height = text_area.get("height", 0)
+        # Use the stored total rendered height
+        content_height = self.total_rendered_height
+        max_scroll = max(0, content_height - visible_height)
+
+        # Show up arrow if not at the very bottom (i.e., can scroll up to see older)
+        # scroll_offset < max_scroll means there's more content above the current view
         if self.scroll_offset < max_scroll:
-             # Define points for the UP arrow
-             arrow_points_up = [
-                 (self.layout["screen_width"] - 25, self.layout["text_area"]["y"] + 15), # Bottom left base
-                 (self.layout["screen_width"] - 15, self.layout["text_area"]["y"] + 5),  # Top point
-                 (self.layout["screen_width"] - 5, self.layout["text_area"]["y"] + 15)   # Bottom right base
-             ]
-             # Check if points are valid before drawing
-             if len(arrow_points_up) >= 3:
-                  pygame.draw.polygon(self.screen, (200, 200, 200), arrow_points_up)
-
-        # Show down arrow if scrolling down is possible (not at the very bottom)
-        if self.scroll_offset > 0:
-            # Define points for the DOWN arrow
-            bottom_y = self.layout["input_area"]["y"]
-            arrow_points_down = [
-                (self.layout["screen_width"] - 25, bottom_y - 15), # Top left base
-                (self.layout["screen_width"] - 15, bottom_y - 5),  # Bottom point
-                (self.layout["screen_width"] - 5, bottom_y - 15)   # Top right base
+            arrow_points_up = [
+                 (self.layout["screen_width"] - 25, text_area["y"] + 15),
+                 (self.layout["screen_width"] - 15, text_area["y"] + 5),
+                 (self.layout["screen_width"] - 5, text_area["y"] + 15)
             ]
-            # Check if points are valid before drawing
-            if len(arrow_points_down) >= 3:
-                 pygame.draw.polygon(self.screen, (200, 200, 200), arrow_points_down)
+            if len(arrow_points_up) >= 3: pygame.draw.polygon(self.screen, (200, 200, 200), arrow_points_up)
 
-    # Ensure _calculate_layout correctly sets text_area height
+        # Show down arrow if not at the very top (i.e., can scroll down to see newer)
+        # scroll_offset > 0 means the top of the content is scrolled off-screen upwards
+        if self.scroll_offset > 0:
+            input_area_y = self.layout.get("input_area", {}).get("y", self.layout["screen_height"]) # Get input area top Y
+            arrow_points_down = [
+                (self.layout["screen_width"] - 25, input_area_y - 15),
+                (self.layout["screen_width"] - 15, input_area_y - 5),
+                (self.layout["screen_width"] - 5, input_area_y - 15)
+            ]
+            if len(arrow_points_down) >= 3: pygame.draw.polygon(self.screen, (200, 200, 200), arrow_points_down)
+
     def _calculate_layout(self):
         """Recalculates UI element positions and sizes."""
-        time_bar_height = 30 # Or get from self.layout if exists
+        # Using current screen dimensions directly
+        current_width, current_height = self.screen.get_size()
+
+        time_bar_height = 30
         input_area_height = INPUT_HEIGHT
-        status_area_height = 30 # Or keep flexible if needed
+        status_area_height = 30 # Height for HP/MP/XP bars
 
         self.layout = {
-            "screen_width": SCREEN_WIDTH,
-            "screen_height": SCREEN_HEIGHT,
+            "screen_width": current_width,
+            "screen_height": current_height,
             "time_bar": {"height": time_bar_height, "y": 0},
-            "status_area": {"height": status_area_height, "y": SCREEN_HEIGHT - status_area_height},
-            "input_area": {"height": input_area_height, "y": SCREEN_HEIGHT - status_area_height - input_area_height}
+            # Status area at the BOTTOM now, above input
+            "status_area": {"height": status_area_height, "y": current_height - input_area_height - status_area_height},
+            "input_area": {"height": input_area_height, "y": current_height - input_area_height},
         }
 
-        # Calculate text area position and dimensions
+        # Calculate text area position and dimensions dynamically
         text_area_y = self.layout["time_bar"]["height"] + self.text_formatter.margin
-        # Text area bottom boundary is now the top of the INPUT area
-        text_area_bottom = self.layout["input_area"]["y"]
+        # Text area bottom boundary is now the top of the STATUS area
+        text_area_bottom = self.layout["status_area"]["y"]
+        # Add a small margin/padding below the text area
         text_area_height = text_area_bottom - text_area_y - self.text_formatter.margin
         text_area_height = max(10, text_area_height) # Ensure positive height
+
+        # Update TextFormatter's usable width BEFORE calculating layout['text_area']['width']
+        self.text_formatter.update_screen_width(current_width) # Pass current width
 
         self.layout["text_area"] = {
             "x": self.text_formatter.margin,
             "y": text_area_y,
-            "width": self.text_formatter.usable_width, # Assumes usable_width is updated correctly
+            # Use the usable_width calculated by the formatter
+            "width": self.text_formatter.usable_width,
             "height": text_area_height
         }
-        # Update text formatter's usable width based on potentially changed screen width
-        # (This line might be redundant if update_screen_width called elsewhere on resize)
-        self.text_formatter.update_screen_width(SCREEN_WIDTH)
+        # print(f"Layout Recalculated: Text Area H={text_area_height}, W={self.layout['text_area']['width']}") # Debug
 
     def _draw_input_area(self):
         pygame.draw.rect(self.screen, INPUT_BG_COLOR,

@@ -16,7 +16,6 @@ from core.config import (
 
 if TYPE_CHECKING:
     from player import Player
-    from npcs.npc import NPC
 
 class TextFormatter:
     def __init__(self, font: pygame.font.Font, screen_width: int,
@@ -193,37 +192,26 @@ LEVEL_DIFF_COLORS = {
     "gray": FORMAT_GRAY,
 }
 
+# --- SIMPLIFIED: Only apply color, no articles/capitalization ---
 def format_target_name(viewer, target) -> str:
-    """
-    Formats the target's name based on dynamic level difference relative to the viewer (7 Tiers).
-    Only colors hostile NPCs based on level.
-    """
-    # Local import for runtime if needed
-    from npcs.npc import NPC # Assuming NPC is defined relative to this file's usage
+    """Applies level-based color formatting ONLY. No articles or capitalization."""
+    from npcs.npc import NPC # <<< ADD THIS LINE
+    
+    if not hasattr(target, 'name'): return "something"
 
-    if not hasattr(target, 'name'):
-        return "something" # Fallback
-
-    base_name = target.name
-
-    # Only color hostile NPCs based on level
-    if not isinstance(target, NPC) or target.friendly or target.faction != "hostile":
-        return base_name
-
-    viewer_level = getattr(viewer, 'level', 1)
+    full_name = target.name # Use the name directly from the object
     target_level = getattr(target, 'level', 1)
+    format_code = FORMAT_RESET # Default
 
-    # --- Use the new function to get the category ---
-    color_category = get_level_diff_category(viewer_level, target_level)
-    # --- End Use ---
+    # Only apply level-based coloring to hostile NPCs
+    if isinstance(target, NPC) and target.faction == "hostile" and viewer:
+         viewer_level = getattr(viewer, 'level', 1)
+         color_category = get_level_diff_category(viewer_level, target_level)
+         format_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
 
-    format_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
-
-    level_str = f" (Level {target_level})"
-    if f"(Level {target_level})" in base_name:
-         level_str = ""
-
-    return f"{format_code}{base_name}{level_str}{FORMAT_RESET}"
+    # Return the name with color codes applied
+    return f"{format_code}{full_name}{FORMAT_RESET}"
+# --- END SIMPLIFIED ---
 
 # --- NEW Function to Calculate Category ---
 def get_level_diff_category(viewer_level: int, target_level: int) -> str:
