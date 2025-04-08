@@ -19,6 +19,46 @@
         {
           "template_id": "village_elder",
           "instance_id": "elder_thorne_townsquare"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq1"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq2"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq3"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq4"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq5"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq6"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq7"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq8"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq9"
+        },
+        {
+          "template_id": "wandering_villager",
+          "instance_id": "wanderer_villager_sq10"
         }
       ],
       "items": [],
@@ -31,7 +71,7 @@
       "exits": {
         "south": "town_square",
         "up": "tavern_rooms",
-        "behind_bar": "tavern_cellar",
+        "down": "tavern_cellar",
         "east": "tavern_kitchen"
       },
       "initial_npcs": [

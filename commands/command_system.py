@@ -7,6 +7,8 @@ from typing import Callable, List, Dict, Any, Optional, Set
 from functools import wraps
 import inspect
 
+from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, HELP_MAX_COMMANDS_PER_CATEGORY
+
 # Dictionary to store all registered commands
 registered_commands: Dict[str, Dict[str, Any]] = {}
 command_groups: Dict[str, List[Dict[str, Any]]] = {
@@ -152,7 +154,7 @@ class CommandProcessor:
     
     def __init__(self):
         """Initialize the command processor."""
-        # We don't need to store commands locally anymore since they're in the global registry
+        # Commands are stored in a global registry
         pass
 
     def process_input(self, text: str, context: Any = None) -> str:
@@ -160,134 +162,179 @@ class CommandProcessor:
         Process user input and execute the corresponding command.
         """
         text = text.strip().lower()
-        
-        if not text:
-            return ""
-        
+        if not text: return ""
         parts = text.split()
         command_word = parts[0]
         args = parts[1:] if len(parts) > 1 else []
-        
-        # Check if it's a movement command (special case)
-        if command_word in direction_aliases:
-            command_word = direction_aliases[command_word]
-        
-        # Look for matching command directly in registered_commands
+        if command_word in direction_aliases: command_word = direction_aliases[command_word]
+
         if command_word in registered_commands:
             cmd = registered_commands[command_word]
+            # --- Add context about the specific command being executed ---
+            # This isn't strictly necessary for help, but useful elsewhere
+            if context and isinstance(context, dict):
+                 context['executed_command_name'] = cmd.get('name', command_word)
+                 context['executed_command_aliases'] = cmd.get('aliases', [])
+            # --- End context addition ---
             return cmd["handler"](args, context)
-        
-        # No matching command found
-        return f"Unknown command: {command_word}"
+
+        return f"{FORMAT_ERROR}Unknown command: {command_word}{FORMAT_RESET}" # Use error format
 
     def get_help_text(self) -> str:
-        """Generate help text for all registered commands."""
-        from core.config import FORMAT_TITLE, FORMAT_CATEGORY, FORMAT_RESET
-        
-        help_text = f"{FORMAT_TITLE}AVAILABLE COMMANDS{FORMAT_RESET}\n\n"
-        
-        # List commands by category
-        for category, commands in command_groups.items():
-            if not commands:
-                continue
-                
-            # Format category names
-            category_title = category.capitalize()
-            help_text += f"{FORMAT_CATEGORY}{category_title}{FORMAT_RESET}\n"
-            
-            # Group identical commands (those with the same handler)
-            unique_commands = {}
-            for cmd in commands:
-                handler_id = id(cmd["handler"])
-                if handler_id not in unique_commands:
-                    unique_commands[handler_id] = cmd
-            
-            # Format the commands in this category
-            for cmd in sorted(unique_commands.values(), key=lambda c: c["name"]):
-                aliases = f" ({', '.join(cmd['aliases'])})" if cmd['aliases'] else ""
-                help_text += f"  {cmd['name']}{aliases}\n"
-            
-            help_text += "\n"
-        
-        help_text += f"{FORMAT_TITLE}HELP SYSTEM{FORMAT_RESET}\n\n"
-        help_text += "Use 'help <command>' for detailed information about a specific command.\n"
-        help_text += "Example: 'help look' or 'help north'\n\n"
-        
-        help_text += f"{FORMAT_TITLE}NAVIGATION{FORMAT_RESET}\n\n"
-        help_text += "- Use mouse wheel to scroll text\n"
-        help_text += "- Use Page Up/Down keys for faster scrolling\n"
-        help_text += "- Use Up/Down arrow keys to navigate command history\n"
-        
+        """Generate the top-level help text showing categories and associated commands."""
+        help_text = f"{FORMAT_TITLE}===== Pygame MUD Help ====={FORMAT_RESET}\n\n"
+        help_text += "Interact by typing commands. Use the following categories for guidance:\n\n" # Simplified intro
+
+        help_text += f"{FORMAT_HIGHLIGHT}How to Get More Help:{FORMAT_RESET}\n"
+        help_text += f"  - Type '{FORMAT_HIGHLIGHT}help <category>{FORMAT_RESET}' for all commands in a category.\n" # Clarified help <category> usage
+        help_text += f"  - Type '{FORMAT_HIGHLIGHT}help <command>{FORMAT_RESET}' for details on a specific command.\n\n"
+
+        help_text += f"{FORMAT_TITLE}Command Categories & Examples:{FORMAT_RESET}\n"
+        # List categories alphabetically, skipping empty ones
+        categories = sorted([cat for cat, cmds in command_groups.items() if cmds])
+
+        # --- MODIFIED CATEGORY LISTING ---
+        max_cmds_to_show = HELP_MAX_COMMANDS_PER_CATEGORY
+
+        for category in categories:
+            commands_in_category = command_groups[category]
+            if not commands_in_category: continue # Skip empty (shouldn't happen with outer check, but safe)
+
+            # Get unique primary command names for this category
+            unique_primary_names = sorted(list({cmd['name'] for cmd in commands_in_category}))
+
+            # Create the command list string with potential truncation
+            command_list_str = ""
+            if unique_primary_names:
+                if len(unique_primary_names) > max_cmds_to_show:
+                    command_list_str = ", ".join(unique_primary_names[:max_cmds_to_show]) + ", ..."
+                else:
+                    command_list_str = ", ".join(unique_primary_names)
+
+            # Add the line to the help text
+            help_text += f"  - {FORMAT_CATEGORY}{category.capitalize()}{FORMAT_RESET}"
+            if command_list_str:
+                # Add commands in highlight color
+                help_text += f" ({FORMAT_HIGHLIGHT}{command_list_str}{FORMAT_RESET})\n"
+            else:
+                help_text += "\n" # Just newline if no commands somehow
+        help_text += "\n"
+        # --- END MODIFIED CATEGORY LISTING ---
+
+        # Keep Getting Started and Other Tips sections
+        help_text += f"{FORMAT_TITLE}Getting Started Examples:{FORMAT_RESET}\n"
+        help_text += f"  - {FORMAT_HIGHLIGHT}look{FORMAT_RESET}\n"
+        help_text += f"  - {FORMAT_HIGHLIGHT}north{FORMAT_RESET} (or {FORMAT_HIGHLIGHT}n{FORMAT_RESET})\n"
+        help_text += f"  - {FORMAT_HIGHLIGHT}take potion{FORMAT_RESET}\n"
+        help_text += f"  - {FORMAT_HIGHLIGHT}inventory{FORMAT_RESET}\n"
+        help_text += f"  - {FORMAT_HIGHLIGHT}talk <npc_name>{FORMAT_RESET}\n"
+        help_text += f"  - {FORMAT_HIGHLIGHT}attack goblin{FORMAT_RESET}\n\n"
+
+        help_text += f"{FORMAT_TITLE}Other Tips:{FORMAT_RESET}\n"
+        help_text += "  - Use Up/Down arrows for command history.\n"
+        help_text += "  - Use Tab for command/category completion.\n"
+        help_text += "  - Use PageUp/PageDown/Mouse Wheel to scroll text.\n"
+
         return help_text
     
-    def get_command_help(self, command_name: str) -> str:
-        """Get detailed help for a specific command."""
-        from core.config import FORMAT_TITLE, FORMAT_CATEGORY, FORMAT_RESET, FORMAT_HIGHLIGHT
-        
-        # First, normalize command name using direction aliases
-        if command_name in direction_aliases:
-            command_name = direction_aliases[command_name]
-        
-        if command_name in registered_commands:
-            cmd = registered_commands[command_name]
-            
-            # Find the category
-            category = cmd["category"].capitalize()
-            
-            # Format the help text
-            help_text = f"{FORMAT_TITLE}COMMAND: {cmd['name'].upper()}{FORMAT_RESET}\n\n"
-            help_text += f"{FORMAT_CATEGORY}Category:{FORMAT_RESET} {category}\n"
-            
+    def get_command_help(self, command_or_category_name: str) -> str:
+        """Get detailed help for a specific command OR a category."""
+        name_lower = command_or_category_name.lower()
+
+        # --- Check if it's a category name ---
+        if name_lower in command_groups and command_groups[name_lower]:
+            return self._get_category_help(name_lower)
+
+        # --- If not a category, assume it's a command name ---
+        # Normalize potential direction aliases
+        if name_lower in direction_aliases:
+            name_lower = direction_aliases[name_lower]
+
+        if name_lower in registered_commands:
+            cmd = registered_commands[name_lower]
+
+            help_text = f"{FORMAT_TITLE}Command: {cmd['name'].upper()}{FORMAT_RESET}\n\n"
+            help_text += f"{FORMAT_CATEGORY}Category:{FORMAT_RESET} {cmd['category'].capitalize()}\n"
+
             if cmd['aliases']:
                 help_text += f"{FORMAT_CATEGORY}Aliases:{FORMAT_RESET} {', '.join(cmd['aliases'])}\n"
-            
-            help_text += f"\n{cmd['help_text']}\n"
-            
-            # Show examples if it's a complex command
-            if cmd['name'] in ["save", "load", "help"]:
-                help_text += f"\n{FORMAT_CATEGORY}Examples:{FORMAT_RESET}\n"
-                if cmd['name'] == "save":
-                    help_text += "  save           (saves to default world file)\n"
-                    help_text += "  save mygame    (saves to mygame.json)\n"
-                elif cmd['name'] == "load":
-                    help_text += "  load           (loads from default world file)\n"
-                    help_text += "  load mygame    (loads from mygame.json)\n"
-                elif cmd['name'] == "help":
-                    help_text += "  help           (shows command list)\n"
-                    help_text += "  help look      (shows details about the look command)\n"
-            
+
+            # Display full help text, nicely formatted
+            help_text += f"\n{FORMAT_CATEGORY}Description:{FORMAT_RESET}\n"
+            # Indent the description for readability
+            description_lines = cmd['help_text'].split('\n')
+            for line in description_lines:
+                help_text += f"  {line}\n" # Add indentation
+
+            # Add examples if available (could be parsed from help_text or added explicitly)
+            # Example parsing (simple):
+            usage_lines = [line.strip() for line in description_lines if line.strip().lower().startswith("usage:")]
+            if usage_lines:
+                help_text += f"\n{FORMAT_CATEGORY}Usage:{FORMAT_RESET}\n"
+                for usage in usage_lines:
+                    # Remove "Usage: " prefix and display
+                    help_text += f"  {usage[len('usage: '):].strip()}\n"
+
             return help_text
-        
-        # No matching command found
-        return f"{FORMAT_HIGHLIGHT}No help available for '{command_name}'{FORMAT_RESET}\n\nType 'help' to see a list of all available commands."
+
+        # No matching command or category found
+        return f"{FORMAT_ERROR}No help found for '{command_or_category_name}'. It is not a valid command or category.{FORMAT_RESET}\nType '{FORMAT_HIGHLIGHT}help{FORMAT_RESET}' for available categories."
     
     def get_command_suggestions(self, partial_command: str) -> List[str]:
-        """
-        Get a list of commands that start with the given partial command.
-        Useful for tab completion.
-        
-        Args:
-            partial_command: The partial command to match.
-            
-        Returns:
-            A list of matching command names and aliases.
-        """
+        """ Get a list of commands that start with the given partial command."""
         partial = partial_command.lower()
-        suggestions = []
-        
+        suggestions = set() # Use a set to avoid duplicates easily
+
         # Check command names and aliases
         for cmd_name, cmd_data in registered_commands.items():
-            if cmd_name.startswith(partial):
-                # Only add each command once
-                if cmd_name not in suggestions:
-                    suggestions.append(cmd_name)
-        
-        # Also check direction aliases
+            primary_name = cmd_data['name']
+            if primary_name.startswith(partial):
+                 suggestions.add(primary_name)
+            for alias in cmd_data.get('aliases', []):
+                 if alias.startswith(partial):
+                      suggestions.add(alias)
+
+        # Also check direction aliases (these might not be in registered_commands aliases)
         for alias, direction in direction_aliases.items():
             if alias.startswith(partial):
-                suggestions.append(alias)
-        
-        return sorted(suggestions)
+                suggestions.add(alias)
+
+        # Also check category names for `help <category>` completion
+        for category_name in command_groups.keys():
+             if category_name.startswith(partial):
+                  suggestions.add(category_name) # Add category name itself
+
+        return sorted(list(suggestions))
+
+    # --- NEW: Helper for Category Help ---
+    def _get_category_help(self, category_name: str) -> str:
+        """Generate help text for a specific command category."""
+        category_name_lower = category_name.lower()
+        if category_name_lower not in command_groups or not command_groups[category_name_lower]:
+            return f"{FORMAT_ERROR}Unknown help category: '{category_name}'{FORMAT_RESET}"
+
+        commands_in_category = command_groups[category_name_lower]
+
+        help_text = f"{FORMAT_TITLE}Help: {category_name.capitalize()} Commands{FORMAT_RESET}\n\n"
+
+        # Group by unique command handler to avoid listing aliases separately here
+        unique_commands = {}
+        for cmd in commands_in_category:
+            handler_id = id(cmd["handler"]) # Use handler identity
+            if handler_id not in unique_commands:
+                unique_commands[handler_id] = cmd
+
+        # Sort unique commands by name
+        sorted_unique_commands = sorted(unique_commands.values(), key=lambda c: c["name"])
+
+        for cmd in sorted_unique_commands:
+            aliases = f" ({', '.join(cmd['aliases'])})" if cmd['aliases'] else ""
+            # Get the first line of the help text for a brief description
+            first_line_help = cmd['help_text'].split('\n')[0] if cmd['help_text'] else "No description."
+            help_text += f"  {FORMAT_HIGHLIGHT}{cmd['name']}{aliases}{FORMAT_RESET}\n"
+            help_text += f"    - {first_line_help}\n"
+        help_text += f"\nType '{FORMAT_HIGHLIGHT}help <command>{FORMAT_RESET}' for more details on a specific command."
+        return help_text
 
 def register_command_module(module):
     """

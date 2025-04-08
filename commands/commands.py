@@ -7,11 +7,11 @@ import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 from commands.command_system import command, registered_commands
 from core.config import (
-    DEFAULT_WORLD_FILE, FORMAT_CATEGORY, FORMAT_TITLE, FORMAT_HIGHLIGHT,
-    FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET, REPAIR_COST_PER_VALUE_POINT, REPAIR_MINIMUM_COST, SAVE_GAME_DIR,
+    CAST_COMMAND_PREPOSITION, DEFAULT_WORLD_FILE, EQUIP_COMMAND_SLOT_PREPOSITION, FOLLOW_COMMAND_STOP_ALIASES, FORMAT_CATEGORY, FORMAT_TITLE, FORMAT_HIGHLIGHT,
+    FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET, GET_COMMAND_PREPOSITION, GIVE_COMMAND_PREPOSITION, PUT_COMMAND_PREPOSITION, QUEST_BOARD_ALIASES, REPAIR_COST_PER_VALUE_POINT, REPAIR_MINIMUM_COST, SAVE_GAME_DIR,
     # --- Import Trading Config ---
-    DEFAULT_VENDOR_SELL_MULTIPLIER, DEFAULT_VENDOR_BUY_MULTIPLIER,
-    VENDOR_CAN_BUY_JUNK, VENDOR_CAN_BUY_ALL_ITEMS
+    DEFAULT_VENDOR_SELL_MULTIPLIER, DEFAULT_VENDOR_BUY_MULTIPLIER, TARGET_SELF_ALIASES, USE_COMMAND_PREPOSITIONS,
+    VENDOR_CAN_BUY_JUNK, VENDOR_CAN_BUY_ALL_ITEMS, VENDOR_ID_HINTS, VENDOR_LIST_ITEM_NAME_WIDTH, VENDOR_LIST_PRICE_WIDTH, VENDOR_MIN_BUY_PRICE, VENDOR_MIN_SELL_PRICE
 )
 from items.consumable import Consumable
 from items.item_factory import ItemFactory
@@ -117,10 +117,17 @@ def help_handler(args, context):
     cp = context["command_processor"]
     return cp.get_command_help(args[0]) if args else cp.get_help_text()
 
-@command("quit", ["q", "exit"], "system", "Exit the game.")
+@command("quit", ["q", "exit"], "system", "Return to the main title screen.")
 def quit_handler(args, context):
-    if "game" in context: context["game"].quit_game()
-    return f"{FORMAT_HIGHLIGHT}Goodbye!{FORMAT_RESET}"
+    game = context.get("game")
+    if game:
+        game._shutdown_gameplay_systems() # Unload plugins, etc.
+        game.game_state = "title_screen"
+        # Optionally reset world object? Depends if you want a 'clean slate'
+        # game.world = World()
+        # game.world.game = game
+        # game.world._load_definitions()
+        return f"{FORMAT_HIGHLIGHT}Returning to title screen...{FORMAT_RESET}" # Message shown briefly before screen changes
 
 @command("save", [], "system", "Save game state.\nUsage: save [filename]")
 def save_handler(args, context):
@@ -219,7 +226,7 @@ def look_handler(args, context):
     target_name = " ".join(args).lower() if args else None
     quest_plugin = world.game.plugin_manager.get_plugin("quest_system_plugin") if world.game and world.game.plugin_manager else None
 
-    if target_name == "board" or target_name == "quest board" or target_name == "notice board":
+    if target_name in QUEST_BOARD_ALIASES:
         if quest_plugin:
             # Check if player is in the correct location defined in plugin config
             board_loc_str = quest_plugin.config.get("quest_board_location", "town:town_square")
@@ -526,7 +533,7 @@ def use_handler(args, context):
     prep_index = -1
 
     # Find preposition index ('on', potentially others later)
-    supported_prepositions = ["on"]
+    supported_prepositions = USE_COMMAND_PREPOSITIONS
     for i, word in enumerate(args):
         if word.lower() in supported_prepositions:
             prep_index = i
@@ -605,7 +612,7 @@ def follow_handler(args, context):
         target_name = target_npc.name if target_npc else "someone"
         return f"You are currently following {target_name}. Type 'follow stop'." if world.player.follow_target else f"Follow whom?"
     cmd_arg = " ".join(args).lower()
-    if cmd_arg == "stop" or cmd_arg == "none":
+    if cmd_arg in FOLLOW_COMMAND_STOP_ALIASES:
         if world.player.follow_target: world.player.follow_target = None; return f"{FORMAT_HIGHLIGHT}You stop following.{FORMAT_RESET}"
         else: return "You aren't following anyone."
     npc_name = cmd_arg; npcs = world.get_current_room_npcs(); found_npc = None
@@ -714,9 +721,9 @@ def equip_handler(args, context):
     to_index = -1
 
     # Find 'to' preposition
-    if "to" in [a.lower() for a in args]:
+    if EQUIP_COMMAND_SLOT_PREPOSITION in [a.lower() for a in args]:
          try:
-              to_index = [a.lower() for a in args].index("to")
+              to_index = [a.lower() for a in args].index(EQUIP_COMMAND_SLOT_PREPOSITION)
               item_name = " ".join(args[:to_index]).lower()
               slot_name = " ".join(args[to_index + 1:]).lower().replace(" ", "_") # e.g. "main hand" -> "main_hand"
          except ValueError: # Should not happen if 'to' is found
@@ -775,11 +782,12 @@ def put_handler(args, context):
     player = world.player
     if not player.is_alive:
         return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
-    if not args or "in" not in [a.lower() for a in args]:
-        return f"{FORMAT_ERROR}Usage: put <item_name> in <container_name>{FORMAT_RESET}"
+
+    if PUT_COMMAND_PREPOSITION not in [a.lower() for a in args]:
+        return f"{FORMAT_ERROR}Usage: put <item_name> {PUT_COMMAND_PREPOSITION} <container_name>{FORMAT_RESET}"
 
     try:
-        in_index = [a.lower() for a in args].index("in")
+        in_index = [a.lower() for a in args].index(PUT_COMMAND_PREPOSITION)
         item_name = " ".join(args[:in_index]).lower()
         container_name = " ".join(args[in_index + 1:]).lower()
     except ValueError:
@@ -914,9 +922,9 @@ def cast_handler(args, context):
     on_index = -1
 
     # Find 'on' preposition
-    if "on" in [a.lower() for a in args]:
+    if CAST_COMMAND_PREPOSITION in [a.lower() for a in args]:
          try:
-              on_index = [a.lower() for a in args].index("on")
+              on_index = [a.lower() for a in args].index(CAST_COMMAND_PREPOSITION)
               spell_name = " ".join(args[:on_index]).lower()
               target_name = " ".join(args[on_index + 1:]).lower()
          except ValueError: # Should not happen
@@ -936,7 +944,7 @@ def cast_handler(args, context):
     elif target_name:
         # Look for target: NPCs first, then player self
         target = world.find_npc_in_room(target_name)
-        if not target and target_name in ["self", "me", player.name.lower()]:
+        if not target and target_name in TARGET_SELF_ALIASES + [player.name.lower()]:
              target = player
         # Add finding other players later if multiplayer
         if not target:
@@ -1087,7 +1095,7 @@ def sell_junk_handler(args, context):
         # Check if NPC is marked as a vendor or has trade dialog
         is_vendor = npc.get_property("is_vendor", False) or \
                     (hasattr(npc, 'dialog') and "trade" in npc.dialog) or \
-                    any(vt in npc.obj_id.lower() for vt in ["shop","merchant", "bartender"]) # Added bartender
+                    any(vt in npc.obj_id.lower() for vt in VENDOR_ID_HINTS)
         if is_vendor:
             vendor = npc
             break
@@ -1240,7 +1248,7 @@ def buy_handler(args, context):
     item_id = found_template["obj_id"] = found_item_ref["item_id"] # Ensure obj_id is set for factory
     base_value = found_template.get("value", 0)
     price_multiplier = found_item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
-    buy_price_per_item = max(1, int(base_value * price_multiplier))
+    buy_price_per_item = max(VENDOR_MIN_BUY_PRICE, int(base_value * price_multiplier))
     total_cost = buy_price_per_item * quantity
 
     # Check player gold
@@ -1352,7 +1360,7 @@ def sell_handler(args, context):
         return f"{FORMAT_ERROR}{vendor.name} is not interested in buying {item_to_sell.name}.{FORMAT_RESET}"
 
     # Calculate sell price
-    sell_price_per_item = max(0, int(item_to_sell.value * DEFAULT_VENDOR_BUY_MULTIPLIER)) # Ensure non-negative
+    sell_price_per_item = max(VENDOR_MIN_SELL_PRICE, int(item_to_sell.value * DEFAULT_VENDOR_BUY_MULTIPLIER))
     total_gold_gain = sell_price_per_item * quantity
 
     # --- Transaction ---
@@ -1524,11 +1532,11 @@ def give_handler(args, context):
         return f"{FORMAT_ERROR}You can't give items while dead.{FORMAT_RESET}"
 
     # --- Argument Parsing ---
-    if not args or "to" not in [a.lower() for a in args]:
-        return f"{FORMAT_ERROR}Usage: give <item_name> to <npc_name>{FORMAT_RESET}"
+    if GIVE_COMMAND_PREPOSITION not in [a.lower() for a in args]:
+        return f"{FORMAT_ERROR}Usage: give <item_name> {GIVE_COMMAND_PREPOSITION} <npc_name>{FORMAT_RESET}"
 
     try:
-        to_index = [a.lower() for a in args].index("to")
+        to_index = [a.lower() for a in args].index(GIVE_COMMAND_PREPOSITION)
         item_name = " ".join(args[:to_index]).lower()
         npc_name = " ".join(args[to_index + 1:]).lower()
     except ValueError:
@@ -1557,88 +1565,102 @@ def give_handler(args, context):
         return f"{FORMAT_ERROR}You don't see '{npc_name}' here.{FORMAT_RESET}"
     # --- End Find NPC ---
 
-    # --- Check if NPC can receive items (Optional Check) ---
-    # if not target_npc.properties.get("can_receive_items", True): # Add property if needed
-    #     return f"{target_npc.name} doesn't seem interested in taking that."
+    # --- NEW: Quest Item Pre-Check ---
+    is_delivery_quest_item = False
+    required_recipient_id = None
+    matching_quest_id = None
+    matching_quest_data = None
+    quest_plugin = None # Will get later if needed
 
-    # --- Quest Check (Delivery Quests) ---
-    quest_plugin = None
-    quest_completed_id = None
-    quest_completion_data = None
-    if get_service_locator().has_service("plugin:quest_system_plugin"):
-         quest_plugin = get_service_locator().get_service("plugin:quest_system_plugin")
+    # Check player's quest log for active delivery quests matching THIS item instance
+    if hasattr(player, 'quest_log'):
+        for q_id, q_data in player.quest_log.items():
+            objective = q_data.get("objective", {})
+            # Check using the *specific instance ID* stored in the quest objective
+            if (q_data.get("state") == "active" and
+                q_data.get("type") == "deliver" and
+                objective.get("item_instance_id") == item_to_give.obj_id): # Match specific item instance
+                is_delivery_quest_item = True
+                required_recipient_id = objective.get("recipient_instance_id")
+                matching_quest_id = q_id
+                matching_quest_data = q_data
+                # Load plugin instance now that we know we might need it
+                if get_service_locator().has_service("plugin:quest_system_plugin"):
+                    quest_plugin = get_service_locator().get_service("plugin:quest_system_plugin")
+                break # Found the quest associated with this exact package
 
-         if quest_plugin and hasattr(player, 'quest_log'):
-              for q_id, q_data in list(player.quest_log.items()): # Iterate copy
-                   if q_data.get("state") == "active" and q_data.get("type") == "deliver":
-                        objective = q_data.get("objective", {})
-                        # Check if recipient matches and item instance matches
-                        if (objective.get("recipient_instance_id") == target_npc.obj_id and
-                            objective.get("item_instance_id") == item_to_give.obj_id):
-                            quest_completed_id = q_id
-                            quest_completion_data = q_data
-                            break # Found the matching delivery quest
+    # --- Decision Branch based on Quest Item Check ---
+    if is_delivery_quest_item:
+        # This IS a specific delivery item
+        if target_npc.obj_id == required_recipient_id:
+            # --- CORRECT RECIPIENT: Perform Quest Completion ---
+            # 1. Remove the specific quest item instance from player inventory
+            removed = player.inventory.remove_item_instance(item_to_give)
+            if not removed:
+                # This indicates a problem, the item existed but couldn't be removed
+                print(f"{FORMAT_ERROR}CRITICAL ERROR: Failed to remove quest package '{item_to_give.name}' instance {item_to_give.obj_id} from inventory. Quest {matching_quest_id}{FORMAT_RESET}")
+                return f"{FORMAT_ERROR}Something went wrong removing the package. Please report this bug.{FORMAT_RESET}"
 
-    # --- Perform Transfer and Handle Quest Completion ---
-    # Use the new remove_item_instance method for quest items
-    if quest_completed_id:
-         # Remove the specific quest item instance
-         removed = player.inventory.remove_item_instance(item_to_give)
-         if not removed:
-              # Should not happen if item was found, but safety check
-              return f"{FORMAT_ERROR}Error removing quest package from inventory. Cannot complete.{FORMAT_RESET}"
+            # 2. Grant Rewards
+            rewards = matching_quest_data.get("rewards", {})
+            xp_reward = rewards.get("xp", 0)
+            gold_reward = rewards.get("gold", 0)
+            reward_messages = []
+            if xp_reward > 0:
+                 leveled_up_msg = ""
+                 leveled_up = player.gain_experience(xp_reward)
+                 reward_messages.append(f"{xp_reward} XP")
+                 if leveled_up: reward_messages.append(f"{FORMAT_HIGHLIGHT}(Leveled up!){FORMAT_RESET}")
+            if gold_reward > 0:
+                 player.gold += gold_reward
+                 reward_messages.append(f"{gold_reward} Gold")
+
+            # 3. Update Quest State (Remove from active log)
+            if matching_quest_id in player.quest_log:
+                 del player.quest_log[matching_quest_id]
+                 # Persist the change (though quest log is usually saved with player anyway)
+                 # player.update_quest(matching_quest_id, None) # Or similar if needed
+
+            # 4. Trigger Board Replenishment
+            if quest_plugin:
+                 quest_plugin.replenish_board(matching_quest_id)
+
+            # 5. Format Completion Message
+            completion_message = f"{FORMAT_SUCCESS}[Quest Complete] {matching_quest_data.get('title', 'Task')}{FORMAT_RESET}\n"
+            # Get specific NPC completion dialog if available, else generic
+            npc_response_key = f"complete_{matching_quest_id}" # Check specific first
+            npc_response = target_npc.dialog.get(npc_response_key,
+                          target_npc.dialog.get("quest_complete", # Generic completion
+                          f"\"Ah, thank you for delivering this!\" says {target_npc.name}."))
+            completion_message += f"{FORMAT_HIGHLIGHT}{npc_response}{FORMAT_RESET}\n"
+            if reward_messages:
+                 completion_message += "You receive: " + ", ".join(reward_messages) + "."
+
+            return completion_message
+            # --- End Quest Completion Logic ---
+
+        else:
+            # --- WRONG RECIPIENT: Block the 'give' action ---
+            correct_recipient_name = matching_quest_data.get("objective", {}).get("recipient_name", "someone else")
+            return f"{FORMAT_ERROR}You should give the {item_to_give.name} to {correct_recipient_name}, not {target_npc.name}.{FORMAT_RESET}"
+
     else:
-         # Remove a regular item (quantity 1)
-         removed_item_type, removed_count, remove_msg = player.inventory.remove_item(item_to_give.obj_id, 1)
-         if not removed_item_type or removed_count != 1:
-              return f"{FORMAT_ERROR}Failed to take '{item_to_give.name}' from inventory: {remove_msg}{FORMAT_RESET}"
+        # --- NOT a specific delivery quest item: Allow normal 'give' ---
+        # (Remove item from player, maybe add to NPC, maybe just consumed)
+        removed_item_type, removed_count, remove_msg = player.inventory.remove_item(item_to_give.obj_id, 1)
+        if not removed_item_type or removed_count != 1:
+            return f"{FORMAT_ERROR}Failed to take '{item_to_give.name}' from inventory: {remove_msg}{FORMAT_RESET}"
 
-    # --- Try adding to NPC inventory (Optional - or just destroy item?) ---
-    # For now, let's assume the item is consumed/vanishes upon giving unless it completes a quest
-    # We *could* try adding to NPC inventory:
-    # added_to_npc, npc_inv_msg = target_npc.inventory.add_item(item_to_give, 1)
-    # if not added_to_npc:
-    #     # Failed to add to NPC - put it back in player inventory? Or drop on floor?
-    #     player.inventory.add_item(item_to_give, 1) # Put it back
-    #     return f"{FORMAT_ERROR}{target_npc.name} couldn't take the {item_to_give.name}: {npc_inv_msg}{FORMAT_RESET}"
-    # --- End Optional Add to NPC ---
+        # --- Optional: Add to NPC inventory ---
+        # added_to_npc, npc_inv_msg = target_npc.inventory.add_item(removed_item_type, 1)
+        # if not added_to_npc:
+        #     print(f"Warning: NPC {target_npc.name} could not receive item {removed_item_type.name}: {npc_inv_msg}")
+        #     # Give item back to player? Drop it? For now, let it vanish.
+        # --- End Optional Add to NPC ---
 
-    # --- Handle Quest Completion Logic ---
-    if quest_completed_id and quest_completion_data:
-        # Grant Rewards
-        rewards = quest_completion_data.get("rewards", {})
-        xp_reward = rewards.get("xp", 0)
-        gold_reward = rewards.get("gold", 0)
-        reward_messages = []
-        if xp_reward > 0:
-             player.gain_experience(xp_reward)
-             reward_messages.append(f"{xp_reward} XP")
-        if gold_reward > 0:
-             player.gold += gold_reward
-             reward_messages.append(f"{gold_reward} Gold")
-
-        # Update Quest State (Remove from active log)
-        if quest_completed_id in player.quest_log:
-             del player.quest_log[quest_completed_id]
-
-        # Trigger Board Replenishment
-        if quest_plugin:
-             quest_plugin.replenish_board(quest_completed_id)
-
-        # Format Completion Message
-        completion_message = f"{FORMAT_SUCCESS}[Quest Complete] {quest_completion_data.get('title', 'Task')}{FORMAT_RESET}\n"
-        # Get specific NPC completion dialog if available, else generic
-        npc_response = target_npc.dialog.get(f"complete_{quest_completed_id}", # Look for specific completion key
-                      target_npc.dialog.get("quest_complete", # Generic completion key
-                      f"\"Ah, thank you for delivering this!\" says {target_npc.name}."))
-        completion_message += f"{FORMAT_HIGHLIGHT}{npc_response}{FORMAT_RESET}\n"
-        if reward_messages:
-             completion_message += "You receive: " + ", ".join(reward_messages) + "."
-
-        return completion_message
-    else:
-        # Standard give message (non-quest)
+        # Standard success message for non-quest giving
         return f"{FORMAT_SUCCESS}You give the {item_to_give.name} to {target_npc.name}.{FORMAT_RESET}"
+
 
 @command("take", ["pickup"], "interaction", "Pick up an item from the room.\nUsage: take [all|quantity] <item_name> | take all")
 def take_handler(args, context):
@@ -1651,9 +1673,9 @@ def get_handler(args, context):
     if not player.is_alive:
         return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
 
-    if "from" in [a.lower() for a in args]:
+    if GET_COMMAND_PREPOSITION in [a.lower() for a in args]: 
         try:
-            from_index = [a.lower() for a in args].index("from")
+            from_index = [a.lower() for a in args].index(GET_COMMAND_PREPOSITION)
             item_name = " ".join(args[:from_index]).lower()
             container_name = " ".join(args[from_index + 1:]).lower()
         except ValueError:
@@ -1703,8 +1725,8 @@ def get_handler(args, context):
                 # Put item back in container if adding to inventory failed
                 container.add_item(item_to_get)
                 return f"{FORMAT_ERROR}Could not take the {item_to_get.name}: {add_msg}{FORMAT_RESET}"
-    else:
-        return _handle_item_acquisition(args, context, "get")
+    else: # Assume 'take' logic if 'from' is missing
+        return _handle_item_acquisition(args, context, "get") # Pass correct verb
 
 if TYPE_CHECKING:
     from world.world import World
@@ -1734,9 +1756,9 @@ def _display_vendor_inventory(player: Player, vendor: NPC, world: 'World') -> st
         price_multiplier = item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
 
         # Calculate final price (player buys from vendor)
-        buy_price = max(1, int(base_value * price_multiplier)) # Ensure price is at least 1
+        buy_price = max(VENDOR_MIN_BUY_PRICE, int(base_value * price_multiplier))
 
-        display_lines.append(f"- {item_name:<25} | Price: {buy_price:>4} gold")
+        display_lines.append(f"- {item_name:<{VENDOR_LIST_ITEM_NAME_WIDTH}} | Price: {buy_price:>{VENDOR_LIST_PRICE_WIDTH}} gold")
         items_available = True
 
     if not items_available:

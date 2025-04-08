@@ -525,17 +525,29 @@ class QuestSystemPlugin(PluginBase):
         # --- 1. Select Recipient ---
         potential_recipients = []
         giver_loc_key = f"{giver_npc.current_region_id}:{giver_npc.current_room_id}"
+        excluded_ids = ["wandering_villager"]
+        generic_villager_template_id = "wandering_villager" # <<< Define the template ID to exclude
 
         for r_instance_id, r_npc in self.world.npcs.items():
             if (r_npc and r_npc.is_alive and
-                r_npc.faction != "hostile" and      # Not hostile
-                r_instance_id != giver_npc.obj_id): # Not the giver
-                # Basic check: Avoid recipient in the exact same room? Maybe too restrictive.
-                # Let's allow same-room deliveries for simplicity for now.
-                # r_loc_key = f"{r_npc.current_region_id}:{r_npc.current_room_id}"
-                # if r_loc_key != giver_loc_key:
-                # TODO: Add distance check later (e.g., only different regions?)
+                r_npc.faction != "hostile" and
+                r_instance_id != giver_npc.obj_id):
+
+                recipient_template_id = getattr(r_npc, 'template_id', None)
+                if recipient_template_id in excluded_ids:
+                    if self.config.get("debug"): print(f"[QuestSys Debug] Skipping ineligible recipient: {r_npc.name} ({r_instance_id})")
+                    continue
+                    
+                if recipient_template_id == generic_villager_template_id:
+                    if self.config.get("debug"): print(f"[QuestSys Debug] Skipping generic villager {r_npc.name} ({r_instance_id}) as recipient.")
+                    continue
+                # --- END FILTER ---
+
+                # Optional: Add more complex filtering (e.g., based on properties) later if needed
+                # if not r_npc.properties.get("can_receive_deliveries", True): continue
+
                 potential_recipients.append(r_instance_id)
+
 
         if not potential_recipients:
             if self.config.get("debug"): print(f"[QuestSys Debug] No valid recipients found for delivery quest from {giver_npc.name}.")

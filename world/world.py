@@ -7,7 +7,7 @@ import uuid # For NPC instance IDs
 import heapq # For pathfinding
 
 # --- Core Imports ---
-from core.config import DEFAULT_SAVE_FILE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, ITEM_TEMPLATE_DIR, NPC_TEMPLATE_DIR, REGION_DIR, SAVE_GAME_DIR # Use config
+from core.config import DEFAULT_PLAYER_NAME, DEFAULT_SAVE_FILE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, ITEM_TEMPLATE_DIR, NPC_TEMPLATE_DIR, REGION_DIR, SAVE_GAME_DIR, WORLD_UPDATE_INTERVAL # Use config
 from player import Player
 from world.region import Region
 from world.room import Room
@@ -352,13 +352,17 @@ class World:
             self.player.current_room_id = self.current_room_id
             player_data = self.player.to_dict(self) # Pass world context
 
-            # --- NPC States ---
+            # --- NPC States (Filter out summons) ---
             npc_states = {}
             for instance_id, npc in self.npcs.items():
-                if npc: # Check if NPC object exists
-                    npc_states[instance_id] = npc.to_dict() # Uses refined NPC.to_dict
+                if npc:
+                    # *** ADD CHECK FOR SUMMON ***
+                    if not npc.properties.get("is_summoned", False):
+                        npc_states[instance_id] = npc.to_dict()
+                    # else: Skip saving summoned NPC
                 else:
                     print(f"Warning: Found None for NPC ID '{instance_id}' during save.")
+            # --- End Filter ---
 
             # --- Dynamic Items ---
             dynamic_items = {}
@@ -493,16 +497,16 @@ class World:
          room = self.get_region(region_id).get_room(room_id) if self.get_region(region_id) else None
          return room.remove_item(obj_id) if room else None # Use Room's method
 
-    # --- Update & Actions (minor changes) ---
     def update(self) -> List[str]:
         """Update NPCs and remove dead ones."""
         current_time_abs = time.time() # Absolute time for NPC updates
         messages = []
-        if current_time_abs - self.last_update_time < 0.5: # Throttle updates
+        # Prevent updates running too frequently if tick rate is very high
+        if current_time_abs - self.last_update_time < WORLD_UPDATE_INTERVAL:
              return messages
         self.last_update_time = current_time_abs
 
-        # Update Player
+        # Update Player (e.g., for regeneration)
         if self.player and self.player.is_alive:
              self.player.update(current_time_abs) # Pass absolute time
 
@@ -516,8 +520,14 @@ class World:
             if npc.is_alive:
                 # Update living NPCs
                 npc_message = npc.update(self, current_time_abs) # Pass absolute time
+
+                # --- !!! FIX HERE !!! ---
+                # If npc.update returned a message, it means the player *should* see it
+                # (visibility check is done within npc.update -> behavior methods).
                 if npc_message:
-                     messages.append(npc_message)
+                    messages.append(npc_message)
+                # --- !!! END FIX !!! ---
+
             else:
                 # Mark dead NPCs for removal
                 npcs_to_remove.append(npc_id)
@@ -526,17 +536,15 @@ class World:
         for npc_id in npcs_to_remove:
              removed_npc = self.npcs.pop(npc_id, None)
              if removed_npc:
-                  # Optional: Add a message if the player is in the same room
-                  if (self.player and self.player.is_alive and
-                      self.current_region_id == removed_npc.current_region_id and
-                      self.current_room_id == removed_npc.current_room_id):
-                       # Use plain name for removal message, color isn't needed
-                       messages.append(f"{FORMAT_HIGHLIGHT}The corpse of the {removed_npc.name} fades away.{FORMAT_RESET}")
-                  # Optional: Publish an event
-                  # if self.game and hasattr(self.game, 'plugin_manager'):
-                  #    self.game.plugin_manager.event_system.publish("npc_removed", {"npc_id": npc_id})
-        # --- End NPC Update and Removal ---
-
+                 # Add corpse fading message ONLY if player is present and it wasn't a summon
+                 is_summoned_corpse = removed_npc.properties.get("is_summoned", False)
+                 if not is_summoned_corpse and self.player and self.player.is_alive and \
+                    self.current_region_id == removed_npc.current_region_id and \
+                    self.current_room_id == removed_npc.current_room_id:
+                        # Check if the despawn message was already added (unlikely now, but safe)
+                        fade_msg = f"{FORMAT_HIGHLIGHT}The corpse of the {removed_npc.name} fades away.{FORMAT_RESET}"
+                        if fade_msg not in messages: # Avoid duplicate fade messages
+                            messages.append(fade_msg)
         return messages
 
     # ... (get_items_in_room, get_items_in_current_room - unchanged) ...
@@ -614,7 +622,7 @@ class World:
 
             if "player" in world_data:
                 self.player = Player.from_dict(world_data["player"])
-            else: self.player = Player("Adventurer")
+            else: self.player = Player(DEFAULT_PLAYER_NAME)
 
             if not hasattr(self.player, "inventory") or self.player.inventory is None:
                  self.player.inventory = Inventory()

@@ -1,12 +1,22 @@
 # utils/utils.py
+import random
 import re
-from core.config import DEBUG_SHOW_LEVEL, FORMAT_CATEGORY, FORMAT_RESET
+from core.config import DEBUG_SHOW_LEVEL, FORMAT_CATEGORY, FORMAT_FRIENDLY_NPC, FORMAT_RESET
 from items.item import Item
 from typing import Dict, Any, Optional, Union
 
 from typing import TYPE_CHECKING
 
 from utils.text_formatter import LEVEL_DIFF_COLORS, get_level_diff_category
+
+DEPARTURE_VERBS = [
+    "leaves", "heads", "departs", "goes", "wanders",
+    "proceeds", "ventures", "ambles", "strolls", "moves", "sets off"
+]
+ARRIVAL_VERBS = [
+    "arrives", "enters", "appears", "comes", "walks in",
+    "emerges", "shows up", "ambles in", "strolls in"
+]
 
 def debug_string(s):
     print("String content:")
@@ -140,10 +150,8 @@ def format_name_for_display(
     base_name = target.name # <<< ASSUME target.name is CLEAN BASE NAME
     target_level = getattr(target, 'level', None) # Get level if it exists
     is_npc = isinstance(target, NPC)
+    is_item = isinstance(target, Item)
     is_hostile = is_npc and getattr(target, 'faction', 'neutral') == 'hostile'
-    # is_generic = base_name == base_name.lower() # Check base name for generic article use
-    # Determine if generic based on whether it starts with an uppercase letter
-    # (Simple check, assumes proper nouns are capitalized in templates)
     is_generic = not base_name[0].isupper() if base_name else True
 
     color_code = FORMAT_RESET # Default color
@@ -154,13 +162,24 @@ def format_name_for_display(
         # Add level suffix for ALL NPCs for consistency during display
         level_suffix = f" (Level {target_level})"
 
-    # --- Determine Color ---
-    if is_hostile and viewer and target_level is not None:
-        viewer_level = getattr(viewer, 'level', 1)
-        color_category = get_level_diff_category(viewer_level, target_level)
-        color_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
-    elif isinstance(target, Item):
+    # --- UPDATED Color Determination Logic ---
+    if is_npc:
+        is_friendly = getattr(target, 'friendly', False) # Check the friendly attribute
+        faction = getattr(target, 'faction', 'neutral')
+
+        if is_friendly:
+            color_code = FORMAT_FRIENDLY_NPC # <<< USE FRIENDLY COLOR
+        elif faction == 'hostile' and viewer and target_level is not None:
+            # Hostile: Use level-based coloring (existing logic)
+            viewer_level = getattr(viewer, 'level', 1)
+            color_category = get_level_diff_category(viewer_level, target_level)
+            color_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
+        # Else (Neutral NPC): color remains FORMAT_RESET (default white)
+
+    elif is_item:
         color_code = FORMAT_CATEGORY # Items use category color
+    # --- END UPDATED Color Logic ---
+
 
     # Construct the name part including level suffix *before* color
     name_with_level = f"{base_name}{level_suffix}"
@@ -186,3 +205,86 @@ def format_name_for_display(
         elif result: result = result[0].upper() + result[1:]
 
     return result
+
+def _reverse_direction(direction: str) -> str:
+    """Gets the opposite cardinal/relative direction."""
+    opposites = {
+        "north": "south", "south": "north",
+        "east": "west", "west": "east",
+        "northeast": "southwest", "southwest": "northeast",
+        "northwest": "southeast", "southeast": "northwest",
+        "up": "down", "down": "up",
+        "in": "out", "out": "in",
+        # Add other potential directions if needed
+        "enter": "exit", "exit": "enter",
+        "inside": "outside", "outside": "inside",
+        "surface": "dive", "dive": "surface", # For water
+        "climb": "descend", "descend": "climb" # For climbing
+    }
+    # fallback, needs work; we have "downstream, upstream" exits that need special attention, for example
+    return opposites.get(direction.lower(), "somewhere opposite")
+
+
+def get_departure_phrase(direction: str) -> str:
+    """Gets a natural language phrase for leaving in a direction."""
+    direction = direction.lower()
+    phrases = {
+        "up": "upwards",
+        "down": "downwards",
+        "in": "inside",
+        "enter": "inside",
+        "inside": "inside",
+        "out": "outside",
+        "exit": "outside",
+        "outside": "outside",
+        "dive": "diving down",
+        "climb": "climbing up",
+        # Add more special cases as needed
+    }
+    # Default for cardinal directions
+    if direction in ["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest"]:
+        return f"to the {direction}"
+
+    return phrases.get(direction, f"towards the {direction}") # Use specific phrase or default
+
+def get_arrival_phrase(direction: str) -> str:
+    """Gets a natural language phrase for arriving from a direction."""
+    # Note: This function expects the direction the NPC *came from*
+    direction = direction.lower()
+    phrases = {
+        "up": "from above",
+        "down": "from below",
+        "in": "from inside",
+        "enter": "from inside",
+        "inside": "from inside",
+        "out": "from outside",
+        "exit": "from outside",
+        "outside": "from outside",
+        "dive": "surfacing", # Arriving from diving
+        "surface": "diving down", # Arriving from surfacing (unlikely arrival dir?)
+        "climb": "climbing down", # Arrived from climbing up
+        "descend": "climbing up", # Arrived from descending
+        # Add more special cases
+    }
+     # Default for cardinal directions
+    if direction in ["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest"]:
+        return f"from the {direction}"
+
+    return phrases.get(direction, f"from {direction}") # Use specific phrase or default
+
+def format_npc_departure_message(npc: 'NPC', direction: str, viewer: Optional['Player']) -> str:
+    """Creates a varied departure message."""
+    # Pass viewer to format_name_for_display
+    formatted_name = format_name_for_display(viewer, npc, start_of_sentence=True)
+    verb = random.choice(DEPARTURE_VERBS)
+    directional_phrase = get_departure_phrase(direction)
+    return f"{formatted_name} {verb} {directional_phrase}."
+
+def format_npc_arrival_message(npc: 'NPC', direction_exited_from: str, viewer: Optional['Player']) -> str:
+    """Creates a varied arrival message."""
+    # Pass viewer to format_name_for_display
+    formatted_name = format_name_for_display(viewer, npc, start_of_sentence=True)
+    verb = random.choice(ARRIVAL_VERBS)
+    arrival_direction = _reverse_direction(direction_exited_from)
+    directional_phrase = get_arrival_phrase(arrival_direction)
+    return f"{formatted_name} {verb} {directional_phrase}."

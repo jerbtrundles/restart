@@ -166,5 +166,20 @@
       "effect_value": 4,
       "effect_type": "heal"
     }
+  },
+  "scroll_raise_skeleton": {
+    "type": "Consumable",
+    "name": "Scroll of Raise Skeleton",
+    "description": "A dusty scroll inscribed with necromantic runes. Reading it might impart the knowledge contained within.",
+    "weight": 0.1,
+    "value": 150,
+    "stackable": false,
+    "properties": {
+      "uses": 1,
+      "max_uses": 1,
+      "effect_type": "learn_spell",
+      "spell_to_learn": "raise_skeleton",
+      "category": "Scroll"
+    }
   }
 }

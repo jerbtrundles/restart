@@ -18,8 +18,12 @@ class Spell:
                  hit_message: str = "{caster_name} hits {target_name} with {spell_name} for {value} points!",
                  heal_message: str = "{caster_name} heals {target_name} with {spell_name} for {value} points!",
                  self_heal_message="You heal yourself for {value} health!",
-                 level_required: int = 1):
-
+                 level_required: int = 1,
+                 summon_template_id: Optional[str] = None,
+                 summon_duration: float = 0.0,
+                 max_summons: int = 0,
+                 damage_type: Optional[str] = None # Added for damage type consistency
+    ):
         self.spell_id = spell_id
         self.name = name
         self.description = description
@@ -33,6 +37,13 @@ class Spell:
         self.heal_message = heal_message
         self.self_heal_message = self_heal_message
         self.level_required = level_required
+        self.damage_type = damage_type
+
+        # --- Store Summoning Attributes ---
+        self.summon_template_id = summon_template_id
+        self.summon_duration = summon_duration
+        self.max_summons = max_summons
+
 
     def can_cast(self, caster) -> bool:
         """Check if the caster meets level requirements."""
@@ -46,7 +57,7 @@ class Spell:
         """Serialize spell definition (useful for saving maybe, but mostly for registry)."""
         # Generally, spells are definitions, not saved state.
         # This might be useful if you load spells from JSON later.
-        return {
+        data = {
             "spell_id": self.spell_id,
             "name": self.name,
             "description": self.description,
@@ -60,6 +71,11 @@ class Spell:
             "heal_message": self.heal_message,
             "self_heal_message": self.self_heal_message,
             "level_required": self.level_required,
+            "damage_type": self.damage_type, # Save damage type
+            "summon_template_id": self.summon_template_id,
+            "summon_duration": self.summon_duration,
+            "max_summons": self.max_summons,
         }
+        return {k: v for k, v in data.items() if v is not None}
 
     # No from_dict needed if spells are defined in code registry

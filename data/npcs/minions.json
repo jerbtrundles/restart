@@ -1,0 +1,32 @@
+{
+    "skeleton_minion": {
+      "name": "Skeleton Minion",
+      "description": "An animated skeleton bound to its master's will.",
+      "level": 50,
+      "health": 400,
+      "faction": "player_minion",  
+      "friendly": false, 
+      "stats": { 
+        "strength": 300, "dexterity": 8, "constitution": 8, "agility": 7,
+        "intelligence": 0, "wisdom": 0, "spell_power": 0, "magic_resist": 2
+      },
+      "attack_power": 4, 
+      "defense": 3,
+      "behavior_type": "minion", 
+      "dialog": {}, 
+      "default_dialog": "The skeleton stands silently, awaiting orders.",
+      "loot_table": {}, 
+      "usable_spells": [], 
+      "properties": {
+        "is_summoned": true, 
+        "owner_id": null,   
+        "summon_duration": 0, 
+        "creation_time": 0, 
+        "respawn_cooldown": -1, 
+        "aggression": 1.0, 
+        "flee_threshold": 0.0, 
+        "wander_chance": 0.0, 
+        "move_cooldown": 4 
+      }
+    }
+  }

@@ -55,51 +55,68 @@ def register_commands(plugin):
     def settime_command_handler(args, context):
         time_plugin = plugin.get_service("plugin:time_plugin")
         if not time_plugin:
-            return "Time plugin not found"
+            return f"{FORMAT_ERROR}Time plugin not found{FORMAT_RESET}" # Use format codes
         if not args:
-            return "Usage: settime <hour> [minute] or settime <period> (dawn/day/dusk/night)"
+            return f"{FORMAT_ERROR}Usage: settime <hour> [minute] or settime <period> (dawn/day/dusk/night){FORMAT_RESET}"
+
+        new_hour = -1
+        new_minute = 0
+
         if args[0].lower() in plugin.config["available_time_periods"]:
             period = args[0].lower()
             period_hours = {
-                "dawn": time_plugin.config["dawn_hour"],
-                "day": time_plugin.config["day_hour"],
-                "dusk": time_plugin.config["dusk_hour"],
-                "night": time_plugin.config["night_hour"]
+                "dawn": time_plugin.config.get("dawn_hour", 6), # Use .get()
+                "day": time_plugin.config.get("day_hour", 8),
+                "dusk": time_plugin.config.get("dusk_hour", 18),
+                "night": time_plugin.config.get("night_hour", 20)
             }
-            minutes_since_day_start = period_hours[period] * 60
-            current_day_minutes = (time_plugin.day - 1) * 24 * 60
-            current_month_minutes = (time_plugin.month - 1) * time_plugin.config["days_per_month"] * 24 * 60
-            current_year_minutes = (time_plugin.year - 1) * time_plugin.config["months_per_year"] * time_plugin.config["days_per_month"] * 24 * 60
-            time_plugin.game_time = (current_year_minutes + current_month_minutes + current_day_minutes + minutes_since_day_start) * 60
-            time_plugin.hour = period_hours[period]
-            time_plugin.minute = 0
-            time_plugin._update_time_period()
-            time_plugin._update_world_time_data()
-            time_plugin._on_tick("force_update", None)
-            return f"Time set to {period} ({time_plugin.hour:02d}:00)"
-        try:
-            hour = int(args[0])
-            if hour < 0 or hour > 23:
-                return "Hour must be between 0 and 23"
-            minute = 0
-            if len(args) > 1:
-                minute = int(args[1])
-                if minute < 0 or minute > 59:
-                    return "Minute must be between 0 and 59"
-            minutes_since_day_start = hour * 60 + minute
-            current_day_minutes = (time_plugin.day - 1) * 24 * 60
-            current_month_minutes = (time_plugin.month - 1) * time_plugin.config["days_per_month"] * 24 * 60
-            current_year_minutes = (time_plugin.year - 1) * time_plugin.config["months_per_year"] * time_plugin.config["days_per_month"] * 24 * 60
-            time_plugin.game_time = (current_year_minutes + current_month_minutes + current_day_minutes + minutes_since_day_start) * 60
-            time_plugin.hour = hour
-            time_plugin.minute = minute
-            old_period = time_plugin.current_time_period
-            time_plugin._update_time_period()
-            time_plugin._update_world_time_data()
-            time_plugin._on_tick("force_update", None)
-            return f"Time set to {hour:02d}:{minute:02d} ({time_plugin.current_time_period})"
-        except ValueError:
-            return "Invalid time format. Use: settime <hour> [minute] or settime <period>"
+            if period not in period_hours: # Should not happen with check above, but safety
+                return f"{FORMAT_ERROR}Invalid period '{period}'.{FORMAT_RESET}"
+            new_hour = period_hours[period]
+            new_minute = 0
+        else:
+            try:
+                new_hour = int(args[0])
+                if not (0 <= new_hour <= 23):
+                    return f"{FORMAT_ERROR}Hour must be between 0 and 23.{FORMAT_RESET}"
+                if len(args) > 1:
+                    new_minute = int(args[1])
+                    if not (0 <= new_minute <= 59):
+                        return f"{FORMAT_ERROR}Minute must be between 0 and 59.{FORMAT_RESET}"
+            except ValueError:
+                return f"{FORMAT_ERROR}Invalid time format. Use: settime <hour> [minute] or settime <period>{FORMAT_RESET}"
+
+        if new_hour == -1: # If parsing failed somehow
+            return f"{FORMAT_ERROR}Could not determine time to set.{FORMAT_RESET}"
+
+        # --- Set Time Directly in Plugin ---
+        # Calculate target game_time in seconds based on current day/month/year and new H:M
+        days_per_month = time_plugin.config.get("days_per_month", 30)
+        months_per_year = time_plugin.config.get("months_per_year", 12)
+        days_per_month = max(1, days_per_month)
+        months_per_year = max(1, months_per_year)
+
+        minutes_since_midnight = new_hour * 60 + new_minute
+        days_since_epoch = (time_plugin.year - 1) * months_per_year * days_per_month + \
+                           (time_plugin.month - 1) * days_per_month + \
+                           (time_plugin.day - 1)
+        total_minutes_since_epoch = days_since_epoch * 24 * 60 + minutes_since_midnight
+
+        time_plugin.game_time = float(total_minutes_since_epoch * 60) # Set game_time as float
+
+        # Directly update hour/minute for immediate consistency before full recalc
+        time_plugin.hour = new_hour
+        time_plugin.minute = new_minute
+
+        # --- Force Updates ---
+        time_plugin._recalculate_date_from_game_time() # Ensure day/month/year consistent
+        time_plugin._update_time_period()           # Update period based on new hour
+        time_plugin._update_world_time_data()       # Publish the new state
+
+        # --- Optional: Force UI Redraw ---
+        # plugin.force_draw_game_ui() # Call the helper in DebugPlugin
+
+        return f"{FORMAT_SUCCESS}Time set to {time_plugin.hour:02d}:{time_plugin.minute:02d} ({time_plugin.current_time_period}){FORMAT_RESET}"
     
     @command("setweather", ["weather"], "debug", "Set game weather.\n\nUsage: setweather <type> [intensity]")
     def setweather_command_handler(args, context):
@@ -238,7 +255,7 @@ def register_commands(plugin):
             old_health = plugin.world.player.health
             plugin.world.player.health = max(plugin.world.player.health - amount, 0)
             actual_damage = old_health - plugin.world.player.health
-            status = f"Player took {actual_damage} damage. Current health: {plugin.world.player.health}/{plugin.world.player.max_health}"
+            status = f"Player took {int(actual_damage)} damage. Current health: {plugin.world.player.health}/{plugin.world.player.max_health}"
             if plugin.world.player.health <= 0:
                 status += "\nPlayer would be dead in a real game."
             return status

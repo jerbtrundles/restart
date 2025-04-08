@@ -1,4 +1,37 @@
 {
+  "wandering_villager": {
+    "name": "Villager",
+    "description": "A local resident going about their day, seemingly without a specific destination.",
+    "health": 80,
+    "level": 1,
+    "friendly": true,
+    "faction": "friendly",
+    "behavior_type": "wanderer",
+    "stats": {
+      "strength": 7,
+      "dexterity": 8,
+      "constitution": 9,
+      "agility": 9,
+      "intelligence": 8,
+      "wisdom": 8,
+      "spell_power": 0,
+      "magic_resist": 0
+    },
+    "dialog": {
+      "greeting": "Hullo there. Just enjoying the day.",
+      "weather": "Nice weather for a walk, don't you think?",
+      "town": "Just wandering around town, seeing the sights.",
+      "work": "Work? Nah, just taking it easy today.",
+      "rumors": "Haven't heard much interesting lately."
+    },
+    "default_dialog": "The {name} gives you a simple nod.",
+    "initial_inventory": [],
+    "properties": {
+      "wander_chance": 0.8,    
+      "move_cooldown": 5,     
+      "can_give_generic_quests": false
+    }
+  },
   "tavern_keeper": {
     "name": "Barlin the Tavern Keeper",
     "description": "A robust man with a thick beard and friendly eyes. He keeps his tavern in good order and knows all the local gossip.",
@@ -185,7 +218,8 @@
         { "item_id": "item_ripe_apple" },
         { "item_id": "item_coiled_rope" },
         { "item_id": "item_strange_feather", "price_multiplier": 1.5 },
-        { "item_id": "item_rusty_lantern", "price_multiplier": 0.8 }
+        { "item_id": "item_rusty_lantern", "price_multiplier": 0.8 },
+        { "item_id": "scroll_raise_skeleton", "price_multiplier": 2.5 }
       ],
       "can_give_generic_quests": true
     }

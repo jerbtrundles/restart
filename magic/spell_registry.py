@@ -84,4 +84,21 @@ register_spell(Spell(
     level_required=1
 ))
 
+register_spell(Spell(
+    spell_id="raise_skeleton",
+    name="Raise Skeleton",
+    description="Animates inert bones into a temporary skeletal servant.",
+    mana_cost=1,       # Higher cost for summoning
+    cooldown=1.0,      # Longer cooldown
+    effect_type="summon", # *** NEW Effect Type ***
+    target_type="self", # Typically cast by the player on themselves/area
+    cast_message="{caster_name} chants words of necromancy...",
+    level_required=5,   # Example level requirement
+    # --- NEW Properties for Summoning ---
+    summon_template_id="skeleton_minion", # ID of the NPC template to summon
+    summon_duration=500.0,               # How long it lasts in seconds
+    max_summons=10                       # How many of *this specific* summon can be active
+))
+
+
 # Add more spells here...

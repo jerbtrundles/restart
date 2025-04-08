@@ -207,12 +207,13 @@ class PluginManager:
         return self.plugins.get(plugin_id)
     
     def on_tick(self, current_time: float) -> None:
-        # Call on_tick method of all plugins
-        for plugin in self.plugins.values():
-            self._safe_call(plugin, "on_tick", current_time)
-        
-        # Call tick hook callbacks
-        self.call_hook("on_tick", current_time)
+        # --- Publish the generic 'tick' event ---
+        # This is what TimePlugin._on_tick is listening for
+        if self.event_system:
+            # --- DEBUG PRINT ---
+            # print(f"[PluginManager] Publishing 'on_tick' event with time: {current_time:.2f}")
+            # --- END DEBUG ---
+            self.event_system.publish("on_tick", {"current_time": current_time})
                     
     def on_room_enter(self, region_id: str, room_id: str) -> None:
         # Call on_room_enter method of all plugins

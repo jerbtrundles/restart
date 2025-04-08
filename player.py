@@ -6,13 +6,14 @@ import random
 
 # --- Imports for Classes Used Directly ---
 from core.config import (
-    FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GREEN, FORMAT_HIGHLIGHT,
-    FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_ATTACK_COOLDOWN,
-    MIN_HIT_CHANCE, MAX_HIT_CHANCE, MIN_XP_GAIN,
-    PLAYER_BASE_HEALTH, PLAYER_CON_HEALTH_MULTIPLIER,
-    PLAYER_LEVEL_HEALTH_BASE_INCREASE, PLAYER_LEVEL_CON_HEALTH_MULTIPLIER
+    DEFAULT_INVENTORY_MAX_SLOTS, DEFAULT_INVENTORY_MAX_WEIGHT, EQUIPMENT_SLOTS, EQUIPMENT_VALID_SLOTS_BY_TYPE, FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GREEN, FORMAT_HIGHLIGHT,
+    FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW, HIT_CHANCE_AGILITY_FACTOR, ITEM_DURABILITY_LOSS_ON_HIT, ITEM_DURABILITY_LOW_THRESHOLD, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_ATTACK_COOLDOWN,
+    MIN_HIT_CHANCE, MAX_HIT_CHANCE, MIN_XP_GAIN, MINIMUM_DAMAGE_TAKEN, PLAYER_ATTACK_DAMAGE_VARIATION_RANGE, PLAYER_ATTACK_POWER_STR_DIVISOR, PLAYER_BASE_ATTACK_COOLDOWN, PLAYER_BASE_ATTACK_POWER, PLAYER_BASE_DEFENSE,
+    PLAYER_BASE_HEALTH, PLAYER_BASE_HEALTH_REGEN_RATE, PLAYER_BASE_HIT_CHANCE, PLAYER_BASE_MANA_REGEN_RATE, PLAYER_BASE_XP_TO_LEVEL, PLAYER_CON_HEALTH_MULTIPLIER, PLAYER_DEFAULT_KNOWN_SPELLS, PLAYER_DEFAULT_MAX_MANA, PLAYER_DEFAULT_MAX_TOTAL_SUMMONS, PLAYER_DEFAULT_NAME, PLAYER_DEFAULT_RESPAWN_REGION, PLAYER_DEFAULT_RESPAWN_ROOM, PLAYER_DEFAULT_STATS, PLAYER_DEFENSE_DEX_DIVISOR, PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR,
+    PLAYER_LEVEL_HEALTH_BASE_INCREASE, PLAYER_LEVEL_CON_HEALTH_MULTIPLIER, PLAYER_LEVEL_UP_STAT_INCREASE, PLAYER_MANA_LEVEL_UP_INT_DIVISOR, PLAYER_MANA_LEVEL_UP_MULTIPLIER, PLAYER_MANA_REGEN_WISDOM_DIVISOR, PLAYER_MAX_COMBAT_MESSAGES, PLAYER_REGEN_TICK_INTERVAL, PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD, PLAYER_STATUS_HEALTH_LOW_THRESHOLD, PLAYER_XP_TO_LEVEL_MULTIPLIER, SPELL_XP_GAIN_HEALTH_DIVISOR, SPELL_XP_GAIN_LEVEL_MULTIPLIER, XP_GAIN_HEALTH_DIVISOR, XP_GAIN_LEVEL_MULTIPLIER
 )
 
+from game_object import GameObject
 from items.inventory import Inventory
 from items.weapon import Weapon
 from items.consumable import Consumable
@@ -28,58 +29,53 @@ if TYPE_CHECKING:
     from world.world import World # Only import for type checkers
     from items.item_factory import ItemFactory # For loading
 
-class Player:
-    def __init__(self, name: str):
+class Player(GameObject):
+    def __init__(self, name: str, obj_id: str = "player"):
+        super().__init__(obj_id=obj_id, name=name, description="The main character.")
         self.name = name
-        self.inventory = Inventory(max_slots=20, max_weight=100.0)
-        self.max_mana = 50
+        self.inventory = Inventory(max_slots=DEFAULT_INVENTORY_MAX_SLOTS, max_weight=DEFAULT_INVENTORY_MAX_WEIGHT)
+        self.max_mana = PLAYER_DEFAULT_MAX_MANA
         self.mana = self.max_mana
-        self.mana_regen_rate = 1.0
+        self.mana_regen_rate = PLAYER_BASE_MANA_REGEN_RATE
         self.last_mana_regen_time = 0
-        self.stats = {
-            "strength": 10, "dexterity": 10, "intelligence": 10,
-            "wisdom": 10, "constitution": 10, "agility": 10, # Added CON, AGI
-            "spell_power": 5, "magic_resist": 2
-        }
+        self.stats = PLAYER_DEFAULT_STATS.copy()
         self.max_health = PLAYER_BASE_HEALTH + int(self.stats.get('constitution', 10)) * PLAYER_CON_HEALTH_MULTIPLIER
         self.health = self.max_health
         self.level = 1
         self.experience = 0
-        self.experience_to_level = 100
+        self.experience_to_level = PLAYER_BASE_XP_TO_LEVEL
         self.skills = {} # Example: {"swordsmanship": 1}
         self.effects = [] # Example: [{"name": "Regen", "duration": 10}]
         self.quest_log = {} # Example: {"missing_supplies": "started"}
-        self.equipment: Dict[str, Optional[Item]] = {
-            "main_hand": None, "off_hand": None, "body": None, "head": None,
-            "feet": None, "hands": None, "neck": None,
-        }
-        self.valid_slots_for_type = {
-            "Weapon": ["main_hand", "off_hand"], "Armor": ["body", "head", "feet", "hands"],
-            "Shield": ["off_hand"], "Amulet": ["neck"],
-            "Item": ["body", "head", "feet", "hands"] # Generic Item might fit armor slots?
-        }
-        self.attack_power = 5 # Base physical attack power before stats/weapon
-        self.defense = 3 # Base physical defense before stats/armor
+        self.equipment: Dict[str, Optional[Item]] = {slot: None for slot in EQUIPMENT_SLOTS} # Use config slots
+        self.valid_slots_for_type = EQUIPMENT_VALID_SLOTS_BY_TYPE.copy() # Use copy
+        self.attack_power = PLAYER_BASE_ATTACK_POWER # Base physical attack power before stats/weapon
+        self.defense = PLAYER_BASE_DEFENSE # Base physical defense before stats/armor
         self.is_alive = True
         self.faction = "player"
         self.in_combat = False
         self.combat_target = None # Primarily used by NPCs, maybe player focuses one?
-        self.attack_cooldown = 2.0 # Base cooldown in seconds
+        self.attack_cooldown = PLAYER_BASE_ATTACK_COOLDOWN # Base cooldown in seconds
         self.last_attack_time = 0
         self.combat_targets = set() # All entities player is currently in combat with
         self.combat_messages = []
-        self.max_combat_messages = 10
+        self.max_combat_messages = PLAYER_MAX_COMBAT_MESSAGES
         self.follow_target: Optional[str] = None
-        self.respawn_region_id: Optional[str] = "town"
-        self.respawn_room_id: Optional[str] = "town_square"
-        self.known_spells: Set[str] = {"magic_missile", "minor_heal"}
+        self.respawn_region_id: Optional[str] = PLAYER_DEFAULT_RESPAWN_REGION
+        self.respawn_room_id: Optional[str] = PLAYER_DEFAULT_RESPAWN_ROOM
+        self.known_spells: Set[str] = set(PLAYER_DEFAULT_KNOWN_SPELLS)
         self.spell_cooldowns: Dict[str, float] = {}
-        # Add world reference if needed, e.g. set externally after creation
         self.world: Optional['World'] = None
-        self.current_region_id: Optional[str] = None # Tracked by player for saving
+        self.current_region_id: Optional[str] = None
         self.current_room_id: Optional[str] = None
-        self.gold: int = 0 # <<< ADDED GOLD ATTRIBUTE
-        self.trading_with: Optional[str] = None # <<< ADDED for Phase 3
+        self.gold: int = 0
+
+        # --- ADD Summon Tracking ---
+        self.active_summons: Dict[str, List[str]] = {} # spell_id -> list[instance_id]
+        self.max_total_summons: int = PLAYER_DEFAULT_MAX_TOTAL_SUMMONS
+        # --- END Summon Tracking ---
+
+        self.trading_with: Optional[str] = None
 
     # *** NEW: Update method for regeneration ***
     def update(self, current_time: float):
@@ -89,10 +85,9 @@ class Player:
         # --- Regeneration ---
         time_since_last_update = current_time - self.last_mana_regen_time # Use one timer for both
 
-        if time_since_last_update >= 1.0: # Regenerate every second
-            # Calculate base regen
-            base_mana_regen = self.mana_regen_rate * (1 + self.stats.get('wisdom', 10) / 20)
-            base_health_regen = 1.0 * (1 + self.stats.get('strength', 10) / 25) # Example base health regen
+        if time_since_last_update >= PLAYER_REGEN_TICK_INTERVAL:
+            base_mana_regen = self.mana_regen_rate * (1 + self.stats.get('wisdom', 10) / PLAYER_MANA_REGEN_WISDOM_DIVISOR)
+            base_health_regen = PLAYER_BASE_HEALTH_REGEN_RATE * (1 + self.stats.get('strength', 10) / PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR)
 
             # Calculate boost from gear
             regen_boost = 0
@@ -120,13 +115,17 @@ class Player:
     def get_status(self) -> str:
         """Returns a formatted string representing the player's current status."""
 
+
         # --- Health and Mana Formatting ---
         health_percent = (self.health / self.max_health) * 100 if self.max_health > 0 else 0
         health_text = f"{self.health}/{self.max_health}"
-        if health_percent <= 25: health_display = f"{FORMAT_ERROR}{health_text}{FORMAT_RESET}"
-        elif health_percent <= 50: health_display = f"{FORMAT_HIGHLIGHT}{health_text}{FORMAT_RESET}" # Using HIGHLIGHT for mid-health
-        else: health_display = f"{FORMAT_SUCCESS}{health_text}{FORMAT_RESET}"
-
+        if health_percent <= (PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD * 100):
+            health_display = f"{FORMAT_ERROR}{health_text}{FORMAT_RESET}"
+        elif health_percent <= (PLAYER_STATUS_HEALTH_LOW_THRESHOLD * 100):
+            health_display = f"{FORMAT_HIGHLIGHT}{health_text}{FORMAT_RESET}"
+        else:
+            health_display = f"{FORMAT_SUCCESS}{health_text}{FORMAT_RESET}"
+            
         mana_percent = (self.mana / self.max_mana) * 100 if self.max_mana > 0 else 0
         mana_text = f"{self.mana}/{self.max_mana}"
         # Using a blueish color for mana
@@ -179,7 +178,7 @@ class Player:
                      if max_dura > 0: # Avoid division by zero and irrelevant info
                           dura_percent = (current_dura / max_dura) * 100
                           if current_dura <= 0: dura_color = FORMAT_ERROR
-                          elif dura_percent <= 30: dura_color = FORMAT_YELLOW
+                          elif dura_percent <= (ITEM_DURABILITY_LOW_THRESHOLD * 100): dura_color = FORMAT_YELLOW
                           else: dura_color = FORMAT_GREEN # Use green for good condition
                           durability_str = f" [{dura_color}{current_dura}/{max_dura}{FORMAT_RESET}]"
 
@@ -267,13 +266,13 @@ class Player:
         # ... (previous level up logic) ...
         self.level += 1
         self.experience -= self.experience_to_level
-        self.experience_to_level = int(self.experience_to_level * 1.5)
-        self.stats["strength"] += 1
-        self.stats["dexterity"] += 1
-        self.stats["intelligence"] += 1
-        self.stats["wisdom"] += 1
-        self.stats["constitution"] += 1 # Increase CON on level up
-        self.stats["agility"] += 1      # Increase AGI on level up
+        self.experience_to_level = int(self.experience_to_level * PLAYER_XP_TO_LEVEL_MULTIPLIER)
+        self.stats["strength"] += PLAYER_LEVEL_UP_STAT_INCREASE
+        self.stats["dexterity"] += PLAYER_LEVEL_UP_STAT_INCREASE
+        self.stats["intelligence"] += PLAYER_LEVEL_UP_STAT_INCREASE
+        self.stats["wisdom"] += PLAYER_LEVEL_UP_STAT_INCREASE
+        self.stats["constitution"] += PLAYER_LEVEL_UP_STAT_INCREASE
+        self.stats["agility"] += PLAYER_LEVEL_UP_STAT_INCREASE
 
         old_max_health = self.max_health
         health_increase = PLAYER_LEVEL_HEALTH_BASE_INCREASE + int(self.stats.get('constitution', 10) * PLAYER_LEVEL_CON_HEALTH_MULTIPLIER)
@@ -360,7 +359,7 @@ class Player:
         # Add other damage types (e.g., "fire", "cold") if needed
         reduced_damage = max(0, amount - final_reduction)
         # Ensure minimum 1 damage IF damage got past immunity AND reduction wasn't total
-        actual_damage = max(1, reduced_damage) if amount > 0 and reduced_damage > 0 else 0
+        actual_damage = max(MINIMUM_DAMAGE_TAKEN, reduced_damage) if amount > 0 and reduced_damage > 0 else 0
 
         old_health = self.health
         self.health = max(0, self.health - actual_damage)
@@ -381,6 +380,20 @@ class Player:
         # self.mana = 0
         print(f"{self.name} has died!")
 
+        # --- Despawn Summons on Player Death ---
+        if self.world:
+            all_summon_ids = []
+            for ids in self.active_summons.values():
+                all_summon_ids.extend(ids)
+
+            for instance_id in all_summon_ids:
+                summon = self.world.get_npc(instance_id)
+                if summon and hasattr(summon, 'despawn'):
+                    summon.despawn(self.world, silent=True) # Despawn silently
+
+        self.active_summons = {} # Clear the tracking dict
+        # --- End Despawn ---
+
     def respawn(self) -> None:
         self.health = self.max_health
         # *** Restore mana on respawn ***
@@ -390,6 +403,7 @@ class Player:
         self.in_combat = False
         self.combat_targets.clear()
         self.spell_cooldowns.clear() # Reset cooldowns on respawn
+        self.active_summons = {} # Clear summons on respawn too
 
     # Make sure method name matches usage
     def get_is_alive(self) -> bool:
@@ -399,7 +413,7 @@ class Player:
 
     # Make sure get_attack_power and get_defense are present
     def get_attack_power(self) -> int:
-        attack = self.attack_power + self.stats.get("strength", 0) // 3
+        attack = self.attack_power + self.stats.get("strength", 0) // PLAYER_ATTACK_POWER_STR_DIVISOR
         weapon_bonus = 0
         main_hand_weapon = self.equipment.get("main_hand")
         if main_hand_weapon and isinstance(main_hand_weapon, Weapon):
@@ -410,7 +424,7 @@ class Player:
         return attack
 
     def get_defense(self) -> int:
-        defense = self.defense + self.stats.get("dexterity", 10) // 4
+        defense = self.defense + self.stats.get("dexterity", 10) // PLAYER_DEFENSE_DEX_DIVISOR
         armor_bonus = 0
         for item in self.equipment.values():
             if item:
@@ -433,17 +447,48 @@ class Player:
              if not is_target_already_targeting:
                   target.enter_combat(self)
 
+        # --- Notify Summons ---
+        if self.world:
+            for spell_id, instance_ids in self.active_summons.items():
+                for instance_id in instance_ids:
+                    summon = self.world.get_npc(instance_id)
+                    if summon and summon.is_alive and hasattr(summon, 'enter_combat'):
+                        # Tell summon to fight the same target
+                        summon.enter_combat(target)
+        # --- End Notify Summons ---
+
     def exit_combat(self, target=None) -> None:
+        target_list_to_exit = []
         if target:
             if target in self.combat_targets:
                 self.combat_targets.remove(target)
-                if hasattr(target, "exit_combat"): target.exit_combat(self)
+                target_list_to_exit.append(target)
         else:
-            for t in list(self.combat_targets):
-                if hasattr(t, "exit_combat"): t.exit_combat(self)
+            target_list_to_exit = list(self.combat_targets)
             self.combat_targets.clear()
 
         if not self.combat_targets: self.in_combat = False
+
+        # --- Notify Summons ---
+        if self.world:
+            for spell_id, instance_ids in self.active_summons.items():
+                for instance_id in instance_ids:
+                    summon = self.world.get_npc(instance_id)
+                    if summon and summon.is_alive and hasattr(summon, 'exit_combat'):
+                        # Tell summon to stop fighting specific target(s) or all
+                        if target:
+                             summon.exit_combat(target)
+                        else:
+                             # If exiting all, check if summon should also exit all
+                             # Only exit summon fully if player is fully out of combat
+                             if not self.in_combat:
+                                  summon.exit_combat() # Exit all for summon
+        # --- End Notify Summons ---
+
+        # Now notify the targets the player is no longer fighting them
+        for t in target_list_to_exit:
+             if hasattr(t, "exit_combat"):
+                  t.exit_combat(self)
 
     def can_attack(self, current_time: float) -> bool:
         """Checks if the player can attack based on the effective cooldown."""
@@ -508,14 +553,14 @@ class Player:
 
         final_hit_chance = 1.0 # Default to 1.0 if always_hits is true
         if not always_hits:
-            base_hit_chance = 0.85
+            base_hit_chance = PLAYER_BASE_HIT_CHANCE
 
             # Calculate hit chance modifier based on Agility difference
             # Increase hit chance by 2% for each point of AGI advantage
             # Decrease hit chance by 2% for each point of AGI disadvantage
             attacker_agi = self.stats.get("agility", 10)
             target_agi = getattr(target, "stats", {}).get("agility", 8)
-            agi_modifier = (attacker_agi - target_agi) * 0.02
+            agi_modifier = (attacker_agi - target_agi) * HIT_CHANCE_AGILITY_FACTOR
             agi_modified_hit_chance = base_hit_chance + agi_modifier
 
             # Level difference modifier
@@ -539,12 +584,12 @@ class Player:
         # ... (HIT, Damage Calculation, Durability - unchanged) ...
         self.enter_combat(target)
         attack_power = self.get_attack_power()
-        damage_variation = random.randint(-1, 2)
+        damage_variation = random.randint(PLAYER_ATTACK_DAMAGE_VARIATION_RANGE[0], PLAYER_ATTACK_DAMAGE_VARIATION_RANGE[1])
         base_attack_damage = max(1, attack_power + damage_variation)
 
         _, damage_dealt_mod, _ = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
         modified_attack_damage = int(base_attack_damage * damage_dealt_mod)
-        modified_attack_damage = max(1, modified_attack_damage) # Ensure at least 1 damage before defense
+        modified_attack_damage = max(MINIMUM_DAMAGE_TAKEN, modified_attack_damage)
 
         actual_damage = 0
         if hasattr(target, "take_damage"):
@@ -559,16 +604,15 @@ class Player:
         weapon_broke = False
         equipped_weapon = self.equipment.get("main_hand")
 
-
         if equipped_weapon and isinstance(equipped_weapon, Weapon):
             weapon_name = equipped_weapon.name
             current_durability = equipped_weapon.get_property("durability", 0)
             if current_durability > 0:
-                equipped_weapon.update_property("durability", current_durability - 1)
-                if current_durability - 1 <= 0:
+                equipped_weapon.update_property("durability", current_durability - ITEM_DURABILITY_LOSS_ON_HIT)
+                if current_durability - ITEM_DURABILITY_LOSS_ON_HIT <= 0:
                     weapon_broke = True
 
-        hit_message = f"You attack {formatted_target_name} with your {weapon_name} for {actual_damage} damage!"
+        hit_message = f"You attack {formatted_target_name} with your {weapon_name} for {int(actual_damage)} damage!"
         if weapon_broke: hit_message += f"\n{FORMAT_ERROR}Your {weapon_name} breaks!{FORMAT_RESET}"
         result = {
             "attacker": self.name,
@@ -592,7 +636,7 @@ class Player:
             result["message"] += "\n" + death_message
 
             # Calculate XP
-            base_xp_gained = max(1, getattr(target, "max_health", 10) // 5) + getattr(target, "level", 1) * 5
+            base_xp_gained = max(1, getattr(target, "max_health", 10) // XP_GAIN_HEALTH_DIVISOR) + getattr(target, "level", 1) * XP_GAIN_LEVEL_MULTIPLIER
             _, _, xp_mod = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0)) # Apply XP Modifier based on level difference category
             final_xp_gained = int(base_xp_gained * xp_mod)
             final_xp_gained = max(MIN_XP_GAIN, final_xp_gained) # Ensure minimum XP
@@ -739,18 +783,31 @@ class Player:
         self.equipment[slot_name] = None
         return True, f"You unequip the {item_to_unequip.name} from your {slot_name.replace('_', ' ')}."
 
-    # *** NEW: Spell related methods ***
-    def learn_spell(self, spell_id: str) -> bool:
-        """Adds a spell ID to the player's known spells."""
+    def learn_spell(self, spell_id: str) -> Tuple[bool, str]:
+        """
+        Adds a spell ID to the player's known spells if possible.
+
+        Returns:
+            Tuple[bool, str]: (success_status, message)
+        """
         spell = get_spell(spell_id)
-        if spell and spell_id not in self.known_spells:
-            if self.level >= spell.level_required:
-                 self.known_spells.add(spell_id)
-                 return True
-            else:
-                 # Maybe store it as learnable later? For now, just fail.
-                 return False # Level too low
-        return False # Spell doesn't exist or already known
+        if not spell:
+            # Spell definition doesn't exist in the registry
+            return False, f"The secrets of '{spell_id}' seem non-existent."
+
+        if spell_id in self.known_spells:
+            # Already knows the spell
+            return False, f"You already know how to cast {spell.name}."
+
+        if self.level < spell.level_required:
+            # Level requirement not met
+            return False, f"You feel you lack the experience to grasp {spell.name} (requires level {spell.level_required})."
+
+        # All checks passed, learn the spell
+        self.known_spells.add(spell_id)
+        # Maybe add a small XP reward for learning? Optional.
+        # self.gain_experience(5)
+        return True, f"You study the technique and successfully learn {spell.name}!"
 
     def forget_spell(self, spell_id: str) -> bool:
         """Removes a spell ID from the player's known spells."""
@@ -826,8 +883,7 @@ class Player:
             result["target_defeated"] = True
             result["message"] += "\n" + death_message
 
-            # Calculate Base XP (can be adjusted for spells vs attacks if desired)
-            base_xp_gained = max(1, getattr(target, "max_health", 10) // 4) + getattr(target, "level", 1) * 6 # Slightly different base for spells?
+            base_xp_gained = max(1, getattr(target, "max_health", 10) // SPELL_XP_GAIN_HEALTH_DIVISOR) + getattr(target, "level", 1) * SPELL_XP_GAIN_LEVEL_MULTIPLIER # Use spell-specific constants
 
             # Apply XP Modifier
             target_level = getattr(target, 'level', 1)
@@ -912,6 +968,8 @@ class Player:
 
     def to_dict(self, world: 'World') -> Dict[str, Any]: # Needs world context
         """Serialize player state for saving."""
+        data = super().to_dict()
+
         # Serialize equipment by reference
         equipped_items_data = {}
         for slot, item in self.equipment.items():
@@ -931,9 +989,12 @@ class Player:
             "room_id": getattr(self, 'current_room_id', self.respawn_room_id)
         }
 
-        return {
-            "gold": self.gold, # <<< ADDED GOLD
-            "name": self.name,
+        # Add player-specific fields to the data dictionary from super()
+        data.update({
+            # "name": self.name, # Already handled by super().to_dict()
+            # "obj_id": self.obj_id, # Already handled by super().to_dict()
+            # "description": self.description, # Already handled by super().to_dict()
+            "gold": self.gold,
             "health": self.health, "max_health": self.max_health,
             "mana": self.mana, "max_mana": self.max_mana,
             "stats": self.stats,
@@ -949,53 +1010,66 @@ class Player:
             "spell_cooldowns": self.spell_cooldowns,
             "inventory": inventory_data,
             "equipment": equipped_items_data,
-        }
-    # --- END MODIFIED ---
+            # properties dict from GameObject is already included by super().to_dict()
+        })
+        
+        return data
 
-    # --- MODIFIED: Player.from_dict ---
     @classmethod
     def from_dict(cls, data: Dict[str, Any], world: Optional['World']) -> 'Player':
-        """Deserialize player state from save game data."""
         if not world:
              print(f"{FORMAT_ERROR}Error: World context required to load player.{FORMAT_RESET}")
-             # Return a default player or raise error?
-             player = cls("DefaultPlayer")
-             player.current_region_id = "town" # Set defaults
-             player.current_room_id = "town_square"
+             player = cls(PLAYER_DEFAULT_NAME) # Create with default name
+             player.current_region_id = PLAYER_DEFAULT_RESPAWN_REGION
+             player.current_room_id = PLAYER_DEFAULT_RESPAWN_ROOM
              return player
 
-        player = cls(data["name"])
-        player.gold = data.get("gold", 0) # <<< ADDED GOLD (default to 0)
-        player.trading_with = None # <<< Ensure trading state is reset on load
+        # --- Create Player instance using name and obj_id ---
+        # Get obj_id from data, default to "player" if missing
+        player_obj_id = data.get("obj_id", data.get("id", "player"))
+        player = cls(name=data["name"], obj_id=player_obj_id) # Pass obj_id to constructor
+        # --- End instance creation ---
 
-        player.stats = data.get("stats", {"strength": 10, "dexterity": 10, "intelligence": 10, "wisdom": 10, "spell_power": 5, "magic_resist": 2, "constitution": 10, "agility": 10})
-        player.stats.setdefault("wisdom", 10)
-        player.stats.setdefault("spell_power", 5)
-        player.stats.setdefault("magic_resist", 2)
-        player.stats.setdefault("constitution", 10)
-        player.stats.setdefault("agility", 10)
+        # Load GameObject properties (like description, base properties dict)
+        player.description = data.get("description", "The main character.")
+        player.properties = data.get("properties", {}) # Load base properties
+
+        # Load Player-specific attributes
+        player.gold = data.get("gold", 0)
+        player.trading_with = None
+
+        # --- Stats loading (use PLAYER_DEFAULT_STATS) ---
+        player.stats = PLAYER_DEFAULT_STATS.copy() # Start with defaults
+        player.stats.update(data.get("stats", {})) # Update with saved values
+        # --- End Stats Loading ---
+
+        # ... (rest of loading: level, health/mana calculation, xp, skills, etc.) ...
+        # Ensure max health/mana calculations use the loaded stats
         player.level = data.get("level", 1)
-
-        player.max_health = PLAYER_BASE_HEALTH + int(player.stats.get('constitution', 10) * PLAYER_CON_HEALTH_MULTIPLIER)
+        player.max_health = PLAYER_BASE_HEALTH + int(player.stats.get('constitution', 10) * PLAYER_CON_HEALTH_MULTIPLIER) # Recalculate based on final stats
         player.health = data.get("health", player.max_health)
-        player.health = min(player.health, player.max_health) # Clamp loaded health
-        player.mana = data.get("mana", 50)
-        player.max_mana = data.get("max_mana", 50)
+        player.health = min(player.health, player.max_health) # Clamp
 
+        player.max_mana = int(PLAYER_DEFAULT_MAX_MANA * (PLAYER_MANA_LEVEL_UP_MULTIPLIER**(player.level-1)) + player.stats.get("intelligence", 10) / PLAYER_MANA_LEVEL_UP_INT_DIVISOR * (player.level-1)) # Recalculate Max Mana based on level/int
+        player.mana = data.get("mana", player.max_mana)
+        player.mana = min(player.mana, player.max_mana) # Clamp
+
+        # ... (load xp, skills, effects, quest_log, is_alive, known_spells, cooldowns, respawn loc) ...
         player.experience = data.get("experience", 0)
-        player.experience_to_level = data.get("experience_to_level", 100)
+        player.experience_to_level = data.get("experience_to_level", PLAYER_BASE_XP_TO_LEVEL)
         player.skills = data.get("skills", {})
-        player.effects = data.get("effects", []) # Assumes effects are simple lists/dicts
+        player.effects = data.get("effects", [])
         player.quest_log = data.get("quest_log", {})
         player.is_alive = data.get("is_alive", True)
-        player.known_spells = set(data.get("known_spells", ["magic_missile", "minor_heal"]))
+        player.known_spells = set(data.get("known_spells", PLAYER_DEFAULT_KNOWN_SPELLS))
         player.spell_cooldowns = data.get("spell_cooldowns", {})
-        player.respawn_region_id = data.get("respawn_region_id", "town") # Default respawn
-        player.respawn_room_id = data.get("respawn_room_id", "town_square")
+        player.respawn_region_id = data.get("respawn_region_id", PLAYER_DEFAULT_RESPAWN_REGION)
+        player.respawn_room_id = data.get("respawn_room_id", PLAYER_DEFAULT_RESPAWN_ROOM)
 
-        # --- Load Location (set temporarily, world confirms) ---
+
+        # Load Location
         loc = data.get("current_location", {})
-        player.current_region_id = loc.get("region_id", player.respawn_region_id) # Fallback to respawn
+        player.current_region_id = loc.get("region_id", player.respawn_region_id)
         player.current_room_id = loc.get("room_id", player.respawn_room_id)
 
         # Reset transient state
@@ -1004,17 +1078,18 @@ class Player:
         player.combat_targets.clear()
         player.combat_messages = []
         player.last_attack_time = 0
+        player.active_summons = {} # Ensure initialized
 
-        # Load inventory
+        # Load inventory (no change needed here)
         if "inventory" in data:
             player.inventory = Inventory.from_dict(data["inventory"], world)
         else:
-            player.inventory = Inventory() # Default empty
+            player.inventory = Inventory(max_slots=DEFAULT_INVENTORY_MAX_SLOTS, max_weight=DEFAULT_INVENTORY_MAX_WEIGHT)
 
-        # Load equipment
-        player.equipment = { "main_hand": None, "off_hand": None, "body": None, "head": None, "feet": None, "hands": None, "neck": None }
+        # Load equipment (no change needed here)
+        player.equipment = {slot: None for slot in EQUIPMENT_SLOTS} # Initialize slots
         if "equipment" in data:
-            from items.item_factory import ItemFactory # Local import
+            from items.item_factory import ItemFactory
             for slot, item_ref in data["equipment"].items():
                  if item_ref and isinstance(item_ref, dict) and "item_id" in item_ref:
                      item_id = item_ref["item_id"]
@@ -1025,8 +1100,8 @@ class Player:
                      elif item: print(f"Warning: Invalid equip slot '{slot}' in save.")
                      else: print(f"Warning: Failed to load equipped item '{item_id}'.")
 
+        player.world = world # Assign world reference
         return player
-    # --- END MODIFIED ---
 
     def get_effective_attack_cooldown(self) -> float:
         """Calculates the current attack cooldown considering haste effects."""

@@ -233,51 +233,35 @@ class NPCSchedulePlugin(PluginBase):
                         # Parse work location
                         work_region_id, work_room_id = work_location_str.split(":")
                         is_at_work = (npc.current_region_id == work_region_id and npc.current_room_id == work_room_id)
+                        if not is_at_work:
+                            move_cooldown = getattr(npc, 'move_cooldown', 10)
+                            if current_time - npc.last_moved >= move_cooldown:
+                                old_region = npc.current_region_id; old_room = npc.current_room_id
+                                # --- Move NPC directly to work location ---
+                                npc.current_region_id = work_region_id
+                                npc.current_room_id = work_room_id
+                                # ... (update state) ...
+                                self.movement_count += 1
+                                old_npc_loc = (old_region, old_room)
+                                new_npc_loc = (work_region_id, work_room_id)
 
-                        if is_at_work:
+                                if self.event_system:
+                                    work_room_name = self.world.get_region(work_region_id).get_room(work_room_id).name #...
+                                    # --- Generate Varied Messages ---
+                                    # We don't know the *exact* direction taken for this direct move,
+                                    # so we use more generic phrasing.
+                                    if player_loc == old_npc_loc:
+                                        self.event_system.publish("display_message", f"{format_name_for_display(self.world.player, npc, True)} heads off to work at the {work_room_name}.")
+                                    elif player_loc == new_npc_loc:
+                                        self.event_system.publish("display_message", f"{format_name_for_display(self.world.player, npc, True)} arrives at the {work_room_name} to work.")
+                                    # --- End Varied Messages ---
+                                continue # Skip to next NPC
+                        else:
                             # Vendor is at work, should stay put and work
                             npc.ai_state["current_activity"] = "working"
                             npc.wander_chance = 0.0 # Prevent wandering away
                             # No movement needed, skip to next NPC
                             continue
-                        else:
-                            # Vendor is NOT at work, move them there
-                            # Check if enough time has passed since last move attempt
-                            move_cooldown = npc.move_cooldown # Use NPC's specific cooldown
-                            if current_time - npc.last_moved >= move_cooldown:
-                                # --- Move NPC directly to work location ---
-                                old_region = npc.current_region_id
-                                old_room = npc.current_room_id
-
-                                npc.current_region_id = work_region_id
-                                npc.current_room_id = work_room_id
-                                npc.ai_state["current_activity"] = "working"
-                                npc.last_moved = current_time # Update last moved time
-                                npc.wander_chance = 0.0 # Stay put once arrived
-
-                                self.movement_count += 1
-
-                                # Announce arrival/departure if player can see it
-                                player_loc = (self.world.current_region_id, self.world.current_room_id)
-                                old_npc_loc = (old_region, old_room)
-                                new_npc_loc = (work_region_id, work_room_id)
-
-                                if self.event_system:
-                                    work_room_name = self.world.get_region(work_region_id).get_room(work_room_id).name if self.world.get_region(work_region_id) and self.world.get_region(work_region_id).get_room(work_room_id) else work_room_id
-
-                                    npc_display_name = format_name_for_display(self.world.player, self)
-
-                                    if player_loc == old_npc_loc:
-                                        self.event_system.publish("display_message", f"{npc_display_name} leaves, heading to work at the {work_room_name}.")
-                                    elif player_loc == new_npc_loc:
-                                        self.event_system.publish("display_message", f"{npc_display_name} arrives at the {work_room_name} to work.")
-                                # --- End Move ---
-                                # Skip to next NPC after moving
-                                continue
-                            else:
-                                # On cooldown, skip to next NPC
-                                continue
-
                     except ValueError:
                         print(f"Warning: Invalid work_location format for vendor {npc.name}: '{work_location_str}'. Should be 'region:room'.")
                         # Fall through to default day behavior if format is wrong
@@ -292,49 +276,45 @@ class NPCSchedulePlugin(PluginBase):
 
             # --- Night Logic (Applies to ALL non-hostile, non-busy NPCs, including vendors) ---
             else: # It's night
-                npc.wander_chance = self.config["night_wander_chance"] # Low wander chance
-
+                npc.wander_chance = self.config["night_wander_chance"]
                 destination = self._get_night_destination(obj_id)
                 if destination:
                     target_region = destination["region_id"]
                     target_room = destination["room_id"]
+                    move_cooldown = getattr(npc, 'move_cooldown', 10) # Safe getattr
 
-                    # If the NPC is not already at the destination AND cooldown allows
-                    move_cooldown = npc.move_cooldown
                     if (npc.current_region_id != target_region or npc.current_room_id != target_room) and \
                        (current_time - npc.last_moved >= move_cooldown):
-                        # --- Move NPC directly to night destination ---
+                        # Move NPC TO night destination
                         old_region = npc.current_region_id
                         old_room = npc.current_room_id
-
                         npc.current_region_id = target_region
                         npc.current_room_id = target_room
-                        npc.ai_state["current_activity"] = random.choice(self.config["night_activities"])
-                        npc.last_moved = current_time
-
+                        # ... (update state) ...
                         self.movement_count += 1
-
-                        # Announce arrival/departure (existing logic)
-                        player_loc = (self.world.current_region_id, self.world.current_room_id)
                         old_npc_loc = (old_region, old_room)
                         new_npc_loc = (target_region, target_room)
-                        if self.event_system:
-                             dest_name = destination.get('name', 'a gathering place')
-                             activity_name = npc.ai_state['current_activity']
 
-                             npc_display_name = format_name_for_display(self.world.player, self)
-                             
-                             if player_loc == old_npc_loc: self.event_system.publish("display_message", f"{npc_display_name} leaves, heading towards {dest_name}.")
-                             elif player_loc == new_npc_loc: self.event_system.publish("display_message", f"{npc_display_name} arrives at {dest_name}, looking to {activity_name}.")
-                        # --- End Move ---
-                        continue # Skip to next NPC after moving
+                        if self.event_system:
+                            dest_name = destination.get('name', 'a gathering place')
+                            activity_name = npc.ai_state.get('current_activity', 'socialize')
+                            npc_display_name = format_name_for_display(self.world.player, npc) # Use npc
+
+                            # Refined departure message for night
+                            player_loc = (self.world.current_region_id, self.world.current_room_id)
+                            if player_loc == old_npc_loc:
+                                if is_vendor: # Vendor specific
+                                     self.event_system.publish("display_message", f"{format_name_for_display(self.world.player, npc, True)} closes up shop and heads towards {dest_name}.")
+                                else: # Generic NPC
+                                     self.event_system.publish("display_message", f"{format_name_for_display(self.world.player, npc, True)} heads towards {dest_name} for the evening.")
+                            elif player_loc == new_npc_loc:
+                                self.event_system.publish("display_message", f"{format_name_for_display(self.world.player, npc, True)} arrives at {dest_name}, perhaps to {activity_name}.")
+                            # --- End Varied Messages ---
+                        continue # Skip to next NPC
 
                     elif npc.current_region_id == target_region and npc.current_room_id == target_room:
-                        # Already at destination, maybe change activity
-                        if random.random() < 0.2:
-                             npc.ai_state["current_activity"] = random.choice(self.config["night_activities"])
-                        # Stay put (don't wander away from night spot unless wander chance hits)
-                        # The low night_wander_chance handles this implicitly
+                        # Already at night destination, maybe change activity
+                        if random.random() < 0.2: npc.ai_state["current_activity"] = random.choice(self.config["night_activities"])
     
     def on_tick(self, current_time):
         """Update on each game tick."""

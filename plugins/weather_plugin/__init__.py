@@ -5,6 +5,7 @@ Implements a dynamic weather system affected by time of day and season.
 """
 import random
 from typing import Dict, Any
+from core.config import WEATHER_INTENSITY_WEIGHTS, WEATHER_PERSISTENCE_CHANCE, WEATHER_TRANSITION_CHANGE_CHANCE
 from plugins.plugin_system import PluginBase
 
 class WeatherPlugin(PluginBase):
@@ -65,7 +66,7 @@ class WeatherPlugin(PluginBase):
         
         # Weather changes are more likely at dawn and dusk
         if new_period in ["dawn", "dusk"]:
-            if random.random() < 0.5:  # 50% chance
+            if random.random() < WEATHER_TRANSITION_CHANGE_CHANCE:
                 self._update_weather()
     
     def _update_weather(self):
@@ -77,7 +78,7 @@ class WeatherPlugin(PluginBase):
         )
         
         # Weather persistence - sometimes keep the same weather
-        if random.random() < 0.3 and self.current_weather in season_chances:
+        if random.random() < WEATHER_PERSISTENCE_CHANCE and self.current_weather in season_chances:
             # Just update intensity
             self.current_intensity = self._get_random_intensity()
             return
@@ -98,9 +99,7 @@ class WeatherPlugin(PluginBase):
     def _get_random_intensity(self):
         """Get a random weather intensity."""
         intensities = list(self.config["intensity_descriptions"].keys())
-        weights = [0.4, 0.3, 0.2, 0.1]  # Higher chance for milder weather
-        
-        return random.choices(intensities, weights=weights, k=1)[0]
+        return random.choices(intensities, weights=WEATHER_INTENSITY_WEIGHTS, k=1)[0]
     
     def _notify_weather_change(self):
         """Notify the game about weather changes."""

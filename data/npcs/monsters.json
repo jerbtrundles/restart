@@ -28,7 +28,8 @@
     "loot_table": {
       "gold_value": { "chance": 0.8, "quantity": [1, 5] },
       "item_starter_dagger": { "chance": 0.3 },
-      "item_goblin_ear": { "chance": 0.9 }
+      "item_goblin_ear": { "chance": 0.9 },
+      "scroll_raise_skeleton": { "chance": 0.5 }
     },
     "usable_spells": ["zap"],
     "properties": {
@@ -110,12 +111,9 @@
     },
     "default_dialog": "A clattering sound comes from the {name}.",
     "loot_table": {
-     
       "item_bone": { "chance": 0.9, "quantity": [1, 2] },
       "item_rusty_sword": { "chance": 0.4 },
       "item_old_coin": { "chance": 0.2 }
-     
-     
     },
     "usable_spells": ["zap"],
     "properties": {

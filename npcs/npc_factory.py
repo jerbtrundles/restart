@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
 from core.config import (
     FORMAT_ERROR, FORMAT_RESET,
-    NPC_BASE_HEALTH, NPC_CON_HEALTH_MULTIPLIER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER # Import NPC health constants
+    NPC_BASE_HEALTH, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER # Import NPC health constants
 )
 # ItemFactory needed if NPCs have initial inventory defined by references
 from items.item_factory import ItemFactory
@@ -224,11 +224,11 @@ class NPCFactory:
 
             # --- Set attributes derived from properties, WITH WARNINGS ---
             # Define defaults here to avoid repetition and ensure consistency
-            default_aggression = 0.0
+            default_aggression = NPC_DEFAULT_AGGRESSION
             default_wander = 0.3
             default_cooldown = 10
             default_spell_chance = 0.0 # Changed default to 0.0 for non-casters
-            default_flee_threshold = 0.2
+            default_flee_threshold = NPC_DEFAULT_FLEE_THRESHOLD
 
             # Aggression
             if "aggression" in npc.properties:

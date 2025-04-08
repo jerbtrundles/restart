@@ -46,6 +46,7 @@ FORMAT_TITLE = FORMAT_YELLOW
 FORMAT_HIGHLIGHT = FORMAT_GREEN
 FORMAT_SUCCESS = FORMAT_GREEN
 FORMAT_CATEGORY = FORMAT_CYAN
+FORMAT_FRIENDLY_NPC = FORMAT_CYAN
 
 # Default color values for format codes (RGB)
 DEFAULT_COLORS = {
@@ -60,6 +61,7 @@ DEFAULT_COLORS = {
     FORMAT_CYAN: COLOR_CYAN,
     FORMAT_WHITE: COLOR_WHITE,
     FORMAT_RESET: COLOR_DEFAULT, # Reset goes to the default color
+    FORMAT_FRIENDLY_NPC: COLOR_CYAN
 }
 
 SEMANTIC_FORMAT = {
@@ -141,3 +143,164 @@ REPAIR_COST_PER_VALUE_POINT = 0.1 # e.g., 10% of item value to repair fully
 REPAIR_MINIMUM_COST = 1
 
 DEBUG_SHOW_LEVEL = True
+
+# core/config.py
+# ... (existing imports and constants) ...
+
+# --- Player Defaults & Base Values ---
+PLAYER_DEFAULT_NAME = "Adventurer"
+PLAYER_DEFAULT_MAX_MANA = 50
+PLAYER_DEFAULT_RESPAWN_REGION = "town"
+PLAYER_DEFAULT_RESPAWN_ROOM = "town_square"
+PLAYER_BASE_XP_TO_LEVEL = 100
+PLAYER_BASE_ATTACK_POWER = 5
+PLAYER_BASE_DEFENSE = 3
+PLAYER_BASE_ATTACK_COOLDOWN = 2.0 # Base cooldown in seconds
+PLAYER_BASE_MANA_REGEN_RATE = 1.0 # Per second
+PLAYER_BASE_HEALTH_REGEN_RATE = 1.0 # Per second (Example, adjust as needed)
+PLAYER_DEFAULT_KNOWN_SPELLS = ["magic_missile", "minor_heal"] # Use a list or tuple
+PLAYER_MAX_COMBAT_MESSAGES = 10
+PLAYER_DEFAULT_STATS = {
+    "strength": 10, "dexterity": 10, "intelligence": 10,
+    "wisdom": 10, "constitution": 10, "agility": 10,
+    "spell_power": 5, "magic_resist": 2
+}
+
+# --- Player Leveling & Stats ---
+PLAYER_XP_TO_LEVEL_MULTIPLIER = 1.5
+PLAYER_LEVEL_UP_STAT_INCREASE = 1 # Assuming uniform increase for now
+PLAYER_MANA_LEVEL_UP_MULTIPLIER = 1.15
+PLAYER_MANA_LEVEL_UP_INT_DIVISOR = 2 # Higher INT gives more mana per level
+PLAYER_MANA_REGEN_WISDOM_DIVISOR = 20 # Higher WIS gives faster mana regen
+PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR = 25 # Higher STR gives faster health regen (example)
+PLAYER_ATTACK_POWER_STR_DIVISOR = 3 # Higher STR increases attack power
+PLAYER_DEFENSE_DEX_DIVISOR = 4 # Higher DEX increases defense
+
+# --- Player Combat ---
+PLAYER_BASE_HIT_CHANCE = 0.85 # Base chance before modifiers
+PLAYER_ATTACK_DAMAGE_VARIATION_RANGE = (-1, 2) # Min/Max added/subtracted from base attack
+
+# --- NPC Defaults & Base Values ---
+NPC_DEFAULT_BEHAVIOR = "stationary"
+NPC_DEFAULT_WANDER_CHANCE = 0.3
+NPC_DEFAULT_MOVE_COOLDOWN = 10 # Seconds
+NPC_DEFAULT_AGGRESSION = 0.0
+NPC_DEFAULT_FLEE_THRESHOLD = 0.2 # Flee below 20% health
+NPC_DEFAULT_RESPAWN_COOLDOWN = 600 # Seconds (10 minutes)
+NPC_DEFAULT_COMBAT_COOLDOWN = 3.0 # Seconds between any combat action
+NPC_DEFAULT_ATTACK_COOLDOWN = 3.0 # Seconds between physical attacks
+NPC_DEFAULT_SPELL_CAST_CHANCE = 0.3 # 30% chance to try casting a spell if available
+NPC_BASE_ATTACK_POWER = 3
+NPC_BASE_DEFENSE = 2
+NPC_MAX_COMBAT_MESSAGES = 5
+NPC_DEFAULT_STATS = { # Defaults if template is missing them
+    "strength": 8, "dexterity": 8, "intelligence": 5,
+    "wisdom": 5, "constitution": 8, "agility": 8,
+    "spell_power": 0, "magic_resist": 0
+}
+NPC_HEALTH_DESC_THRESHOLDS = (0.25, 0.50, 0.75) # Corresponds to severely injured, wounded, minor injuries
+
+# --- NPC Combat ---
+NPC_BASE_HIT_CHANCE = 0.80 # Slightly lower than player base?
+NPC_ATTACK_DAMAGE_VARIATION_RANGE = (-1, 1)
+
+# --- Combat Mechanics (Shared) ---
+HIT_CHANCE_AGILITY_FACTOR = 0.02 # 2% hit change per point of Agility difference
+MINIMUM_DAMAGE_TAKEN = 1 # Minimum damage applied after reduction (if any damage got through)
+
+# --- Item Defaults & Mechanics ---
+ITEM_DURABILITY_LOSS_ON_HIT = 1 # How much durability weapon loses per hit
+ITEM_DURABILITY_LOW_THRESHOLD = 0.30 # % for 'worn' status display
+
+# --- Experience Point Calculation ---
+XP_GAIN_HEALTH_DIVISOR = 5 # Base XP = Target Max Health / Divisor
+XP_GAIN_LEVEL_MULTIPLIER = 5 # Base XP += Target Level * Multiplier
+SPELL_XP_GAIN_HEALTH_DIVISOR = 4 # Different divisor for spell kills?
+SPELL_XP_GAIN_LEVEL_MULTIPLIER = 6 # Different multiplier for spell kills?
+
+# --- Magic ---
+SPELL_DEFAULT_DAMAGE_TYPE = "magical"
+SPELL_DAMAGE_VARIATION_FACTOR = 0.1 # e.g., +/- 10%
+MINIMUM_SPELL_EFFECT_VALUE = 1
+
+# --- UI & Display ---
+FONT_FAMILY = "monospace"
+TITLE_FONT_SIZE_MULTIPLIER = 2
+TARGET_FPS = 30
+LOAD_SCREEN_MAX_SAVES = 10
+LOAD_SCREEN_COLUMN_WIDTH_FACTOR = 0.6 # 60% of screen width
+STATUS_AREA_HEIGHT = 30 # Pixel height for HP/MP/XP bars area
+GAME_OVER_MESSAGE_LINE1 = "YOU HAVE DIED"
+GAME_OVER_MESSAGE_LINE2 = "Press 'R' to Respawn or 'Q' to Quit to Title"
+HELP_MAX_COMMANDS_PER_CATEGORY = 5
+VENDOR_LIST_ITEM_NAME_WIDTH = 25 # Character width for item names in 'list'
+VENDOR_LIST_PRICE_WIDTH = 4 # Character width for prices in 'list'
+
+# --- Command Settings ---
+QUEST_BOARD_ALIASES = ["board", "quest board", "notice board"] # For 'look' command
+USE_COMMAND_PREPOSITIONS = ["on"]
+FOLLOW_COMMAND_STOP_ALIASES = ["stop", "none"]
+EQUIP_COMMAND_SLOT_PREPOSITION = "to"
+PUT_COMMAND_PREPOSITION = "in"
+CAST_COMMAND_PREPOSITION = "on"
+TARGET_SELF_ALIASES = ["self", "me"] # Player name is checked separately
+GET_COMMAND_PREPOSITION = "from"
+STOPTRADE_COMMAND_ALIASES = ["stop", "done"]
+GIVE_COMMAND_PREPOSITION = "to"
+
+# --- Inventory Defaults ---
+DEFAULT_INVENTORY_MAX_SLOTS = 20
+DEFAULT_INVENTORY_MAX_WEIGHT = 100.0
+
+# --- Container Defaults ---
+CONTAINER_EMPTY_MESSAGE = "  (Empty)"
+
+# --- Vendor Settings ---
+VENDOR_MIN_BUY_PRICE = 1 # Minimum price player pays when buying
+VENDOR_MIN_SELL_PRICE = 0 # Minimum price player gets when selling (can be 0)
+VENDOR_ID_HINTS = ["shop", "merchant", "bartender"] # Lowercase hints in NPC IDs
+
+# --- World Settings ---
+WORLD_UPDATE_INTERVAL = 0.5 # Seconds between world update ticks
+
+# --- Time Plugin Settings ---
+TIME_PLUGIN_UPDATE_THRESHOLD = 0.001 # Minimum game_time difference to trigger update
+TIME_PLUGIN_MAX_CATCHUP_SECONDS = 5.0 # Max real seconds to process in one tick
+
+# --- Weather Plugin Settings ---
+WEATHER_PERSISTENCE_CHANCE = 0.3 # Chance weather *doesn't* change
+WEATHER_TRANSITION_CHANGE_CHANCE = 0.5 # Chance weather changes at dawn/dusk
+WEATHER_INTENSITY_WEIGHTS = [0.4, 0.3, 0.2, 0.1] # Weights for mild, moderate, strong, severe
+
+# --- Equipment Slots Definition ---
+# Defines the standard slots and the types primarily associated with them
+# Player.valid_slots_for_type uses this as a base
+EQUIPMENT_SLOTS = [
+    "main_hand", "off_hand", "head", "body", "hands", "feet", "neck"
+]
+# Mapping from Item base class name to default valid slots
+EQUIPMENT_VALID_SLOTS_BY_TYPE = {
+    "Weapon": ["main_hand", "off_hand"],
+    "Armor": ["body", "head", "feet", "hands", "neck"], # Neck for Amulets maybe?
+    "Shield": ["off_hand"], # Example if you add Shield class later
+    "Item": [] # Base Item has no default slot unless properties define it
+}
+
+PLAYER_REGEN_TICK_INTERVAL = 1.0
+PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD = 25
+PLAYER_STATUS_HEALTH_LOW_THRESHOLD = 50
+DEFAULT_PLAYER_NAME = 'Adventurer'
+
+FACTIONS = ["player", "friendly", "neutral", "hostile", "player_minion"] # Add new one
+
+DEFAULT_FACTION_RELATIONS = {
+    "player": 100,
+    "player_minion": 100, # Minions are friendly to player and other minions
+    "friendly": 0,      # Neutral to friendly villagers initially?
+    "neutral": 0,
+    "hostile": -100     # Hostile to monsters
+}
+
+SPELL_EFFECT_TYPES = ["damage", "heal", "buff", "debuff", "summon"] # Added summon
+NPC_BEHAVIOR_TYPES = ["stationary", "wanderer", "patrol", "follower", "scheduled", "aggressive", "minion"] # Added minion
+PLAYER_DEFAULT_MAX_TOTAL_SUMMONS = 100 # Example total limit

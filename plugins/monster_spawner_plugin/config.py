@@ -5,7 +5,7 @@ Default configuration for the Monster Spawner plugin.
 
 DEFAULT_CONFIG = {
     # How often to attempt spawns (in seconds)
-    "spawn_interval": 1,
+    "spawn_interval": 30,
     
     # --- MODIFIED: Dynamic Monster Limits ---
     # "max_monsters_per_region": 3, # REMOVED this fixed value
