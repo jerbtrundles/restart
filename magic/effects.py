@@ -8,7 +8,7 @@ from npcs.npc_factory import NPCFactory
 from utils.text_formatter import get_level_diff_category, format_target_name
 from magic.spell import Spell
 from core.config import LEVEL_DIFF_COMBAT_MODIFIERS, MINIMUM_SPELL_EFFECT_VALUE, SPELL_DAMAGE_VARIATION_FACTOR, SPELL_DEFAULT_DAMAGE_TYPE
-from utils.utils import format_name_for_display # Import modifiers
+from utils.utils import format_name_for_display, get_article # Import modifiers
 
 if TYPE_CHECKING:
     from player import Player
@@ -142,7 +142,7 @@ def apply_spell_effect(caster: CasterTargetType, target: CasterTargetType, spell
             summon_name_formatted = format_name_for_display(viewer, summoned_npc) # Use helper
             value = 1 # Indicate success count
             # Combine cast message and success info
-            message = spell.format_cast_message(caster) + f"\nA {summon_name_formatted} rises to serve you!"
+            message = f"{get_article(summon_name_formatted).capitalize()} {summon_name_formatted} rises to serve you!"
             return value, message # Return success count and message
         else:
             return 0, "Summoning failed (creature could not be formed)."

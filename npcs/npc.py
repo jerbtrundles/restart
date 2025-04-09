@@ -8,9 +8,9 @@ from items.item import Item
 from items.item_factory import ItemFactory
 from magic.spell import Spell # Import Spell
 from magic.spell_registry import get_spell # Import registry access
-from utils.utils import _reverse_direction, format_name_for_display, format_npc_arrival_message, format_npc_departure_message, get_arrival_phrase, get_departure_phrase
+from utils.utils import _reverse_direction, calculate_xp_gain, format_loot_drop_message, format_name_for_display, format_npc_arrival_message, format_npc_departure_message, get_arrival_phrase, get_departure_phrase
 from core.config import (
-    DEFAULT_FACTION_RELATIONS, FORMAT_HIGHLIGHT, FORMAT_RESET, HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_ATTACK_POWER, NPC_BASE_DEFENSE,
+    DEFAULT_FACTION_RELATIONS, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_ATTACK_POWER, NPC_BASE_DEFENSE,
     NPC_BASE_HEALTH, NPC_BASE_HIT_CHANCE, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_ATTACK_COOLDOWN, NPC_DEFAULT_BEHAVIOR, NPC_DEFAULT_COMBAT_COOLDOWN, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_STATS, NPC_DEFAULT_WANDER_CHANCE, NPC_HEALTH_DESC_THRESHOLDS,
     NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_MAX_COMBAT_MESSAGES
 )
@@ -219,20 +219,19 @@ class NPC(GameObject):
         modified_attack_damage = max(MINIMUM_DAMAGE_TAKEN, int(base_damage * damage_dealt_mod))
 
         # Apply damage to target
-        actual_damage = 0
-        if hasattr(target, "take_damage"):
-            print("take_damage")
-            actual_damage = target.take_damage(modified_attack_damage, damage_type="physical")
-            if not target.is_alive:
-                target_defeated = True
-        elif hasattr(target, "health"):
-            print("health")
-            old_health = target.health
-            target.health = max(0, old_health - modified_attack_damage)
-            actual_damage = old_health - target.health
-            if target.health <= 0:
-                target.is_alive = False # Ensure dead state if simple health attribute
-                target_defeated = True # Set the flag
+        # actual_damage = 0
+        # if hasattr(target, "take_damage"):
+        actual_damage = target.take_damage(modified_attack_damage, damage_type="physical")
+        if not target.is_alive:
+            target_defeated = True
+        # elif hasattr(target, "health"):
+        #     print("health")
+        #     old_health = target.health
+        #     target.health = max(0, old_health - modified_attack_damage)
+        #     actual_damage = old_health - target.health
+        #     if target.health <= 0:
+        #         target.is_alive = False # Ensure dead state if simple health attribute
+        #         target_defeated = True # Set the flag
 
         hit_message = f"{formatted_caster_name} attacks {formatted_target_name} for {int(actual_damage)} damage!"
 
@@ -401,7 +400,6 @@ class NPC(GameObject):
                     if target_npc in world.get_npcs_in_room(self.current_region_id, self.current_room_id):
                          self.enter_combat(target_npc)
                          self.combat_target = target_npc # Set target immediately
-                         target_name_fmt = format_name_for_display(owner, target_npc)
                          # Let next tick handle attack via try_attack
                          return f"{self.name} moves to assist against {target_name_fmt}!"
                 else:
@@ -1071,7 +1069,7 @@ class NPC(GameObject):
     def try_attack(self, world, current_time: float) -> Optional[str]:
         """
         Try to perform a combat action (attack or spell) based on cooldowns and chance.
-        MODIFIED with refined message handling and debugging.
+        Awards XP to player if minion gets kill, and handles loot drops.
         """
         # General action cooldown check
         if current_time - self.last_combat_action < self.combat_cooldown:
@@ -1080,13 +1078,12 @@ class NPC(GameObject):
         # --- Target Validation ---
         player = getattr(world, 'player', None) # Get player reference
         target = self.combat_target
-        # ... (rest of target validation logic remains the same, ensuring target is valid and in room) ...
         if not target:
             # Try finding a valid target from the set if primary is invalid/missing
             valid_targets_in_set = [t for t in self.combat_targets
                                     if hasattr(t, "is_alive") and t.is_alive
                                     and hasattr(t, "health") and t.health > 0
-                                    and hasattr(t, 'current_region_id') # Make sure target has location
+                                    and hasattr(t, 'current_region_id')
                                     and t.current_region_id == self.current_region_id
                                     and t.current_room_id == self.current_room_id]
             if not valid_targets_in_set:
@@ -1099,15 +1096,14 @@ class NPC(GameObject):
         # --- Spellcasting Logic ---
         chosen_spell = None
         if self.usable_spells and random.random() < self.spell_cast_chance:
-            # ... (spell selection logic remains the same) ...
             available_spells = []
             for spell_id in self.usable_spells:
                 spell = get_spell(spell_id)
                 cooldown_end = self.spell_cooldowns.get(spell_id, 0)
                 if spell and current_time >= cooldown_end:
                     # Simplified target type check for brevity
-                    is_enemy = (hasattr(target, 'faction') and target.faction != self.faction)
-                    is_friendly = (target == self or (hasattr(target, 'faction') and target.faction == self.faction))
+                    is_enemy = target.faction != self.faction
+                    is_friendly = (target == self or target.faction == self.faction)
                     if (spell.target_type == "enemy" and is_enemy) or \
                        (spell.target_type == "friendly" and is_friendly) or \
                        (spell.target_type == "self"):
@@ -1137,59 +1133,65 @@ class NPC(GameObject):
 
 
         # --- Process Message and Target Death ---
-        message_to_return = None
-        base_action_message = action_result.get("message") if action_result else None
+        # Initialize messages
+        message_to_return = ""
+        base_action_message = action_result.get("message") if action_result else ""
+        loot_message = ""
+        xp_message = ""
+        level_up_message = ""
 
         # Log the base action internally
         if base_action_message:
             self._add_combat_message(base_action_message)
+            message_to_return += base_action_message # Start building the return message
 
-        print("boop boop")
-        
         # Handle target defeat
         if target_defeated_this_turn:
-            # print(f"[NPC Debug] Target {target.name} DEFEATED by {self.name} this turn.") # Debug
             self.exit_combat(target)
             if self.combat_target == target: self.combat_target = None
 
-            # --- Generate Minion Kill Message ---
-            defeat_message_for_player = None
-            is_minion = self.properties.get("is_summoned", False)
-            owner_id = self.properties.get("owner_id")
+            # --- Call target.die() and Format Loot Message ---
+            dropped_loot_items = []
+            if hasattr(target, 'die'):
+                dropped_loot_items = target.die(self.world) # Pass world context
+                loot_message = format_loot_drop_message(player, target, dropped_loot_items)
+                if loot_message:
+                    self._add_combat_message(loot_message) # Log internally
+                    if message_to_return: message_to_return += "\n" # Add newline if action message exists
+                    message_to_return += loot_message # Append to return message
+            # --- End Loot Handling ---
 
-            # --- Debug Minion Check ---
-            print(f"  [Minion Check] NPC: {self.name}, is_minion={is_minion}, owner_id={owner_id}, player_id={player.obj_id if player else 'N/A'}")
+            # --- Check for Player XP Gain (Minion Kill) ---
+            is_player_minion = (self.properties.get("is_summoned", False) and
+                                player and
+                                self.properties.get("owner_id") == player.obj_id)
 
-            if is_minion and player and owner_id == player.obj_id:
-                minion_name_fmt = format_name_for_display(player, self, start_of_sentence=True)
-                target_name_fmt = format_name_for_display(player, target, start_of_sentence=False)
-                defeat_message_for_player = f"{FORMAT_HIGHLIGHT}{minion_name_fmt} defeats {target_name_fmt}!{FORMAT_RESET}"
+            if is_player_minion:
+                # Calculate XP using PLAYER's level
+                target_max_hp = getattr(target, 'max_health', 10)
+                target_lvl = getattr(target, 'level', 1)
+                xp_gained = calculate_xp_gain(player.level, target_lvl, target_max_hp)
 
-                self._add_combat_message(defeat_message_for_player) # Log defeat message internally
+                if xp_gained > 0:
+                    leveled_up = player.gain_experience(xp_gained)
+                    xp_message = f"{FORMAT_SUCCESS}Your {self.name} earns you {xp_gained} experience!{FORMAT_RESET}"
+                    self._add_combat_message(xp_message) # Log internally
+                    if message_to_return: message_to_return += "\n"
+                    message_to_return += xp_message # Append to return message
 
-                # Construct the combined message for return
-                if base_action_message:
-                    # Combine the original action message and the defeat message
-                    message_to_return = base_action_message + "\n" + defeat_message_for_player
-                else:
-                    message_to_return = defeat_message_for_player
+                    if leveled_up:
+                        level_up_message = f"{FORMAT_HIGHLIGHT}You leveled up to level {player.level}!{FORMAT_RESET}"
+                        self._add_combat_message(level_up_message) # Log internally
+                        if message_to_return: message_to_return += "\n"
+                        message_to_return += level_up_message # Append to return message
+            # --- End Player XP Gain ---
 
-                print(f"  [Minion Kill] Generated defeat message: '{defeat_message_for_player}'") # Debug
-                print(f"  [Minion Kill] Combined message for return: '{message_to_return}'") # Debug
-            # --- End Minion Kill Message ---
-
-        # If no defeat message was constructed, use the base action message
-        if message_to_return is None and base_action_message:
-            message_to_return = base_action_message
-
-        # --- Return message ONLY if the player is in the room ---
+        # --- Return message ONLY if the player is in the room AND a message was generated ---
         player_present = player and player.is_alive and \
                          world.current_region_id == self.current_region_id and \
                          world.current_room_id == self.current_room_id
 
-        # print(f"[NPC Debug Return Check] Player Present: {player_present}, Message: '{message_to_return}'") # Debug
-
-        return message_to_return if player_present else None
+        return message_to_return if player_present and message_to_return else None
 
     def _add_combat_message(self, message: str) -> None:
         """

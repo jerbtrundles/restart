@@ -1,9 +1,9 @@
 # utils/utils.py
 import random
 import re
-from core.config import DEBUG_SHOW_LEVEL, FORMAT_CATEGORY, FORMAT_FRIENDLY_NPC, FORMAT_RESET
+from core.config import DEBUG_SHOW_LEVEL, FORMAT_CATEGORY, FORMAT_FRIENDLY_NPC, FORMAT_RESET, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_XP_GAIN, XP_GAIN_HEALTH_DIVISOR, XP_GAIN_LEVEL_MULTIPLIER
 from items.item import Item
-from typing import Dict, Any, Optional, Union
+from typing import Dict, Any, List, Optional, Union
 
 from typing import TYPE_CHECKING
 
@@ -288,3 +288,84 @@ def format_npc_arrival_message(npc: 'NPC', direction_exited_from: str, viewer: O
     arrival_direction = _reverse_direction(direction_exited_from)
     directional_phrase = get_arrival_phrase(arrival_direction)
     return f"{formatted_name} {verb} {directional_phrase}."
+
+def calculate_xp_gain(killer_level: int, target_level: int, target_max_health: int) -> int:
+    """
+    Calculates the experience points gained for defeating a target.
+
+    Args:
+        killer_level: The level of the entity that performed the kill (or owner's level for minions).
+        target_level: The level of the defeated target.
+        target_max_health: The maximum health of the defeated target.
+
+    Returns:
+        The calculated XP amount, clamped by MIN_XP_GAIN.
+    """
+    # Base XP calculation
+    base_xp_gained = max(1, target_max_health // XP_GAIN_HEALTH_DIVISOR) + target_level * XP_GAIN_LEVEL_MULTIPLIER
+
+    # Apply level difference modifier
+    category = get_level_diff_category(killer_level, target_level)
+    _, _, xp_mod = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
+    final_xp_gained = int(base_xp_gained * xp_mod)
+
+    # Ensure minimum XP
+    final_xp_gained = max(MIN_XP_GAIN, final_xp_gained)
+
+    return final_xp_gained
+# --- END NEW ---
+
+# --- NEW: Loot Message Formatting Utility ---
+def format_loot_drop_message(viewer: Optional[Union['Player', 'NPC']], target: Union['Player', 'NPC'], dropped_items: List[Item]) -> str:
+    """
+    Formats the message indicating what loot a target dropped.
+
+    Args:
+        viewer: The entity viewing the event (usually the player).
+        target: The entity that dropped the loot.
+        dropped_items: A list of Item instances that were dropped.
+
+    Returns:
+        A formatted string describing the loot drop, or an empty string if no items.
+    """
+    if not dropped_items:
+        return ""
+
+    # Aggregate loot counts
+    loot_counts: Dict[str, Dict[str, Any]] = {} # item_id -> {"name": str, "count": int}
+    for item in dropped_items:
+        item_id = item.obj_id # Use obj_id which should be the template ID
+        if item_id not in loot_counts:
+            loot_counts[item_id] = {"name": item.name, "count": 0}
+        loot_counts[item_id]["count"] += 1
+
+    # Format message parts
+    loot_message_parts = []
+    for item_id, data in loot_counts.items():
+        name = data["name"]
+        count = data["count"]
+        if count == 1:
+            article = get_article(name)
+            loot_message_parts.append(f"{article} {name}")
+        else:
+            plural_name = simple_plural(name)
+            loot_message_parts.append(f"{count} {plural_name}")
+
+    # Construct the sentence
+    loot_str = ""
+    # Use format_name_for_display relative to the viewer
+    formatted_target_name_start = format_name_for_display(viewer, target, start_of_sentence=True)
+
+    if not loot_message_parts:
+        return "" # Should not happen if dropped_items was not empty, but safety check
+    elif len(loot_message_parts) == 1:
+        loot_str = f"{formatted_target_name_start} dropped {loot_message_parts[0]}."
+    elif len(loot_message_parts) == 2:
+        loot_str = f"{formatted_target_name_start} dropped {loot_message_parts[0]} and {loot_message_parts[1]}."
+    else: # More than 2 items
+        all_but_last = ", ".join(loot_message_parts[:-1])
+        last_item = loot_message_parts[-1]
+        loot_str = f"{formatted_target_name_start} dropped {all_but_last}, and {last_item}."
+
+    return loot_str
+# --- END NEW ---

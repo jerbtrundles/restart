@@ -179,7 +179,22 @@
       "max_uses": 1,
       "effect_type": "learn_spell",
       "spell_to_learn": "raise_skeleton",
-      "category": "Scroll"
+      "category": "scroll"
+    }
+  },
+  "scroll_raise_skeletal_mage": {
+    "type": "Consumable",
+    "name": "Scroll of Raise Skeletal Mage",
+    "description": "A scroll covered in complex necromantic diagrams focusing on arcane animation.",
+    "weight": 0.1,
+    "value": 200,
+    "stackable": false,
+    "properties": {
+        "uses": 1,
+        "max_uses": 1,
+        "effect_type": "learn_spell",
+        "spell_to_learn": "raise_skeletal_mage",
+        "category": "scroll"
     }
   }
 }

@@ -29,7 +29,8 @@
       "gold_value": { "chance": 0.8, "quantity": [1, 5] },
       "item_starter_dagger": { "chance": 0.3 },
       "item_goblin_ear": { "chance": 0.9 },
-      "scroll_raise_skeleton": { "chance": 0.5 }
+      "scroll_raise_skeleton": { "chance": 0.5 },
+      "scroll_raise_skeletal_mage": { "chance": 0.5 }
     },
     "usable_spells": ["zap"],
     "properties": {

@@ -1,11 +1,12 @@
 # npcs/npc_factory.py
 import inspect
+import random
 import time
 import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
 from core.config import (
     FORMAT_ERROR, FORMAT_RESET,
-    NPC_BASE_HEALTH, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER # Import NPC health constants
+    NPC_BASE_HEALTH, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE, VILLAGER_LAST_NAMES # Import NPC health constants
 )
 # ItemFactory needed if NPCs have initial inventory defined by references
 from items.item_factory import ItemFactory
@@ -157,10 +158,39 @@ class NPCFactory:
             npc_instance_id = instance_id if instance_id else f"{template_id}_{uuid.uuid4().hex[:8]}"
             creation_args.update(overrides) # Overrides take precedence
 
+            # --- *** Start Name Generation Logic *** ---
+            final_npc_name = None
+            # # Prioritize name from overrides (saved state)
+            # if "name" in overrides and overrides["name"] != template.get("name"): # Check if override is different from template default
+            #      final_npc_name = overrides["name"]
+            #      # print(f"[NPC Factory Debug] Using overridden name: {final_npc_name}") # Debug
+            # # If template is 'wandering_villager' AND no specific name was provided by overrides
+            # elif template_id == "wandering_villager" and "name" not in overrides:
+            if(template_id == "wandering_villager"):
+                try:
+                    # Combine male and female names for now
+                    first_names = VILLAGER_FIRST_NAMES_MALE + VILLAGER_FIRST_NAMES_FEMALE
+                    if first_names and VILLAGER_LAST_NAMES:
+                        first = random.choice(first_names)
+                        last = random.choice(VILLAGER_LAST_NAMES)
+                        final_npc_name = f"{first} {last}"
+                        # print(f"[NPC Factory Debug] Generated random name: {final_npc_name}") # Debug
+                    else:
+                        print(f"{FORMAT_ERROR}Warning: Villager name lists empty in config. Using template name.{FORMAT_RESET}")
+                        final_npc_name = template.get("name", "Villager") # Fallback
+                except Exception as name_err:
+                     print(f"{FORMAT_ERROR}Error generating random name: {name_err}. Using template name.{FORMAT_RESET}")
+                     final_npc_name = template.get("name", "Villager") # Fallback
+            else:
+                 # Use template name as default if no override and not randomizing
+                 final_npc_name = template.get("name", "Unknown NPC")
+                 # print(f"[NPC Factory Debug] Using template name: {final_npc_name}") # Debug
+            # --- *** End Name Generation Logic *** ---
+
             # 2. Create base NPC instance
             init_args = {
                 "obj_id": npc_instance_id,
-                "name": template.get("name", "Unknown NPC"), # <<< CONFIRMED: Uses template name
+                "name": final_npc_name, # <<< Use the final determined name
                 "description": creation_args.get("description", template.get("description", "No description")),
                 "level": overrides.get("level", template.get("level", 1)),
                 "friendly": creation_args.get("friendly", template.get("friendly", True)),
@@ -168,38 +198,33 @@ class NPCFactory:
             npc = NPC(**init_args)
             npc.template_id = template_id # Store template reference
 
-            # 3. Apply Stats from template/overrides *before* calculating final health
-            base_stats = npc.stats.copy() # Get defaults from NPC.__init__
-            template_stats = template.get("stats", {}) # Get stats from template definition
-            saved_stats = overrides.get("stats", {})   # Get stats from saved state (overrides)
-            # Merge: saved > template > base
+            # 3. Apply Stats
+            base_stats = npc.stats.copy()
+            template_stats = template.get("stats", {})
+            saved_stats = overrides.get("stats", {})
             npc.stats = {**base_stats, **template_stats, **saved_stats}
 
-            # 4. Recalculate Max Health based on FINAL stats and level
-            npc_level = npc.level # Already set from init_args
+            # 4. Recalculate Max Health
+            npc_level = npc.level
             final_con = npc.stats.get('constitution', 8)
             base_hp = NPC_BASE_HEALTH + int(final_con * NPC_CON_HEALTH_MULTIPLIER)
             level_hp_bonus = (npc_level - 1) * (NPC_LEVEL_HEALTH_BASE_INCREASE + int(final_con * NPC_LEVEL_CON_HEALTH_MULTIPLIER))
             npc.max_health = base_hp + level_hp_bonus
-            # Use max_health from template/overrides ONLY if it's explicitly higher?
             explicit_max_health = creation_args.get("max_health")
-            if explicit_max_health:
-                 npc.max_health = max(npc.max_health, explicit_max_health)
+            if explicit_max_health: npc.max_health = max(npc.max_health, explicit_max_health)
 
-            # Set current health from overrides (saved state), clamped by final max_health
-            npc.health = overrides.get("health", npc.max_health) # Default to full if not loading save
+            npc.health = creation_args.get("health", npc.max_health) # Prioritize saved health
             npc.health = max(0, min(npc.health, npc.max_health))
 
-            # 5. Apply remaining attributes (non-stats, non-health)
-            npc.faction = creation_args.get("faction", npc.faction) # Use existing default if not in creation_args
+            # 5. Apply remaining attributes
+            npc.faction = creation_args.get("faction", npc.faction)
             npc.behavior_type = creation_args.get("behavior_type", npc.behavior_type)
-            # Recalculate base attack/defense based on final stats
             npc.attack_power = creation_args.get("attack_power", 3) + npc.stats.get('strength', 8) // 3
-            npc.defense = creation_args.get("defense", 2) # Base defense, not stat dependent unless specified
+            npc.defense = creation_args.get("defense", 2)
 
             npc.current_region_id = creation_args.get("current_region_id", npc.current_region_id)
             npc.current_room_id = creation_args.get("current_room_id", npc.current_room_id)
-            npc.home_region_id = creation_args.get("home_region_id", npc.current_region_id) # Default home to current
+            npc.home_region_id = creation_args.get("home_region_id", npc.current_region_id)
             npc.home_room_id = creation_args.get("home_room_id", npc.current_room_id)
 
             npc.dialog = creation_args.get("dialog", {}).copy()
@@ -213,98 +238,85 @@ class NPCFactory:
             npc.patrol_points = creation_args.get("patrol_points", [])[:]
 
             # 6. Apply stateful attributes from overrides
-            npc.is_alive = overrides.get("is_alive", npc.is_alive) if npc.health > 0 else False
-            npc.ai_state = overrides.get("ai_state", {}).copy()
-            npc.spell_cooldowns = overrides.get("spell_cooldowns", {}).copy()
+            npc.is_alive = creation_args.get("is_alive", npc.is_alive) if npc.health > 0 else False
+            npc.ai_state = creation_args.get("ai_state", {}).copy() # Important: use creation_args which has overrides
+            npc.spell_cooldowns = creation_args.get("spell_cooldowns", {}).copy() # Same here
 
-            # 7. Apply properties from template and overrides
+            # 7. Apply properties
             npc.properties = template.get("properties", {}).copy()
-            prop_overrides = overrides.get("properties_override", {})
+            prop_overrides = overrides.get("properties_override", {}) # properties_override from save data
+            # Also consider properties directly in the main overrides dict (if any were saved there)
+            for key, val in overrides.items():
+                 if key not in init_args and key not in ["stats", "health", "level", "faction", "behavior_type", "dialog", "loot_table", "usable_spells", "schedule", "patrol_points", "ai_state", "spell_cooldowns", "inventory", "template_id", "obj_id", "description"]:
+                      # If it's not a standard attribute handled above, treat it as a property override
+                      prop_overrides[key] = val
+
             npc.properties.update(prop_overrides)
 
-            # --- Set attributes derived from properties, WITH WARNINGS ---
-            # Define defaults here to avoid repetition and ensure consistency
+            # --- Set attributes derived from properties (with warnings if missing) ---
+            # (Keep the warning logic as it was)
             default_aggression = NPC_DEFAULT_AGGRESSION
             default_wander = 0.3
             default_cooldown = 10
-            default_spell_chance = 0.0 # Changed default to 0.0 for non-casters
+            default_spell_chance = 0.0
             default_flee_threshold = NPC_DEFAULT_FLEE_THRESHOLD
 
-            # Aggression
-            if "aggression" in npc.properties:
-                npc.aggression = npc.properties["aggression"]
+            if "aggression" in npc.properties: npc.aggression = npc.properties["aggression"]
             else:
-                # Only warn if aggression *should* be set (e.g., hostile faction)
-                # This avoids warnings for friendly NPCs that don't need aggression.
-                if npc.faction == "hostile":
-                     print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'aggression' property. Using default: {default_aggression}")
+                if npc.faction == "hostile": print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'aggression' property. Using default: {default_aggression}")
                 npc.aggression = default_aggression
 
-            # Flee Threshold
-            if "flee_threshold" in npc.properties:
-                npc.flee_threshold = npc.properties["flee_threshold"]
+            if "flee_threshold" in npc.properties: npc.flee_threshold = npc.properties["flee_threshold"]
             else:
-                if npc.faction == "hostile":
-                    print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'flee_threshold' property. Using default: {default_flee_threshold}")
+                if npc.faction == "hostile": print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'flee_threshold' property. Using default: {default_flee_threshold}")
                 npc.flee_threshold = default_flee_threshold
 
-            # Respawn Cooldown
-            if "respawn_cooldown" in npc.properties:
-                npc.respawn_cooldown = npc.properties["respawn_cooldown"]
+            if "respawn_cooldown" in npc.properties: npc.respawn_cooldown = npc.properties["respawn_cooldown"]
             else:
-                 if npc.faction == "hostile": # Usually only monsters respawn
-                    print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'respawn_cooldown' property. Using default: 600")
+                 if npc.faction == "hostile": print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'respawn_cooldown' property. Using default: 600")
                  npc.respawn_cooldown = 600
 
-            # Wander Chance
-            if "wander_chance" in npc.properties:
-                npc.wander_chance = npc.properties["wander_chance"]
+            if "wander_chance" in npc.properties: npc.wander_chance = npc.properties["wander_chance"]
             else:
-                print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'wander_chance' property. Using default: {default_wander}")
-                npc.wander_chance = default_wander
+                 # Only warn if behavior expects wandering
+                 if npc.behavior_type in ["wanderer", "aggressive"]: # Aggressive also wanders
+                      print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'wander_chance' property. Using default: {default_wander}")
+                 npc.wander_chance = default_wander
 
-            # Move Cooldown
-            if "move_cooldown" in npc.properties:
-                npc.move_cooldown = npc.properties["move_cooldown"]
+            if "move_cooldown" in npc.properties: npc.move_cooldown = npc.properties["move_cooldown"]
             else:
-                print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'move_cooldown' property. Using default: {default_cooldown}")
-                npc.move_cooldown = default_cooldown
+                 print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'move_cooldown' property. Using default: {default_cooldown}")
+                 npc.move_cooldown = default_cooldown
 
-            # Spell Cast Chance
-            if "spell_cast_chance" in npc.properties:
-                npc.spell_cast_chance = npc.properties["spell_cast_chance"]
+            if "spell_cast_chance" in npc.properties: npc.spell_cast_chance = npc.properties["spell_cast_chance"]
             else:
-                # Only warn if the NPC actually has spells defined
-                if npc.usable_spells:
-                     print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'spell_cast_chance' property. Using default: {default_spell_chance}")
+                if npc.usable_spells: print(f"{FORMAT_ERROR}Warning:{FORMAT_RESET} NPC '{template_id}'/'{npc.obj_id}' missing 'spell_cast_chance' property. Using default: {default_spell_chance}")
                 npc.spell_cast_chance = default_spell_chance
-            # --- End Attribute Setting with Warnings ---
 
-            # 8. Initialize Inventory (load from saved state if present, else from template)
-            from items.inventory import Inventory # Local import
-            saved_inv_data = overrides.get("inventory") # Check if full inventory state was saved
+
+            # 8. Initialize Inventory
+            from items.inventory import Inventory
+            saved_inv_data = overrides.get("inventory")
             if saved_inv_data and isinstance(saved_inv_data, dict):
-                npc.inventory = Inventory.from_dict(saved_inv_data, world) # Load saved inventory state
+                npc.inventory = Inventory.from_dict(saved_inv_data, world)
             else:
-                # Fallback to template initial inventory if inventory wasn't saved
-                npc.inventory = Inventory(max_slots=10, max_weight=50.0) # Start fresh
+                npc.inventory = Inventory(max_slots=10, max_weight=50.0)
                 template_inventory = template.get("initial_inventory", [])
                 for item_ref in template_inventory:
                     item_id = item_ref.get("item_id")
                     quantity = item_ref.get("quantity", 1)
                     if item_id:
-                        item = ItemFactory.create_item_from_template(item_id, world) # Pass world
-                        if item:
-                            npc.inventory.add_item(item, quantity)
+                        item = ItemFactory.create_item_from_template(item_id, world)
+                        if item: npc.inventory.add_item(item, quantity)
                         else: print(f"Warning: Failed to create initial inventory item '{item_id}' for NPC '{npc.name}'.")
 
             # Assign world reference
             npc.world = world
 
             return npc
+
         except Exception as e:
             print(f"{FORMAT_ERROR}Error instantiating NPC '{template_id}' from template: {e}{FORMAT_RESET}")
             import traceback
             traceback.print_exc()
             return None
-    # --- END MODIFIED ---

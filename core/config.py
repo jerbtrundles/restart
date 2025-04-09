@@ -304,3 +304,19 @@ DEFAULT_FACTION_RELATIONS = {
 SPELL_EFFECT_TYPES = ["damage", "heal", "buff", "debuff", "summon"] # Added summon
 NPC_BEHAVIOR_TYPES = ["stationary", "wanderer", "patrol", "follower", "scheduled", "aggressive", "minion"] # Added minion
 PLAYER_DEFAULT_MAX_TOTAL_SUMMONS = 100 # Example total limit
+
+# --- NPC Naming ---
+# Example lists - expand these considerably!
+VILLAGER_FIRST_NAMES_MALE = [
+    "Alden", "Bram", "Corbin", "Darian", "Edric", "Finnian", "Gareth", "Hal", "Ivor", "Joric",
+    "Kael", "Loric", "Merrick", "Nyle", "Orin", "Perrin", "Quill", "Roric", "Sten", "Torvin", "Ulric", "Vance"
+]
+VILLAGER_FIRST_NAMES_FEMALE = [
+    "Anya", "Briar", "Carys", "Dena", "Elara", "Fiora", "Gwyn", "Helsa", "Isolde", "Jessa",
+    "Kyra", "Lyra", "Moira", "Nerys", "Oriana", "Petra", "Quenna", "Rowan", "Seraphina", "Tamsin", "Una", "Verna"
+]
+VILLAGER_LAST_NAMES = [
+    "Applewood", "Briarwood", "Cobblestone", "Deepwater", "Eastcroft", "Fairwind", "Greenbottle", "Highhill",
+    "Ironhand", "Jumblewood", "Keeneye", "Longbridge", "Meadowlight", "Northgate", "Oakhart", "Puddlefoot",
+    "Quickstep", "Riverbend", "Stonehand", "Tanglebrook", "Underhill", "Vale", "Westwater", "Yarrow"
+]

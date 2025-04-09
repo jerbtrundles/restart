@@ -93,12 +93,41 @@ register_spell(Spell(
     effect_type="summon", # *** NEW Effect Type ***
     target_type="self", # Typically cast by the player on themselves/area
     cast_message="{caster_name} chants words of necromancy...",
-    level_required=5,   # Example level requirement
+    level_required=1,   # Example level requirement
     # --- NEW Properties for Summoning ---
     summon_template_id="skeleton_minion", # ID of the NPC template to summon
     summon_duration=500.0,               # How long it lasts in seconds
     max_summons=10                       # How many of *this specific* summon can be active
 ))
 
+register_spell(Spell(
+    spell_id="bone_shard",
+    name="Bone Shard",
+    description="Launches a sharp fragment of bone at the target.",
+    mana_cost=0, # Minions don't use mana
+    cooldown=4, # Slightly faster than Zap?
+    effect_type="damage",
+    effect_value=6, # Slightly less than Magic Missile, more than Zap?
+    target_type="enemy",
+    cast_message="{caster_name} conjures a shard of bone!",
+    hit_message="A bone shard strikes {target_name} for {value} piercing damage!", # Added damage type flavor
+    level_required=1 # Low requirement for a basic minion spell
+))
+
+register_spell(Spell(
+    spell_id="raise_skeletal_mage",
+    name="Raise Skeletal Mage",
+    description="Summons a skeletal mage from ethereal bone fragments to serve you.",
+    mana_cost=1, # Maybe slightly higher mana cost than the warrior?
+    cooldown=1, # Same or slightly longer cooldown?
+    effect_type="summon",
+    target_type="self",
+    cast_message="{caster_name} draws arcane sigils in the air...",
+    level_required=1, # Slightly higher level requirement?
+    # --- Summoning Properties ---
+    summon_template_id="skeletal_mage_minion", # <<< Point to the new NPC template
+    summon_duration=60.0, # Same duration for now
+    max_summons=3 # Allow maybe fewer mages than warriors?
+))
 
 # Add more spells here...
