@@ -8,16 +8,17 @@ from items.item import Item
 from items.item_factory import ItemFactory
 from magic.spell import Spell # Import Spell
 from magic.spell_registry import get_spell # Import registry access
+from utils.text_formatter import format_target_name
 from utils.utils import _reverse_direction, calculate_xp_gain, format_loot_drop_message, format_name_for_display, format_npc_arrival_message, format_npc_departure_message, get_arrival_phrase, get_departure_phrase
 from core.config import (
-    DEFAULT_FACTION_RELATIONS, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_ATTACK_POWER, NPC_BASE_DEFENSE,
+    DEFAULT_FACTION_RELATIONS, EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_ATTACK_POWER, NPC_BASE_DEFENSE,
     NPC_BASE_HEALTH, NPC_BASE_HIT_CHANCE, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_ATTACK_COOLDOWN, NPC_DEFAULT_BEHAVIOR, NPC_DEFAULT_COMBAT_COOLDOWN, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_STATS, NPC_DEFAULT_WANDER_CHANCE, NPC_HEALTH_DESC_THRESHOLDS,
-    NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_MAX_COMBAT_MESSAGES
+    NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_MAX_COMBAT_MESSAGES, WORLD_UPDATE_INTERVAL
 )
 
 if TYPE_CHECKING:
     from world.world import World
-    from player import Player # Need player type hint
+    from player import Player # Need player type hint    
 
 class NPC(GameObject):
     def __init__(self, obj_id: str = None, name: str = "Unknown NPC",
@@ -235,16 +236,43 @@ class NPC(GameObject):
 
         hit_message = f"{formatted_caster_name} attacks {formatted_target_name} for {int(actual_damage)} damage!"
 
-        # Return attack results
-        return {
+        # --- NEW: Check for on-hit effects ---
+        apply_effect_message = ""
+        # Check if NPC has an equipped weapon concept or if effect comes from template properties
+        # Assuming effect comes from NPC properties for simplicity for now
+        effect_chance = self.properties.get("on_hit_effect_chance", 0.0)
+        if effect_chance > 0 and random.random() < effect_chance:
+            effect_data = self.properties.get("on_hit_effect")
+            if effect_data and isinstance(effect_data, dict):
+                if hasattr(target, 'apply_effect'):
+                    success, _ = target.apply_effect(effect_data, time.time())
+                    if success:
+                        # Message formatted for the *viewer* (player)
+                        viewer = self.world.player if self.world else None
+                        eff_name = effect_data.get('name', 'an effect')
+                        caster_name_fmt = format_name_for_display(viewer, self, True)
+                        tgt_name_fmt = format_name_for_display(viewer, target, False)
+                        apply_effect_message = f"{FORMAT_HIGHLIGHT}{caster_name_fmt}'s attack afflicts {tgt_name_fmt} with {eff_name}!{FORMAT_RESET}"
+                        # We don't add this to the NPC's log, but it will be part of the returned message dict
+
+        # --- Construct Result ---
+        # (Return dictionary structure remains the same, but include the effect message)
+        result_message = hit_message
+        if(apply_effect_message):
+            result_message += "\n" + apply_effect_message
+
+        result = {
             "attacker": self.name,
             "target": getattr(target, 'name', 'target'),
             "damage": actual_damage,
             "missed": False,
-            "message": hit_message,
+            "message": result_message, # Base hit message
             "hit_chance": final_hit_chance,
             "target_defeated": target_defeated
         }
+
+        return result
+
 
     def take_damage(self, amount: int, damage_type: str) -> int:
         """
@@ -300,278 +328,6 @@ class NPC(GameObject):
         relation = self.get_relation_to(other)
         return relation < 0
 
-    def update(self, world, current_time: float) -> Optional[str]:
-        """
-        Update the NPC's state and perform actions.
-        Dead NPCs no longer respawn via this method.
-        """
-        from utils.text_formatter import format_target_name
-        player = getattr(world, 'player', None)
-
-        # Check for idle conditions
-        if not self.is_alive: return None
-        if hasattr(self, "ai_state") and self.ai_state.get("is_sleeping", False): return None
-
-        # --- Minion Specific Logic ---
-        if self.behavior_type == "minion":
-            owner = player # Use the player reference we got
-            # --- Add a check here for safety ---
-            if not owner or owner.obj_id != self.properties.get("owner_id"):
-                # Owner gone or invalid? Despawn.
-                self.despawn(world, silent=True)
-                return None
-            # --- End check ---
-
-            # 1. Check Duration
-            duration = self.properties.get("summon_duration", 0)
-            created = self.properties.get("creation_time", 0)
-            owner_id = self.properties.get("owner_id")
-
-            if duration > 0 and current_time > created + duration:
-                despawn_message = self.despawn(world)
-                # Return message ONLY if player is in the room
-                player = world.player
-                if despawn_message and player and self.current_region_id == player.current_region_id and self.current_room_id == player.current_room_id:
-                    return despawn_message
-                return None # Despawned silently or player not present
-
-            # 2. Find Owner (Assuming single player)
-            owner = world.player
-            if not owner or not owner.is_alive or owner.obj_id != owner_id:
-                # Owner gone or different owner? Despawn.
-                self.despawn(world, silent=True)
-                return None
-
-            owner_loc = (owner.current_region_id, owner.current_room_id)
-            my_loc = (self.current_region_id, self.current_room_id)
-
-            # 3. Handle Combat (if already in combat)
-            if self.in_combat:
-                # Filter valid targets (alive, in room)
-                valid_targets = [
-                    t for t in self.combat_targets
-                    if t and t.is_alive and
-                        hasattr(t, 'current_region_id') and # Ensure target has location
-                        t.current_region_id == self.current_region_id and
-                        t.current_room_id == self.current_room_id
-                ]
-                if not valid_targets:
-                    self.exit_combat() # Exit combat if no valid targets left
-                else:
-                    # Prioritize Owner's target
-                    target_to_attack = None
-
-                    # --- Target Selection Logic ---
-                    # A. Prioritize Owner's Explicit Target (if valid)
-                    if owner.in_combat and owner.combat_target and owner.combat_target in valid_targets:
-                        target_to_attack = owner.combat_target
-                        # print(f"[Minion Debug] Owner has valid target: {target_to_attack.name}") # Debug
-                    else:
-                        # B. Prioritize Target Attacking Owner
-                        # Check this even if owner isn't 'in_combat' state, as they might be attacked first
-                        targets_attacking_owner = [t for t in valid_targets if hasattr(t, 'combat_targets') and owner in t.combat_targets]
-                        if targets_attacking_owner: target_to_attack = random.choice(targets_attacking_owner)
-                        elif self.combat_target and self.combat_target in valid_targets: target_to_attack = self.combat_target
-                        else: target_to_attack = random.choice(valid_targets)
-
-                    self.combat_target = target_to_attack
-                    combat_msg = self.try_attack(world, current_time)
-                    if combat_msg and my_loc == owner_loc: return combat_msg
-                    return None # Combat action taken or on cooldown
-
-            # 4. Follow Owner (if not in combat)
-            elif my_loc != owner_loc:
-                move_cooldown = self.properties.get("move_cooldown", 5)
-                if current_time - self.last_moved >= move_cooldown:
-                    self.follow_target = owner.obj_id # Set temporary target for behavior method
-                    follow_message = self._follower_behavior(world, current_time, owner)
-                    self.follow_target = None # Clear temporary target
-                    if follow_message: self.last_moved = current_time
-                    return follow_message # Message includes visibility check
-                else: return None # Waiting for move cooldown
-
-
-            # 5. Assist Owner / Aggro Check (if in same room and NOT in combat)
-            elif my_loc == owner_loc: # Already checked not self.in_combat implicitly
-                # A. Check if Owner is in combat or being targeted
-                if owner.in_combat and owner.combat_target and owner.combat_target.is_alive:
-                    target_npc = owner.combat_target
-                    # Verify target is actually here
-                    if target_npc in world.get_npcs_in_room(self.current_region_id, self.current_room_id):
-                         self.enter_combat(target_npc)
-                         self.combat_target = target_npc # Set target immediately
-                         # Let next tick handle attack via try_attack
-                         return f"{self.name} moves to assist against {target_name_fmt}!"
-                else:
-                    # Owner not explicitly fighting, check if anyone is targeting owner
-                    npcs_in_room = world.get_npcs_in_room(self.current_region_id, self.current_room_id)
-                    intercept_target = None
-                    for npc in npcs_in_room:
-                        # Check faction AND if the npc is targeting the owner
-                        if npc.faction == "hostile" and npc.is_alive and hasattr(npc, 'combat_targets') and owner in npc.combat_targets:
-                             intercept_target = npc
-                             break # Found someone attacking owner
-
-                    if intercept_target:
-                        self.enter_combat(intercept_target)
-                        self.combat_target = intercept_target
-                        npc_name_fmt = format_name_for_display(owner, intercept_target)
-                        # Let next tick handle attack
-                        return f"{self.name} intercepts {npc_name_fmt} attacking you!"
-
-                    # --- !!! NEW AUTONOMOUS AGGRO CHECK !!! ---
-                    # B. If Owner is safe, look for any hostiles to engage
-                    # Reuse npcs_in_room list if available from above check
-                    if not self.in_combat: # Double-check state hasn't changed
-                        hostile_target_found = None
-                        for potential_target in npcs_in_room:
-                            # Check if potential target is hostile faction and alive
-                            if potential_target.faction == "hostile" and potential_target.is_alive:
-                                # Found a hostile target!
-                                hostile_target_found = potential_target
-                                break # Engage the first one found
-
-                        if hostile_target_found:
-                            self.enter_combat(hostile_target_found)
-                            self.combat_target = hostile_target_found # Set target
-                            target_name_fmt = format_name_for_display(owner, hostile_target_found) # Format relative to player
-                            # Let the next tick handle the actual attack via try_attack
-                            # Return the engagement message
-                            return f"{self.name} moves to attack {target_name_fmt}!"
-                    # --- !!! END NEW AUTONOMOUS AGGRO CHECK !!! ---
-
-            # 6. Idle (in same room as owner, no combat)
-            return None
-        # --- End Minion Logic ---
-        else:
-            # Non-minion logic
-            # Check if we need to keep trading
-            if self.is_trading:
-                    # Check if still trading with *this* NPC and in same room
-                    player = world.player
-                    if (player and player.trading_with == self.obj_id and
-                        player.current_region_id == self.current_region_id and
-                        player.current_room_id == self.current_room_id):
-                        # Player still here and trading, so do nothing
-                        return None
-                    else:
-                        # Player stopped trading (moved, targeted someone else, etc.)
-                        # or is no longer present. Resume normal AI.
-                        self.is_trading = False
-                        print(f"NPC {self.name} resuming AI as player stopped trading.")
-
-            # Handle combat if in combat
-            combat_message = None
-            if self.in_combat:
-                combat_message = self.try_attack(world, current_time)
-                
-                # Check for fleeing if health is low
-                if self.is_alive and self.health < self.max_health * self.flee_threshold:
-                    should_flee = True
-                    
-                    # Prioritize player as target
-                    player_target = next((t for t in self.combat_targets 
-                                    if hasattr(t, "faction") and t.faction == "player"), None)
-                    
-                    # Don't flee if player is almost dead
-                    if player_target and hasattr(player_target, "health") and player_target.health <= 10:
-                        should_flee = False
-                    
-                    if should_flee:
-                        # Try to flee to a random exit
-                        region = world.get_region(self.current_region_id)
-                        if region:
-                            room = region.get_room(self.current_room_id)
-                            if room and room.exits:
-                                valid_exits = [d for d, dest in room.exits.items() if not world.is_location_safe(self.current_region_id, dest.split(':')[-1])] if self.faction == 'hostile' else list(room.exits.keys())
-                                if valid_exits:
-                                    direction = random.choice(valid_exits)
-                                    destination = room.exits[direction]
-
-                                    old_region_id = self.current_region_id
-                                    old_room_id = self.current_room_id
-                                    old_region_id = self.current_region_id
-                                    old_room_id = self.current_room_id
-                                    if ":" in destination:
-                                        new_region_id, new_room_id = destination.split(":")
-                                        self.current_region_id = new_region_id
-                                        self.current_room_id = new_room_id
-                                    else: self.current_room_id = destination
-                                    self.exit_combat()
-                                    self.last_moved = time.time() # Update move timer after fleeing
-
-                                    npc_display_name = format_name_for_display(player, self, start_of_sentence=True)
-                                    
-                                    # Message if player is in the room
-                                    if (world.current_region_id == old_region_id and 
-                                        world.current_room_id == old_room_id):
-                                        return combat_message or f"{npc_display_name} flees to the {direction}!"
-                                
-                                return None
-                if self.in_combat:
-                    return combat_message
-            
-            # Check for player in room to potentially initiate combat
-            elif (self.faction == "hostile" and self.aggression > 0 and
-                player and player.is_alive and # <<< CHECK PLAYER EXISTS HERE
-                world.current_region_id == self.current_region_id and
-                world.current_room_id == self.current_room_id):                
-                if random.random() < self.aggression:
-                    self.enter_combat(player)
-                    # Immediately try an action after entering combat
-                    action_result_message = self.try_attack(world, current_time)
-                    if action_result_message:
-                            combat_message = action_result_message # This is shown to player
-                    else:
-                        combat_message = f"{format_target_name(player, self)} prepares to attack you!"
-
-            # If combat message generated (either from ongoing or initiating), return it
-            if combat_message:
-                return combat_message
-            
-            # Standard NPC update logic for movement
-            # Only move if not in combat and enough time has passed
-            if current_time - self.last_moved < self.move_cooldown:
-                return combat_message
-                    
-            move_message = None
-            if self.behavior_type == "wanderer":
-                move_message = self._wander_behavior(world, current_time, player)
-            elif self.behavior_type == "patrol":
-                move_message = self._patrol_behavior(world, current_time, player)
-            # ... (handle follower, scheduled, aggressive movement) ...
-            elif self.behavior_type == "follower":
-                    move_message = self._follower_behavior(world, current_time, player)
-            elif self.behavior_type == "scheduled":
-                    move_message = self._schedule_behavior(world, current_time, player)
-            elif self.behavior_type == "aggressive":
-                # Aggressive NPCs actually just wander for now
-                
-                # # Aggressive NPCs actively seek out the player if nearby
-                # if self.current_region_id == world.current_region_id:
-                #     # Check if player is in an adjacent room
-                #     region = world.get_region(self.current_region_id)
-                #     if region:
-                #         room = region.get_room(self.current_room_id)
-                #         if room and room.exits:
-                #             for direction, destination in room.exits.items():
-                #                 if destination == world.current_room_id:
-                #                     # Move toward player
-                #                     old_room_id = self.current_room_id
-                #                     self.current_room_id = destination
-                #                     self.last_moved = current_time
-                #                     return f"{format_target_name(world.player, self)} enters from the {self._reverse_direction(direction)}!"
-                
-                # If player not found nearby, wander randomly
-                move_message = self._wander_behavior(world, current_time, player)
-
-            if move_message:
-                self.last_moved = current_time # Update move timer *only* if movement occurred
-                return move_message
-
-        return None # No significant action or visible message generated
-
-            
     def die(self, world: 'World') -> List[Item]: # Return Item instances
         """Handle death - check if summoned before dropping loot."""
         # --- Check if Summoned ---
@@ -1150,16 +906,42 @@ class NPC(GameObject):
             self.exit_combat(target)
             if self.combat_target == target: self.combat_target = None
 
-            # --- Call target.die() and Format Loot Message ---
+            # --- Call target.die() and Format Loot Message (REVISED) ---
             dropped_loot_items = []
-            if hasattr(target, 'die'):
-                dropped_loot_items = target.die(self.world) # Pass world context
-                loot_message = format_loot_drop_message(player, target, dropped_loot_items)
-                if loot_message:
-                    self._add_combat_message(loot_message) # Log internally
-                    if message_to_return: message_to_return += "\n" # Add newline if action message exists
-                    message_to_return += loot_message # Append to return message
-            # --- End Loot Handling ---
+            loot_message = "" # Initialize loot message
+
+            # Check if the target is NOT the player before calling die() with world context
+            # Also ensure the target actually has a 'die' method
+            if target is not player and hasattr(target, 'die'):
+                try:
+                    # Only call die with world for non-player targets (like other NPCs)
+                    # that are expected to drop loot into the world.
+                    dropped_loot_items = target.die(self.world) # Call NPC.die() or similar
+                except TypeError:
+                    # Fallback if a non-player target's die() doesn't take world (less likely for NPCs)
+                    target.die() # Call without world
+                    print(f"Warning: target {target.name}'s die() method might not accept world argument.")
+                except Exception as e:
+                    print(f"Error calling die() on target {target.name}: {e}")
+
+                # Format loot message ONLY if items were dropped (relevant for NPCs)
+                if dropped_loot_items:
+                    # Need viewer context for formatting
+                    viewer = self.world.player if self.world and hasattr(self.world, 'player') else None
+                    # --- Make sure format_loot_drop_message is imported ---
+                    from utils.utils import format_loot_drop_message
+                    # ---
+                    loot_message = format_loot_drop_message(viewer, target, dropped_loot_items)
+
+            # If the target WAS the player, player.die() was already called internally via take_damage.
+            # No loot is generated by Player.die(), so dropped_loot_items remains empty.
+
+            # Log and append loot message if generated
+            if loot_message:
+                self._add_combat_message(loot_message) # Log internally
+                if message_to_return: message_to_return += "\n" # Add newline if action message exists
+                message_to_return += loot_message # Append to return message
+            # --- End Revised Loot Handling ---
 
             # --- Check for Player XP Gain (Minion Kill) ---
             is_player_minion = (self.properties.get("is_summoned", False) and
@@ -1281,3 +1063,244 @@ class NPC(GameObject):
         if not silent:
             return f"Your {self.name} crumbles to dust."
         return None
+
+    def update(self, world, current_time: float) -> Optional[str]:
+        """
+        Update the NPC's state, perform actions, and process effects.
+        """
+        player = getattr(world, 'player', None)
+        # Calculate time delta since last World update (approximate)
+        time_delta = WORLD_UPDATE_INTERVAL # Use world update interval as rough delta
+
+        # --- Process Active Effects (Similar to Player) ---
+        effects_processed_this_tick = []
+        expired_effects_indices = []
+        effect_messages_for_player = [] # Messages relevant if player sees the NPC
+
+        # Check if player is present *before* iterating effects
+        player_present = (
+            player and player.is_alive and
+            self.current_region_id == player.current_region_id and
+            self.current_room_id == player.current_room_id
+        )
+
+        # Iterate backwards for safe removal
+        if self.is_alive: # Only process effects if alive
+            for i in range(len(self.active_effects) - 1, -1, -1):
+                effect = self.active_effects[i]
+                effect_id = effect.get("id")
+                if not effect_id or effect_id in effects_processed_this_tick: continue
+                effects_processed_this_tick.append(effect_id)
+
+                # 1. Update Duration
+                effect["duration_remaining"] -= time_delta
+
+                # 2. Check Expiration
+                if effect["duration_remaining"] <= 0:
+                    expired_effects_indices.append(i)
+                    if player_present: # Only generate message if player sees it
+                        effect_messages_for_player.append(f"{FORMAT_HIGHLIGHT}The {effect.get('name', 'effect')} on {self.name} wears off.{FORMAT_RESET}")
+                    continue
+
+                # 3. Process Ticks (DoTs)
+                if effect.get("type") == "dot":
+                    tick_interval = effect.get("tick_interval", EFFECT_DEFAULT_TICK_INTERVAL)
+                    last_tick = effect.get("last_tick_time", 0)
+
+                    if current_time - last_tick >= tick_interval:
+                        damage = effect.get("damage_per_tick", 0)
+                        dmg_type = effect.get("damage_type", "unknown")
+                        if damage > 0:
+                            damage_taken = self.take_damage(damage, dmg_type) # Apply damage
+                            effect["last_tick_time"] = current_time # Update tick time
+
+                            if player_present: # Only generate message if player sees it
+                                if damage_taken > 0:
+                                    effect_messages_for_player.append(f"{self.name} takes {damage_taken} {dmg_type} damage from {effect.get('name', 'effect')}.")
+                                # else: Optional message if resisted? Might be too spammy.
+
+                            # Check for death from DoT
+                            if not self.is_alive:
+                                if player_present:
+                                    effect_messages_for_player.append(f"{FORMAT_ERROR}{self.name} succumbs to the {effect.get('name', 'effect')}!{FORMAT_RESET}")
+                                # Handle death - loot/XP should be handled elsewhere (e.g., when `is_alive` is checked later or by the effect source)
+                                # For now, just break effect processing loop if dead
+                                break
+
+
+        # Remove expired effects after iteration
+        for index in sorted(expired_effects_indices, reverse=True):
+            if 0 <= index < len(self.active_effects):
+                del self.active_effects[index]
+
+        # --- Combine effect messages with AI messages ---
+        # Run the normal AI logic *after* effect processing
+        ai_message = None
+        if self.is_alive: # Don't run AI if DoT killed the NPC
+            # ... (existing NPC AI logic: check idle, minion logic, trading, combat, movement) ...
+            # Replace the existing 'return None' or 'return combat_message' etc.
+            # with assigning the result to `ai_message`
+            if self.behavior_type == "minion":
+                 ai_message = self._handle_minion_ai(world, current_time, player) # Encapsulate minion logic
+            else:
+                 ai_message = self._handle_standard_ai(world, current_time, player) # Encapsulate standard logic
+
+        # Combine messages, prioritizing AI action message if both exist
+        final_message = ""
+        if ai_message:
+            final_message += ai_message
+        if effect_messages_for_player:
+            if final_message: final_message += "\n" # Add separator
+            final_message += "\n".join(effect_messages_for_player)
+
+        return final_message if final_message else None # Return combined message or None
+
+    # --- NEW: Helper methods to organize AI ---
+    def _handle_minion_ai(self, world, current_time, player):
+         # ... (Cut and paste ALL the logic previously under `if self.behavior_type == "minion":`) ...
+         # Remember to return the message string or None from this helper.
+         # --- Start Minion Logic (Copied from original update) ---
+         owner = player
+         if not owner or owner.obj_id != self.properties.get("owner_id"):
+              self.despawn(world, silent=True); return None
+         duration = self.properties.get("summon_duration", 0)
+         created = self.properties.get("creation_time", 0)
+         if duration > 0 and current_time > created + duration:
+              despawn_message = self.despawn(world)
+              player = world.player # Re-get player inside scope if needed
+              if despawn_message and player and self.current_region_id == player.current_region_id and self.current_room_id == player.current_room_id: return despawn_message
+              return None
+         owner_loc = (owner.current_region_id, owner.current_room_id)
+         my_loc = (self.current_region_id, self.current_room_id)
+         if self.in_combat:
+              valid_targets = [t for t in self.combat_targets if t and t.is_alive and hasattr(t, 'current_region_id') and t.current_region_id == self.current_region_id and t.current_room_id == self.current_room_id]
+              if not valid_targets: self.exit_combat(); # Exit combat handled here, no message needed from here
+              else:
+                   target_to_attack = None
+                   if owner.in_combat and owner.combat_target and owner.combat_target in valid_targets: target_to_attack = owner.combat_target
+                   else:
+                        targets_attacking_owner = [t for t in valid_targets if hasattr(t, 'combat_targets') and owner in t.combat_targets]
+                        if targets_attacking_owner: target_to_attack = random.choice(targets_attacking_owner)
+                        elif self.combat_target and self.combat_target in valid_targets: target_to_attack = self.combat_target
+                        else: target_to_attack = random.choice(valid_targets)
+                   self.combat_target = target_to_attack
+                   return self.try_attack(world, current_time) # try_attack returns message if player present
+              return None # Exited combat or took combat action
+         elif my_loc != owner_loc:
+              move_cooldown = self.properties.get("move_cooldown", 5)
+              if current_time - self.last_moved >= move_cooldown:
+                   self.follow_target = owner.obj_id; follow_message = self._follower_behavior(world, current_time, owner); self.follow_target = None
+                   if follow_message: self.last_moved = current_time
+                   return follow_message
+              else: return None
+         elif my_loc == owner_loc:
+              if owner.in_combat and owner.combat_target and owner.combat_target.is_alive:
+                   target_npc = owner.combat_target
+                   if target_npc in world.get_npcs_in_room(self.current_region_id, self.current_room_id):
+                        self.enter_combat(target_npc); self.combat_target = target_npc
+                        target_name_fmt = format_name_for_display(owner, target_npc)
+                        return f"{self.name} moves to assist against {target_name_fmt}!"
+              else:
+                   npcs_in_room = world.get_npcs_in_room(self.current_region_id, self.current_room_id)
+                   intercept_target = None
+                   for npc in npcs_in_room:
+                        if npc.faction == "hostile" and npc.is_alive and hasattr(npc, 'combat_targets') and owner in npc.combat_targets: intercept_target = npc; break
+                   if intercept_target:
+                        self.enter_combat(intercept_target); self.combat_target = intercept_target
+                        npc_name_fmt = format_name_for_display(owner, intercept_target)
+                        return f"{self.name} intercepts {npc_name_fmt} attacking you!"
+                   if not self.in_combat:
+                        hostile_target_found = None
+                        for potential_target in npcs_in_room:
+                             if potential_target.faction == "hostile" and potential_target.is_alive: hostile_target_found = potential_target; break
+                        if hostile_target_found:
+                             self.enter_combat(hostile_target_found); self.combat_target = hostile_target_found
+                             target_name_fmt = format_name_for_display(owner, hostile_target_found)
+                             return f"{self.name} moves to attack {target_name_fmt}!"
+         return None # Idle
+         # --- End Minion Logic ---
+
+    def _handle_standard_ai(self, world, current_time, player):
+        # ... (Cut and paste the logic previously under the `else:` block for non-minions) ...
+        # Remember to return the message string or None.
+        # --- Start Standard Logic (Copied) ---
+        if self.is_trading:
+            if (player and player.trading_with == self.obj_id and
+                player.current_region_id == self.current_region_id and
+                player.current_room_id == self.current_room_id): return None # Still trading
+            else: self.is_trading = False; # print(f"NPC {self.name} resuming AI")
+
+        combat_message = None
+        if self.in_combat:
+            combat_message = self.try_attack(world, current_time) # This now returns message if needed
+            if self.is_alive and self.health < self.max_health * self.flee_threshold:
+                # ... (flee logic - unchanged, but returns message if player sees) ...
+                # IMPORTANT: Flee logic needs to return the generated message string or None
+                flee_message = self._try_flee(world, current_time, player)
+                if flee_message: return flee_message # Return flee message if successful and seen
+            if self.in_combat: return combat_message # Return combat message if still fighting and action happened
+
+        elif (self.faction == "hostile" and self.aggression > 0 and
+              player and player.is_alive and
+              world.current_region_id == self.current_region_id and
+              world.current_room_id == self.current_room_id):
+            if random.random() < self.aggression:
+                self.enter_combat(player)
+                action_result_message = self.try_attack(world, current_time)
+                if action_result_message: return action_result_message # Show attack message
+                else: return f"{format_target_name(player, self)} prepares to attack you!" # Show engage message
+
+        # If combat message generated above (e.g., initial aggro), return it
+        # This check might be redundant now as returns happen inside the blocks
+        # if combat_message: return combat_message
+
+        if current_time - self.last_moved < self.move_cooldown: return None # Wait for move cooldown
+
+        move_message = None
+        if self.behavior_type == "wanderer": move_message = self._wander_behavior(world, current_time, player)
+        elif self.behavior_type == "patrol": move_message = self._patrol_behavior(world, current_time, player)
+        elif self.behavior_type == "follower": move_message = self._follower_behavior(world, current_time, player)
+        elif self.behavior_type == "scheduled": move_message = self._schedule_behavior(world, current_time, player)
+        elif self.behavior_type == "aggressive": move_message = self._wander_behavior(world, current_time, player) # Aggressive just wanders for now
+
+        if move_message: self.last_moved = current_time # Update timer *if* movement occurred
+        return move_message # Return movement message or None
+        # --- End Standard Logic ---
+
+    def _try_flee(self, world, current_time, player):
+        from player import Player
+        """Handles the fleeing logic and returns a message if seen by player."""
+        should_flee = True
+        player_target = next((t for t in self.combat_targets if isinstance(t, Player)), None)
+        if player_target and hasattr(player_target, "health") and player_target.health <= 10: # Don't flee weak player
+            should_flee = False
+
+        if should_flee:
+            region = world.get_region(self.current_region_id)
+            if region:
+                room = region.get_room(self.current_room_id)
+                if room and room.exits:
+                    valid_exits = [d for d, dest in room.exits.items() if not world.is_location_safe(self.current_region_id, dest.split(':')[-1])] if self.faction == 'hostile' else list(room.exits.keys())
+                    if valid_exits:
+                        direction = random.choice(valid_exits)
+                        destination = room.exits[direction]
+                        old_region_id, old_room_id = self.current_region_id, self.current_room_id
+                        new_region_id, new_room_id = old_region_id, destination
+                        if ":" in destination: new_region_id, new_room_id = destination.split(":")
+
+                        # Perform move
+                        self.current_region_id = new_region_id
+                        self.current_room_id = new_room_id
+                        self.exit_combat() # Exit combat state
+                        self.last_moved = current_time
+
+                        # Check if player saw the flee
+                        player_present = (
+                            player and player.is_alive and
+                            old_region_id == player.current_region_id and
+                            old_room_id == player.current_room_id
+                        )
+                        if player_present:
+                            npc_display_name = format_name_for_display(player, self, start_of_sentence=True)
+                            return f"{npc_display_name} flees to the {direction}!"
+        return None # Did not flee or player didn't see

@@ -24,129 +24,135 @@ class TextFormatter:
         self.font = font
         self.screen_width = screen_width
         self.margin = margin
-        self.line_spacing = line_spacing
+        self.line_spacing = line_spacing # Spacing between lines of text
         self.colors = DEFAULT_COLORS.copy()
         if colors: self.colors.update(colors)
         self.default_color = self.colors.get(FORMAT_RESET, (255, 255, 255))
-        self._calculate_usable_width() # Renamed calculation method
+        self._calculate_usable_width()
+        # --- Define spacing for blank lines (adjust as needed) ---
+        # Option 1: Use only the line_spacing value
+        self.blank_line_height = self.line_spacing
 
     def _calculate_usable_width(self):
         """Calculate usable pixel width based on screen width and margin."""
         self.usable_width = self.screen_width - (self.margin * 2)
-        self.line_height = self.font.get_linesize() + self.line_spacing
+        self.line_height_with_text = self.font.get_linesize() + self.line_spacing
+
 
     def update_screen_width(self, new_width: int):
         self.screen_width = new_width
         self._calculate_usable_width()
 
     def render(self, surface: pygame.Surface, text: str, position: Tuple[int, int],
-            max_height: Optional[int] = None) -> int:
+               max_height: Optional[int] = None) -> int:
         """
-        Render text to a pygame surface with format codes and manual word wrapping.
-        Returns the Y coordinate *below* the last rendered line.
+        Render text with format codes, word wrapping, and correct line spacing.
+        Returns the Y coordinate *below* the last rendered element.
         """
         if not text:
             return position[1]
 
         x_start, y = position
         current_color = self.default_color
-        x = x_start
 
-        # Split by explicit newlines first to handle paragraphs/manual breaks
         lines_from_input = text.split('\n')
 
-        for line_index, current_line_text in enumerate(lines_from_input):
-            # Check height limit before starting processing a new line from input
-            if max_height and y + self.line_height > max_height:
-                # print(f"Render height limit reached before line {line_index}") # Debug
-                break # Stop processing further lines
+        for line_index, line_text in enumerate(lines_from_input):
 
-            # Handle explicitly empty lines (single \n in input) -> just advance Y
-            if not current_line_text.strip():
-                # Check height limit before adding blank line space
-                if not max_height or y + self.line_height <= max_height:
-                    y += self.line_height
-                continue # Move to the next line from input
+            # --- Handle Blank Lines ---
+            if not line_text.strip():
+                if max_height and y + self.blank_line_height > max_height: break
+                y += self.blank_line_height
+                continue
 
-            # Process words within the current line text
-            words = current_line_text.split(' ')
+            # --- Process Line with Content ---
+            words = line_text.split(' ')
             current_word_index = 0
+            x = x_start
+            current_line_rendered_y = y # Track the Y where the current *physical* line started rendering
+            content_rendered_on_this_physical_line = False
 
             while current_word_index < len(words):
+
+                 # --- Height check before starting a new line implicitly or explicitly ---
+                 # Check if rendering the *next* word would *require* a new line that exceeds max_height
+                if max_height:
+                    # Calculate potential next word width (approximate is fine here)
+                    next_word_width = self.font.size(words[current_word_index])[0] if words[current_word_index] else 0
+                    space_width = self.font.size(' ')[0] if x > x_start else 0
+
+                    # If the word *won't* fit AND starting a new line would exceed max_height
+                    if (x + space_width + next_word_width > x_start + self.usable_width) and \
+                       (y + self.line_height_with_text > max_height):
+                         # print(f"Stopping render: Next word wrap would exceed max_height {max_height}. Current Y={y}")
+                         return y # Return current y, cannot render more
+
+                    # Also check if simply advancing to the next line (e.g., for a long word) exceeds height
+                    if (x == x_start and next_word_width > self.usable_width) and \
+                       (y + self.line_height_with_text > max_height):
+                         # print(f"Stopping render: Long word would exceed max_height {max_height}. Current Y={y}")
+                         return y
+
                 word = words[current_word_index]
+                if not word: current_word_index += 1; continue
 
-                # Check height limit *before potentially wrapping* to a new line
-                if max_height and y + self.line_height > max_height:
-                    # print(f"Render height limit reached mid-line wrap check") # Debug
-                    return y # Return current Y, don't process more words
-
-                # --- Segment Calculation (unchanged) ---
+                # --- Calculate word width and segments ---
                 segments = self._split_by_format_codes(word)
                 word_render_width = 0
                 temp_color_for_word = current_color
                 segments_for_word = []
                 for segment_text, format_code in segments:
-                    if format_code:
-                        temp_color_for_word = self.colors.get(format_code, temp_color_for_word)
-                    elif segment_text:
-                        segment_width = self.font.size(segment_text)[0]
-                        word_render_width += segment_width
-                        segments_for_word.append((segment_text, temp_color_for_word))
-                # --- End Segment Calculation ---
+                    if format_code: temp_color_for_word = self.colors.get(format_code, temp_color_for_word)
+                    elif segment_text: word_render_width += self.font.size(segment_text)[0]; segments_for_word.append((segment_text, temp_color_for_word))
 
                 space_width = self.font.size(' ')[0] if x > x_start else 0
 
                 # --- Word Wrapping Logic ---
-                # Does the word fit on the *current* line?
                 if x + space_width + word_render_width <= x_start + self.usable_width:
-                    # Fits: Render space (if needed) and word segments
+                    # Word fits
                     if x > x_start: x += space_width
                     for segment_text, segment_color in segments_for_word:
-                        if segment_text:
-                            text_surface = self.font.render(segment_text, True, segment_color)
-                            surface.blit(text_surface, (x, y))
-                            x += text_surface.get_width()
+                        if segment_text: text_surface = self.font.render(segment_text, True, segment_color); surface.blit(text_surface, (x, y)); x += text_surface.get_width()
                     current_color = temp_color_for_word
-                    current_word_index += 1 # Move to next word
+                    content_rendered_on_this_physical_line = True # Mark that we drew something
+                    current_word_index += 1
                 else:
-                    # Word does NOT fit on current line
-                    # Handle word longer than line width (render and force wrap)
+                    # Word does NOT fit
                     if x == x_start:
-                         temp_x = x
-                         for segment_text, segment_color in segments_for_word:
-                              if segment_text:
-                                   text_surface = self.font.render(segment_text, True, segment_color)
-                                   surface.blit(text_surface, (temp_x, y))
-                                   temp_x += text_surface.get_width()
-                         current_color = temp_color_for_word
-                         current_word_index += 1 # Processed the long word
-                         # Since we rendered something, advance Y for the *next* potential line
-                         y += self.line_height
-                         x = x_start
-                    else:
-                        # Normal wrap: move to next line, reset X, process *same* word again
-                        y += self.line_height
+                        # Word is longer than the line width - render it anyway
+                        temp_x = x
+                        for segment_text, segment_color in segments_for_word:
+                            if segment_text: text_surface = self.font.render(segment_text, True, segment_color); surface.blit(text_surface, (temp_x, y)); temp_x += text_surface.get_width()
+                        current_color = temp_color_for_word
+                        content_rendered_on_this_physical_line = True
+                        current_word_index += 1
+                        # --- Advance Y *AFTER* rendering the long word ---
+                        y += self.line_height_with_text
                         x = x_start
-                        # --- Do NOT increment current_word_index here ---
+                        current_line_rendered_y = y # Update the starting Y for the new physical line
+                        content_rendered_on_this_physical_line = False # Reset for the new line
+                    else:
+                        # Normal word wrap: Advance Y, reset X, re-process this word
+                        y += self.line_height_with_text
+                        x = x_start
+                        current_line_rendered_y = y # Update the starting Y for the new physical line
+                        content_rendered_on_this_physical_line = False # Reset for the new line
+                        # --- DO NOT increment current_word_index ---
 
-            # --- After processing all words for 'current_line_text' ---
-            # If the line wasn't empty and we actually rendered something
-            # that didn't end by forcing a wrap (i.e., x > x_start),
-            # we need to advance Y to prepare for the next potential line from input.
-            # If x == x_start, it means the last word either fit perfectly and filled
-            # the line (rare) or caused a wrap, which already advanced Y.
-            if x > x_start:
-                 y += self.line_height
-                 x = x_start # Reset x for the next line regardless
+            # --- After processing all words for the logical line ---
+            # If content was rendered on the last physical line used for this logical line,
+            # we need to advance Y to prepare for the next logical line.
+            if content_rendered_on_this_physical_line:
+                y += self.line_height_with_text
 
-        # Ensure final Y is returned correctly
-        # If the last action advanced Y, it's already correct (pointing below last line)
-        # If the last action just rendered without advancing Y (e.g., fit perfectly),
-        # the current Y is the top of the rendered line, but we need the position *below* it.
-        # However, the loop structure seems to handle this by advancing Y after rendering
-        # or after wrapping. Let's trust the final 'y' value.
+            # --- Check max_height again after potentially advancing Y ---
+            if max_height and y > max_height:
+                # We might have slightly overdrawn, but return the Y where the next line *would* start
+                # Or maybe return the previous line's start Y if strict cutoff needed?
+                # Returning current `y` is generally safer for subsequent renders.
+                break # Stop processing further logical lines from input
 
-        return y
+        return y # Return the final Y position
     
     def remove_format_codes(self, text: str) -> str:
         if not text: return ""

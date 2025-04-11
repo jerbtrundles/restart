@@ -9,7 +9,7 @@ import os
 
 SCREEN_WIDTH = 1200
 SCREEN_HEIGHT = 720
-FONT_SIZE = 18
+FONT_SIZE = 14
 LINE_SPACING = 5
 INPUT_HEIGHT = 30
 
@@ -224,7 +224,7 @@ SPELL_DAMAGE_VARIATION_FACTOR = 0.1 # e.g., +/- 10%
 MINIMUM_SPELL_EFFECT_VALUE = 1
 
 # --- UI & Display ---
-FONT_FAMILY = "monospace"
+FONT_FAMILY = "cascadiamonoregular"
 TITLE_FONT_SIZE_MULTIPLIER = 2
 TARGET_FPS = 30
 LOAD_SCREEN_MAX_SAVES = 10
@@ -320,3 +320,13 @@ VILLAGER_LAST_NAMES = [
     "Ironhand", "Jumblewood", "Keeneye", "Longbridge", "Meadowlight", "Northgate", "Oakhart", "Puddlefoot",
     "Quickstep", "Riverbend", "Stonehand", "Tanglebrook", "Underhill", "Vale", "Westwater", "Yarrow"
 ]
+
+# --- Status Effect Settings ---
+EFFECT_DEFAULT_TICK_INTERVAL = 3.0 # How often DoTs tick by default (seconds)
+EFFECT_POISON_DAMAGE_TYPE = "poison" # Damage type for standard poison
+
+STATUS_PANEL_WIDTH = 400
+STATUS_PANEL_PADDING = 5
+
+SIDE_PANEL_WIDTH = 250 # <<< NEW: Width for left and right status panels
+STATUS_PANEL_PADDING = 5

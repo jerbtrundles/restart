@@ -6,7 +6,7 @@ import random
 
 # --- Imports for Classes Used Directly ---
 from core.config import (
-    DEFAULT_INVENTORY_MAX_SLOTS, DEFAULT_INVENTORY_MAX_WEIGHT, EQUIPMENT_SLOTS, EQUIPMENT_VALID_SLOTS_BY_TYPE, FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GREEN, FORMAT_HIGHLIGHT,
+    DEFAULT_INVENTORY_MAX_SLOTS, DEFAULT_INVENTORY_MAX_WEIGHT, EFFECT_DEFAULT_TICK_INTERVAL, EQUIPMENT_SLOTS, EQUIPMENT_VALID_SLOTS_BY_TYPE, FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GREEN, FORMAT_HIGHLIGHT,
     FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW, HIT_CHANCE_AGILITY_FACTOR, ITEM_DURABILITY_LOSS_ON_HIT, ITEM_DURABILITY_LOW_THRESHOLD, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_ATTACK_COOLDOWN,
     MIN_HIT_CHANCE, MAX_HIT_CHANCE, MIN_XP_GAIN, MINIMUM_DAMAGE_TAKEN, PLAYER_ATTACK_DAMAGE_VARIATION_RANGE, PLAYER_ATTACK_POWER_STR_DIVISOR, PLAYER_BASE_ATTACK_COOLDOWN, PLAYER_BASE_ATTACK_POWER, PLAYER_BASE_DEFENSE,
     PLAYER_BASE_HEALTH, PLAYER_BASE_HEALTH_REGEN_RATE, PLAYER_BASE_HIT_CHANCE, PLAYER_BASE_MANA_REGEN_RATE, PLAYER_BASE_XP_TO_LEVEL, PLAYER_CON_HEALTH_MULTIPLIER, PLAYER_DEFAULT_KNOWN_SPELLS, PLAYER_DEFAULT_MAX_MANA, PLAYER_DEFAULT_MAX_TOTAL_SUMMONS, PLAYER_DEFAULT_NAME, PLAYER_DEFAULT_RESPAWN_REGION, PLAYER_DEFAULT_RESPAWN_ROOM, PLAYER_DEFAULT_STATS, PLAYER_DEFENSE_DEX_DIVISOR, PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR,
@@ -45,7 +45,6 @@ class Player(GameObject):
         self.experience = 0
         self.experience_to_level = PLAYER_BASE_XP_TO_LEVEL
         self.skills = {} # Example: {"swordsmanship": 1}
-        self.effects = [] # Example: [{"name": "Regen", "duration": 10}]
         self.quest_log = {} # Example: {"missing_supplies": "started"}
         self.equipment: Dict[str, Optional[Item]] = {slot: None for slot in EQUIPMENT_SLOTS} # Use config slots
         self.valid_slots_for_type = EQUIPMENT_VALID_SLOTS_BY_TYPE.copy() # Use copy
@@ -77,10 +76,9 @@ class Player(GameObject):
 
         self.trading_with: Optional[str] = None
 
-    # *** NEW: Update method for regeneration ***
     def update(self, current_time: float):
         """Update player state like mana and health regeneration."""
-        if not self.is_alive: return # Don't update if dead
+        if not self.is_alive: return
 
         # --- Regeneration ---
         time_since_last_update = current_time - self.last_mana_regen_time # Use one timer for both
@@ -104,13 +102,69 @@ class Player(GameObject):
             self.health = min(self.max_health, self.health + health_regen_amount) # Regen health too
 
             self.last_mana_regen_time = current_time # Reset timer
-
-            # Update effects (if you have duration-based effects)
-            # effect_messages = self.update_effects()
-            # if effect_messages:
-            #     for msg in effect_messages: self._add_combat_message(msg) # Or display differently
-
             # --- End Regeneration ---
+
+        # --- Process Active Effects ---
+        effects_processed_this_tick = [] # Track IDs processed
+        expired_effects_indices = []
+        tick_messages = []
+
+        # Iterate backwards to allow safe removal by index
+        for i in range(len(self.active_effects) - 1, -1, -1):
+            effect = self.active_effects[i]
+            effect_id = effect.get("id")
+            if not effect_id or effect_id in effects_processed_this_tick: continue # Skip if no ID or already processed
+
+            effects_processed_this_tick.append(effect_id)
+
+            # 1. Update Duration (Using suggested accurate method)
+            last_processed = effect.get("last_processed_time", current_time)
+            actual_delta = current_time - last_processed
+            effect["duration_remaining"] -= actual_delta
+            effect["last_processed_time"] = current_time
+
+            # 2. Check Expiration
+            if effect["duration_remaining"] <= 0:
+                expired_effects_indices.append(i)
+                # Add expiration message to the list to be returned
+                tick_messages.append(f"{FORMAT_HIGHLIGHT}The {effect.get('name', 'effect')} on you wears off.{FORMAT_RESET}")
+                continue # Move to next effect if expired
+
+            # 3. Process Ticks (for DoTs)
+            if effect.get("type") == "dot":
+                tick_interval = effect.get("tick_interval", EFFECT_DEFAULT_TICK_INTERVAL)
+                last_tick = effect.get("last_tick_time", 0)
+
+                if current_time - last_tick >= tick_interval:
+                    damage = effect.get("damage_per_tick", 0)
+                    dmg_type = effect.get("damage_type", "unknown")
+                    if damage > 0:
+                        damage_taken = self.take_damage(damage, dmg_type)
+                        effect["last_tick_time"] = current_time
+
+                        # Add DoT damage message to the list to be returned
+                        if damage_taken > 0:
+                             tick_messages.append(f"{FORMAT_ERROR}You take {damage_taken} {dmg_type} damage from {effect.get('name', 'effect')}!{FORMAT_RESET}")
+                        else:
+                             tick_messages.append(f"You resist the {dmg_type} damage from {effect.get('name', 'effect')}.")
+
+                        # Check for death RIGHT AFTER taking DoT damage
+                        if not self.is_alive:
+                            # Add death message if DoT killed player
+                            tick_messages.append(f"{FORMAT_ERROR}You succumb to the {effect.get('name', 'effect')}!{FORMAT_RESET}")
+                            break # Exit the effect processing loop
+
+            # 4. Process Buffs/Debuffs (placeholder)
+            # if effect.get("type") in ["buff", "debuff"]:
+                # Apply continuous effects or reapply periodic ones if needed
+
+        # Remove expired effects safely (after iteration)
+        # Sort indices descending to avoid messing up subsequent indices during removal
+        for index in sorted(expired_effects_indices, reverse=True):
+             if 0 <= index < len(self.active_effects): # Bounds check
+                  del self.active_effects[index]
+
+        return tick_messages
 
     def get_status(self) -> str:
         """Returns a formatted string representing the player's current status."""
@@ -189,17 +243,31 @@ class Player(GameObject):
             status += "\n".join(equip_lines) + "\n"
         # --- End Equipment ---
 
-        # --- Effects ---
-        if self.effects:
+        # --- Effects --- # <<< MODIFY THIS SECTION
+        if self.active_effects: # Check the actual list now
             status += f"\n{FORMAT_TITLE}EFFECTS{FORMAT_RESET}\n"
             effect_lines = []
-            for effect in self.effects:
-                # Assuming effects are dictionaries with 'name' and 'duration'
+            # Sort effects maybe? Alphabetically by name?
+            sorted_effects = sorted(self.active_effects, key=lambda e: e.get("name", "zzz"))
+            for effect in sorted_effects:
                 name = effect.get('name', 'Unknown Effect')
-                duration = effect.get('duration', '?')
-                effect_lines.append(f"  - {name} ({duration} remaining)")
+                duration = effect.get('duration_remaining', 0)
+                # Format duration nicely
+                if duration > 60: # Show minutes if long
+                    duration_str = f"{duration / 60:.1f}m"
+                else:
+                    duration_str = f"{duration:.1f}s"
+                # Add details for DoTs
+                details = ""
+                if effect.get("type") == "dot":
+                     dmg = effect.get("damage_per_tick", 0)
+                     interval = effect.get("tick_interval", EFFECT_DEFAULT_TICK_INTERVAL)
+                     dmg_type = effect.get("damage_type", "")
+                     details = f" ({dmg} {dmg_type}/ {interval:.0f}s)" # e.g. (5 poison/3s)
+
+                effect_lines.append(f"  - {name}{details} ({duration_str} remaining)")
             status += "\n".join(effect_lines) + "\n"
-        # --- End Effects ---
+        # --- End Effects --- # <<< END MODIFICATION
 
         # --- Skills ---
         if self.skills:
@@ -283,32 +351,6 @@ class Player(GameObject):
         self.max_mana = int(self.max_mana * 1.15 + self.stats["intelligence"] / 2) # Increase based on level and INT
         self.mana += (self.max_mana - old_max_mana)
 
-
-    def add_effect(self, name: str, description: str, duration: int,
-                  stat_modifiers: Dict[str, int] = None) -> None:
-        self.effects.append({
-            "name": name, "description": description, "duration": duration,
-            "stat_modifiers": stat_modifiers or {}
-        })
-        if stat_modifiers:
-            for stat, modifier in stat_modifiers.items():
-                if stat in self.stats: self.stats[stat] += modifier
-
-    def update_effects(self) -> List[str]:
-        messages = []
-        expired_effects = []
-        for effect in self.effects:
-            effect["duration"] -= 1
-            if effect["duration"] <= 0:
-                expired_effects.append(effect)
-                messages.append(f"The {effect['name']} effect has worn off.")
-        for effect in expired_effects:
-            self.effects.remove(effect)
-            if "stat_modifiers" in effect:
-                for stat, modifier in effect["stat_modifiers"].items():
-                    if stat in self.stats: self.stats[stat] -= modifier
-        return messages
-
     def add_skill(self, skill_name: str, level: int = 1) -> None:
         if skill_name in self.skills: self.skills[skill_name] += level
         else: self.skills[skill_name] = level
@@ -375,7 +417,7 @@ class Player(GameObject):
         self.is_alive = False
         self.in_combat = False
         self.combat_targets.clear()
-        self.effects = []
+        self.active_effects = []
         # *** Reset mana on death? Optional. ***
         # self.mana = 0
         print(f"{self.name} has died!")
@@ -399,11 +441,11 @@ class Player(GameObject):
         # *** Restore mana on respawn ***
         self.mana = self.max_mana
         self.is_alive = True
-        self.effects = []
         self.in_combat = False
         self.combat_targets.clear()
         self.spell_cooldowns.clear() # Reset cooldowns on respawn
         self.active_summons = {} # Clear summons on respawn too
+        self.active_effects = []
 
     # Make sure method name matches usage
     def get_is_alive(self) -> bool:
@@ -614,13 +656,35 @@ class Player(GameObject):
 
         hit_message = f"You attack {formatted_target_name} with your {weapon_name} for {int(actual_damage)} damage!"
         if weapon_broke: hit_message += f"\n{FORMAT_ERROR}Your {weapon_name} breaks!{FORMAT_RESET}"
+
+        # --- NEW: Check for on-hit effects ---
+        apply_effect_message = ""
+        if equipped_weapon and hasattr(equipped_weapon, 'properties'):
+            effect_chance = equipped_weapon.get_property("on_hit_effect_chance", 0.0)
+            if effect_chance > 0 and random.random() < effect_chance:
+                effect_data = equipped_weapon.get_property("on_hit_effect")
+                if effect_data and isinstance(effect_data, dict):
+                    if hasattr(target, 'apply_effect'):
+                        # Pass current time to apply_effect
+                        success, _ = target.apply_effect(effect_data, time.time())
+                        if success:
+                            # Create message viewable by the player (attacker is self)
+                            eff_name = effect_data.get('name', 'an effect')
+                            tgt_name_fmt = format_name_for_display(self, target, False) # Target formatted for player view
+                            apply_effect_message = f"{FORMAT_HIGHLIGHT}Your {equipped_weapon.name} afflicts {tgt_name_fmt} with {eff_name}!{FORMAT_RESET}"
+                            self._add_combat_message(apply_effect_message) # Log it
+
+        result_message = hit_message
+        if(apply_effect_message):
+            result_message += "\n" + apply_effect_message
+        
         result = {
             "attacker": self.name,
             "target": getattr(target, 'name', 'target'),
             "damage": actual_damage,
             "weapon": weapon_name,
             "missed": False,
-            "message": hit_message,
+            "message": result_message,
             "hit_chance": final_hit_chance
         }
         self._add_combat_message(result["message"])
@@ -921,7 +985,6 @@ class Player(GameObject):
             "stats": self.stats,
             "level": self.level, "experience": self.experience, "experience_to_level": self.experience_to_level,
             "skills": self.skills,
-            "effects": self.effects,
             "quest_log": self.quest_log,
             "is_alive": self.is_alive,
             "current_location": current_location,
@@ -979,7 +1042,6 @@ class Player(GameObject):
         player.experience = data.get("experience", 0)
         player.experience_to_level = data.get("experience_to_level", PLAYER_BASE_XP_TO_LEVEL)
         player.skills = data.get("skills", {})
-        player.effects = data.get("effects", [])
         player.quest_log = data.get("quest_log", {})
         player.is_alive = data.get("is_alive", True)
         player.known_spells = set(data.get("known_spells", PLAYER_DEFAULT_KNOWN_SPELLS))

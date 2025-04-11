@@ -10,7 +10,10 @@
       "damage": 3,
       "durability": 20,
       "max_durability": 20,
-      "equip_slot": ["main_hand", "off_hand"]
+      "equip_slot": [
+        "main_hand",
+        "off_hand"
+      ]
     }
   },
   "item_iron_sword": {
@@ -24,7 +27,9 @@
       "damage": 8,
       "durability": 50,
       "max_durability": 50,
-      "equip_slot": ["main_hand"]
+      "equip_slot": [
+        "main_hand"
+      ]
     }
   },
   "item_pitchfork": {
@@ -38,7 +43,9 @@
       "damage": 4,
       "durability": 30,
       "max_durability": 30,
-      "equip_slot": ["main_hand"]
+      "equip_slot": [
+        "main_hand"
+      ]
     }
   },
   "item_rusty_sword": {
@@ -52,7 +59,9 @@
       "damage": 4,
       "durability": 25,
       "max_durability": 25,
-      "equip_slot": ["main_hand"]
+      "equip_slot": [
+        "main_hand"
+      ]
     }
   },
   "item_dagger": {
@@ -66,7 +75,10 @@
       "damage": 3,
       "durability": 30,
       "max_durability": 30,
-      "equip_slot": ["main_hand", "off_hand"]
+      "equip_slot": [
+        "main_hand",
+        "off_hand"
+      ]
     }
   },
   "item_crude_club": {
@@ -80,7 +92,35 @@
       "damage": 7,
       "durability": 40,
       "max_durability": 40,
-      "equip_slot": ["main_hand"]
+      "equip_slot": [
+        "main_hand"
+      ]
+    }
+  },
+  "item_spider_fang": {
+    "type": "Weapon",
+    "name": "spider fang dagger",
+    "description": "A dagger crafted from the venomous fang of a giant spider. It drips slightly.",
+    "weight": 0.7,
+    "value": 45,
+    "stackable": false,
+    "properties": {
+      "damage": 4,
+      "durability": 40,
+      "max_durability": 40,
+      "equip_slot": [
+        "main_hand",
+        "off_hand"
+      ],
+      "on_hit_effect_chance": 0.25,
+      "on_hit_effect": {
+        "type": "dot",
+        "name": "Spider Venom",
+        "base_duration": 12.0,
+        "damage_per_tick": 3,
+        "tick_interval": 3.0,
+        "damage_type": "poison"
+      }
     }
   }
 }

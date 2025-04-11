@@ -215,6 +215,11 @@ class NPCSchedulePlugin(PluginBase):
         self.last_update_time = current_time
         self.movement_count = 0
 
+        player = getattr(self.world, 'player', None)
+        player_loc = None
+        if player:
+            player_loc = (player.current_region_id, player.current_room_id)
+
         for obj_id, npc in self.world.npcs.items():
             # Skip hostile, trading, or busy NPCs (existing checks)
             if npc.faction == "hostile": continue
@@ -245,7 +250,7 @@ class NPCSchedulePlugin(PluginBase):
                                 old_npc_loc = (old_region, old_room)
                                 new_npc_loc = (work_region_id, work_room_id)
 
-                                if self.event_system:
+                                if self.event_system and player_loc:
                                     work_room_name = self.world.get_region(work_region_id).get_room(work_room_id).name #...
                                     # --- Generate Varied Messages ---
                                     # We don't know the *exact* direction taken for this direct move,
@@ -295,7 +300,7 @@ class NPCSchedulePlugin(PluginBase):
                         old_npc_loc = (old_region, old_room)
                         new_npc_loc = (target_region, target_room)
 
-                        if self.event_system:
+                        if self.event_system and player_loc:
                             dest_name = destination.get('name', 'a gathering place')
                             activity_name = npc.ai_state.get('current_activity', 'socialize')
                             npc_display_name = format_name_for_display(self.world.player, npc) # Use npc

@@ -7,7 +7,7 @@ import uuid
 from npcs.npc_factory import NPCFactory
 from utils.text_formatter import get_level_diff_category, format_target_name
 from magic.spell import Spell
-from core.config import LEVEL_DIFF_COMBAT_MODIFIERS, MINIMUM_SPELL_EFFECT_VALUE, SPELL_DAMAGE_VARIATION_FACTOR, SPELL_DEFAULT_DAMAGE_TYPE
+from core.config import EFFECT_DEFAULT_TICK_INTERVAL, LEVEL_DIFF_COMBAT_MODIFIERS, MINIMUM_SPELL_EFFECT_VALUE, SPELL_DAMAGE_VARIATION_FACTOR, SPELL_DEFAULT_DAMAGE_TYPE
 from utils.utils import format_name_for_display, get_article # Import modifiers
 
 if TYPE_CHECKING:
@@ -147,6 +147,34 @@ def apply_spell_effect(caster: CasterTargetType, target: CasterTargetType, spell
         else:
             return 0, "Summoning failed (creature could not be formed)."
     # --- END SUMMON ---
+
+    # --- NEW: Handle apply_dot ---
+    elif spell.effect_type == "apply_dot":
+        if hasattr(target, 'apply_effect'):
+            dot_data = {
+                "type": "dot",
+                "name": getattr(spell, 'dot_name', "Affliction"),
+                "base_duration": getattr(spell, 'dot_duration', 10.0),
+                "damage_per_tick": getattr(spell, 'dot_damage_per_tick', 1),
+                "tick_interval": getattr(spell, 'dot_tick_interval', EFFECT_DEFAULT_TICK_INTERVAL),
+                "damage_type": getattr(spell, 'dot_damage_type', "unknown"),
+                "source_id": getattr(caster, 'obj_id', None) # Optional: track caster
+            }
+            # Call target's apply_effect method
+            success, _ = target.apply_effect(dot_data, time.time())
+            if success:
+                # Use spell's hit_message for successful application
+                # Format target name relative to viewer
+                formatted_target_name = format_name_for_display(viewer, target, start_of_sentence=False)
+                message = spell.hit_message.format(target_name=formatted_target_name)
+                # 'value' for DoT application could be 1 for success, 0 for fail/resist?
+                value = 1
+            else:
+                message = f"{spell.name} has no effect on {target_name_raw}."
+                value = 0
+        else:
+            message = f"{spell.name} fizzles against {target_name_raw}."
+            return 0, message
 
     # --- TODO: Add Buff/Debuff ---
     # ...

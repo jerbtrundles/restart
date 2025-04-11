@@ -3,6 +3,7 @@
 Registry of all available spells in the game.
 """
 from typing import Dict, Optional
+from core.config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_POISON_DAMAGE_TYPE
 from magic.spell import Spell
 
 SPELL_REGISTRY: Dict[str, Spell] = {}
@@ -128,6 +129,26 @@ register_spell(Spell(
     summon_template_id="skeletal_mage_minion", # <<< Point to the new NPC template
     summon_duration=60.0, # Same duration for now
     max_summons=3 # Allow maybe fewer mages than warriors?
+))
+
+register_spell(Spell(
+    spell_id="poison_cloud",
+    name="Poison Cloud",
+    description="Conjures a noxious cloud that poisons the target.",
+    mana_cost=12,
+    cooldown=10.0,
+    effect_type="apply_dot", # <<< Use new effect type
+    target_type="enemy",
+    level_required=4,
+    cast_message="{caster_name} conjures a sickly green cloud!",
+    hit_message="{target_name} is enveloped by the poison cloud!", # Message when effect applied
+    # --- NEW DoT Properties ---
+    dot_name="Poison", # Display name for the effect
+    dot_duration=15.0, # Base duration in seconds
+    dot_damage_per_tick=4, # Base damage per tick
+    dot_tick_interval=EFFECT_DEFAULT_TICK_INTERVAL, # Use config default (e.g., 3.0)
+    dot_damage_type=EFFECT_POISON_DAMAGE_TYPE # Use config constant ("poison")
+    # No base effect_value needed if primary purpose is applying DoT
 ))
 
 # Add more spells here...

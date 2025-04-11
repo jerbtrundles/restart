@@ -4,6 +4,8 @@ Defines the structure for spells in the game.
 """
 from typing import Optional, Dict, Any
 
+from core.config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_POISON_DAMAGE_TYPE
+
 class Spell:
     def __init__(self,
                  spell_id: str,
@@ -19,10 +21,17 @@ class Spell:
                  heal_message: str = "{caster_name} heals {target_name} with {spell_name} for {value} points!",
                  self_heal_message="You heal yourself for {value} health!",
                  level_required: int = 1,
+                 damage_type: Optional[str] = None, # Added for damage type consistency
                  summon_template_id: Optional[str] = None,
                  summon_duration: float = 0.0,
                  max_summons: int = 0,
-                 damage_type: Optional[str] = None # Added for damage type consistency
+                 # --- NEW: Add DoT parameters ---
+                 dot_name: Optional[str] = None,           # Name of the DoT effect (e.g., "Poison", "Burning")
+                 dot_duration: float = 0.0,                # Base duration of the DoT
+                 dot_damage_per_tick: int = 0,             # Damage applied each tick
+                 dot_tick_interval: float = EFFECT_DEFAULT_TICK_INTERVAL, # Time between ticks
+                 dot_damage_type: str = EFFECT_POISON_DAMAGE_TYPE       # Damage type of the DoT
+                 # --- END NEW ---
     ):
         self.spell_id = spell_id
         self.name = name
@@ -43,6 +52,14 @@ class Spell:
         self.summon_template_id = summon_template_id
         self.summon_duration = summon_duration
         self.max_summons = max_summons
+
+        # --- NEW: Store DoT Attributes ---
+        self.dot_name = dot_name
+        self.dot_duration = dot_duration
+        self.dot_damage_per_tick = dot_damage_per_tick
+        self.dot_tick_interval = dot_tick_interval
+        self.dot_damage_type = dot_damage_type
+        # --- END NEW ---
 
 
     def can_cast(self, caster) -> bool:
@@ -75,6 +92,13 @@ class Spell:
             "summon_template_id": self.summon_template_id,
             "summon_duration": self.summon_duration,
             "max_summons": self.max_summons,
+            # --- NEW: Add DoT properties to serialization ---
+            "dot_name": self.dot_name,
+            "dot_duration": self.dot_duration,
+            "dot_damage_per_tick": self.dot_damage_per_tick,
+            "dot_tick_interval": self.dot_tick_interval,
+            "dot_damage_type": self.dot_damage_type,
+            # --- END NEW ---
         }
         return {k: v for k, v in data.items() if v is not None}
 

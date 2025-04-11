@@ -178,5 +178,16 @@
     "value": 3,
     "stackable": true,
     "properties": {}
+  },
+  "item_spider_silk": {
+    "type": "Junk",
+    "name": "spider silk",
+    "description": "A strand of sticky, surprisingly strong spider silk.",
+    "weight": 0.1,
+    "value": 2,
+    "stackable": true,
+    "properties": {
+        "category": "material"
+    }
   }
 }

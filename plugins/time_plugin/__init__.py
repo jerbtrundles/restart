@@ -92,7 +92,7 @@ class TimePlugin(PluginBase):
 
     def _on_tick(self, event_type, data):
         if not self._tick_called_flag: # Print once flag
-            print(f"{FORMAT_SUCCESS}[TimePlugin] _on_tick HAS BEEN CALLED!{FORMAT_RESET}")
+            print(f"[TimePlugin] _on_tick HAS BEEN CALLED")
             self._tick_called_flag = True
 
         current_real_time = time.time()

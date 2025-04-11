@@ -4,18 +4,21 @@ import time
 import pygame
 import sys
 import os # Needed for path joining
-from typing import Any, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from utils.utils import format_name_for_display, get_article, simple_plural
+from items.item import Item
 
 from core.config import (
-    BG_COLOR, DEBUG_COLOR, DEBUG_SHOW_LEVEL, DEFAULT_COLORS, FONT_FAMILY, FONT_SIZE, FORMAT_ERROR, FORMAT_HIGHLIGHT,
-    FORMAT_RESET, FORMAT_TITLE, GAME_OVER_MESSAGE_LINE1, GAME_OVER_MESSAGE_LINE2, INPUT_BG_COLOR, INPUT_HEIGHT, LINE_SPACING, LOAD_SCREEN_COLUMN_WIDTH_FACTOR, LOAD_SCREEN_MAX_SAVES, MAX_BUFFER_LINES,
-    SCREEN_HEIGHT, SCREEN_WIDTH, SCROLL_SPEED, TARGET_FPS, TEXT_COLOR, SAVE_GAME_DIR,
+    BG_COLOR, DEBUG_COLOR, DEBUG_SHOW_LEVEL, DEFAULT_COLORS, EFFECT_DEFAULT_TICK_INTERVAL, FONT_FAMILY, FONT_SIZE, FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_GRAY, FORMAT_HIGHLIGHT, FORMAT_ORANGE,
+    FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW, GAME_OVER_MESSAGE_LINE1, GAME_OVER_MESSAGE_LINE2, INPUT_BG_COLOR, INPUT_HEIGHT, ITEM_DURABILITY_LOW_THRESHOLD, LINE_SPACING, LOAD_SCREEN_COLUMN_WIDTH_FACTOR, LOAD_SCREEN_MAX_SAVES, MAX_BUFFER_LINES, PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD, PLAYER_STATUS_HEALTH_LOW_THRESHOLD,
+    SCREEN_HEIGHT, SCREEN_WIDTH, SCROLL_SPEED, SIDE_PANEL_WIDTH, STATUS_PANEL_PADDING, STATUS_PANEL_WIDTH, TARGET_FPS, TEXT_COLOR, SAVE_GAME_DIR,
     DATA_DIR, COLOR_ORANGE, TITLE_FONT_SIZE_MULTIPLIER # <<< Added COLOR_ORANGE
 )
 
+from magic.spell_registry import get_spell
 from world.world import World
 from commands.command_system import CommandProcessor
-from utils.text_formatter import TextFormatter
+from utils.text_formatter import TextFormatter, format_target_name
 from plugins.plugin_system import PluginManager
 from commands.commands import register_movement_commands, save_handler, load_handler # Import specific handlers
 
@@ -23,6 +26,7 @@ from commands.commands import register_movement_commands, save_handler, load_han
 class GameManager:
     def __init__(self, save_file: str = "default_save.json"): # Use save file name
         pygame.init()
+        print(pygame.font.get_fonts())
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Pygame MUD")
         self.font = pygame.font.SysFont(FONT_FAMILY, FONT_SIZE, bold=False)
@@ -30,6 +34,7 @@ class GameManager:
         self.selected_font = pygame.font.SysFont(FONT_FAMILY, FONT_SIZE, bold=True)
         self.clock = pygame.time.Clock()
         self.current_save_file = save_file # Store the target save file
+        self.status_panel_width = STATUS_PANEL_WIDTH # <<< Define width for the new panel
 
         self.text_formatter = TextFormatter(
             font=self.font, screen_width=SCREEN_WIDTH,
@@ -220,83 +225,6 @@ class GameManager:
             self.input_text = ""
             return ""
 
-    # ... (rest of GameManager, ensure _draw_status_indicators uses layout correctly) ...
-    def _draw_status_indicators(self):
-        if not hasattr(self.world, 'player') or not self.world.player:
-            # If no player, we can't draw status, so return early
-            return
-        player = self.world.player
-
-        status_y_offset = 5
-        bar_height = 10
-        bar_width = 100
-        text_padding = 10
-        bar_padding = 25
-
-        # --- Health Bar ---
-        health_x = self.text_formatter.margin
-        # <<< Use layout Y position for status area >>>
-        health_y = self.layout["status_area"]["y"] + status_y_offset
-        # ... (rest of health bar drawing logic) ...
-        pygame.draw.rect(self.screen, (80, 0, 0), (health_x, health_y, bar_width, bar_height))
-        # ... (calculate filled_health_width, health_color) ...
-        health_percent = player.health / player.max_health if player.max_health > 0 else 0
-        filled_health_width = int(bar_width * health_percent)
-        if health_percent < 0.3: health_color = (200, 0, 0)
-        elif health_percent < 0.7: health_color = (200, 200, 0)
-        else: health_color = (0, 200, 0)
-        pygame.draw.rect(self.screen, health_color, (health_x, health_y, filled_health_width, bar_height))
-        # ... (Health Text drawing logic) ...
-        health_text = f"HP: {player.health}/{player.max_health}"
-        health_surface = self.font.render(health_text, True, TEXT_COLOR)
-        hp_text_x = health_x + bar_width + text_padding
-        hp_text_y = health_y + (bar_height // 2) - (health_surface.get_height() // 2)
-        self.screen.blit(health_surface, (hp_text_x, hp_text_y))
-
-
-        # --- Mana Bar ---
-        mana_x = hp_text_x + health_surface.get_width() + bar_padding
-        # <<< Use layout Y position >>>
-        mana_y = self.layout["status_area"]["y"] + status_y_offset
-        # ... (rest of mana bar drawing logic) ...
-        mana_bg_color = (0, 0, 80); pygame.draw.rect(self.screen, mana_bg_color, (mana_x, mana_y, bar_width, bar_height))
-        # ... (calculate filled_mana_width, mana_fill_color) ...
-        mana_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
-        filled_mana_width = int(bar_width * mana_percent)
-        mana_fill_color = (50, 100, 255)
-        pygame.draw.rect(self.screen, mana_fill_color, (mana_x, mana_y, filled_mana_width, bar_height))
-        # ... (Mana Text drawing logic) ...
-        mana_text = f"MP: {player.mana}/{player.max_mana}"
-        mana_surface = self.font.render(mana_text, True, TEXT_COLOR)
-        mp_text_x = mana_x + bar_width + text_padding
-        mp_text_y = mana_y + (bar_height // 2) - (mana_surface.get_height() // 2)
-        self.screen.blit(mana_surface, (mp_text_x, mp_text_y))
-
-
-        # --- XP Bar ---
-        xp_x = mp_text_x + mana_surface.get_width() + bar_padding
-        # <<< Use layout Y position >>>
-        xp_y = self.layout["status_area"]["y"] + status_y_offset
-        # ... (rest of XP bar drawing logic) ...
-        xp_bg_color = (100, 60, 0); pygame.draw.rect(self.screen, xp_bg_color, (xp_x, xp_y, bar_width, bar_height))
-        # ... (calculate xp_percent, filled_xp_width, xp_fill_color) ...
-        xp = player.experience; xp_needed = player.experience_to_level
-        xp_percent = xp / xp_needed if xp_needed > 0 else 0
-        filled_xp_width = int(bar_width * min(1.0, xp_percent))
-        xp_fill_color = COLOR_ORANGE
-        pygame.draw.rect(self.screen, xp_fill_color, (xp_x, xp_y, filled_xp_width, bar_height))
-        # ... (XP Text drawing logic) ...
-        xp_text = f"XP: {xp}/{xp_needed} (Lvl {player.level})"
-        xp_surface = self.font.render(xp_text, True, TEXT_COLOR)
-        xp_text_x = xp_x + bar_width + text_padding
-        xp_text_y = xp_y + (bar_height // 2) - (xp_surface.get_height() // 2)
-        self.screen.blit(xp_surface, (xp_text_x, xp_text_y))
-
-        # --- Separator Line (Above Status Area) ---
-        line_y = self.layout["status_area"]["y"]
-        # Draw line slightly above the status area Y
-        pygame.draw.line(self.screen, (80, 80, 100), (0, line_y - 1), (self.layout["screen_width"], line_y - 1), 1)
-
     # ... (_sanitize_text - unchanged) ...
     def _sanitize_text(self, text: str) -> str:
         if not text: return ""
@@ -314,36 +242,58 @@ class GameManager:
             return
 
         current_time = time.time() # Use absolute time
+        player_update_messages = [] # <<< Initialize list for player messages
 
-        # This might be managed by the TimePlugin now, access it if needed
-        # For mana regen, using real time might be simpler unless tied to game speed
-        if self.world and self.world.player:
-             self.world.player.update(current_time) # Pass time for regen calc
-        # Or get game time from TimePlugin if precise game time needed:
-        # time_plugin = self.service_locator.get_service("plugin:time_plugin")
-        # current_game_time = time_plugin.game_time if time_plugin else 0
-
-        # Update Plugins
+        # Update Plugins (Publish tick event)
         if self.plugin_manager:
-            self.plugin_manager.on_tick(current_time) # Publish tick event handled within PluginManager
+            self.plugin_manager.on_tick(current_time)
 
-        # Update NPCs
+        # Update Player (e.g., for regeneration, effects)
+        if self.world and self.world.player and self.world.player.is_alive:
+            # <<< Capture returned messages >>>
+            player_update_messages = self.world.player.update(current_time)
+            # <<< End Capture >>>
+
+        # --- Append Player Messages to Buffer ---
+        if player_update_messages:
+            buffer_changed = False
+            for msg in player_update_messages:
+                if msg:
+                    clean_msg = self._sanitize_text(msg)
+                    if clean_msg not in self.text_buffer[-len(player_update_messages):]: # Basic duplicate check
+                        self.text_buffer.append(clean_msg)
+                        buffer_changed = True
+            if buffer_changed:
+                self._trim_text_buffer()
+                self.scroll_offset = 0 # Scroll to bottom on player effect messages
+        # --- End Append Player Messages ---
+
+        # Update NPCs via World update
+        npc_updates = []
         if self.world:
             npc_updates = self.world.update() # world.update handles NPC logic and returns messages
-            if npc_updates:
-                for message in npc_updates:
-                    if message:
-                        self.text_buffer.append(self._sanitize_text(message))
-                self._trim_text_buffer()
 
-        # Check for player death
+        # --- Append NPC Messages to Buffer ---
+        if npc_updates:
+            buffer_changed = False
+            for message in npc_updates:
+                if message:
+                    clean_msg = self._sanitize_text(message)
+                    if clean_msg not in self.text_buffer[-len(npc_updates):]: # Basic duplicate check
+                        self.text_buffer.append(clean_msg)
+                        buffer_changed = True
+            if buffer_changed:
+                self._trim_text_buffer()
+                self.scroll_offset = 0 # Scroll to bottom on NPC messages too
+        # --- End Append NPC Messages ---
+
+        # Check for player death (AFTER player/NPC updates)
         if self.world and self.world.player and not self.world.player.is_alive:
              self.game_state = "game_over"
 
         # Update cursor blink
         self.cursor_timer += self.clock.get_time()
         if self.cursor_timer >= 500: self.cursor_visible = not self.cursor_visible; self.cursor_timer = 0
-
 
     def draw(self):
         """Render the game based on the current game_state."""
@@ -357,6 +307,8 @@ class GameManager:
             self._draw_load_screen()
         elif self.game_state == "playing":
             self._draw_playing_screen() # Encapsulate gameplay drawing
+            self._draw_left_status_panel()
+            self._draw_right_status_panel() # <<< ADD THIS CALL
         elif self.game_state == "game_over":
             self._draw_game_over_screen() # Encapsulate game over drawing
 
@@ -397,24 +349,44 @@ class GameManager:
 
     def _draw_load_screen(self):
         """Draws the load game selection screen."""
-        title_y_offset = - (self.layout["screen_height"] // 2) + 50 # Near top
-        option_start_y = title_y_offset + 60
-        option_spacing = 30
-        max_display = LOAD_SCREEN_MAX_SAVES
-        col_width = self.layout["screen_width"] * LOAD_SCREEN_COLUMN_WIDTH_FACTOR
+        # --- Title ---
+        title_text = "Load Game"
+        title_surface = self.title_font.render(title_text, True, (200, 200, 50))
+        # Center title horizontally, position 50px from the top
+        title_rect = title_surface.get_rect(centerx=self.layout["screen_width"] // 2, y=50)
+        self.screen.blit(title_surface, title_rect)
+
+        # --- Save List Area Calculation ---
+        option_start_y = title_rect.bottom + 40 # Start options below the title
+        option_spacing = 30 # Vertical space per option
+        max_display_items = 10 # Max saves to show at once (can be adjusted)
+        # Calculate column width and position
+        col_width = max(200, int(self.layout["screen_width"] * 0.6)) # 60% of screen, min 200px
         col_x = (self.layout["screen_width"] - col_width) // 2
+        # Calculate available height for the list itself (excluding Back button area)
+        list_area_bottom_margin = 80 # Space above the back button
+        list_area_height = self.layout["screen_height"] - option_start_y - list_area_bottom_margin
+        # Determine how many items can fit vertically
+        displayable_count = max(1, list_area_height // option_spacing)
+        displayable_count = min(displayable_count, max_display_items) # Don't exceed max display limit
 
-        # Draw Title
-        self._draw_centered_text("Load Game", self.title_font, (200, 200, 50), y_offset=title_y_offset)
-
-        # Display Saves (Scrollable)
+        # --- Display Saves (Scrollable) ---
         if not self.available_saves:
-            self._draw_centered_text("No save files found.", self.font, (180, 180, 180), y_offset=option_start_y)
+            no_saves_text = "No save files found."
+            no_saves_surface = self.font.render(no_saves_text, True, (180, 180, 180))
+            # Center the "no saves" message
+            no_saves_rect = no_saves_surface.get_rect(centerx=self.layout["screen_width"] // 2, y=option_start_y)
+            self.screen.blit(no_saves_surface, no_saves_rect)
         else:
-            # Display saves within the visible range
-            for i in range(max_display):
+            # Loop through the number of displayable slots
+            for i in range(displayable_count):
+                current_y_pos = option_start_y + i * option_spacing
+                # Calculate the actual index in available_saves based on scroll offset
                 display_index = self.load_scroll_offset + i
-                if display_index >= len(self.available_saves): break # Stop if we run out of saves
+
+                # Stop if we've gone past the end of the available saves
+                if display_index >= len(self.available_saves):
+                    break
 
                 save_name = self.available_saves[display_index]
                 is_selected = (display_index == self.selected_load_option)
@@ -422,95 +394,100 @@ class GameManager:
                 color = (255, 255, 100) if is_selected else TEXT_COLOR
                 prefix = "> " if is_selected else "  "
 
-                y_pos = option_start_y + i * option_spacing
+                # Render the save name text
                 text_surface = font_to_use.render(f"{prefix}{save_name}", True, color)
-                # Align text left within the column
-                self.screen.blit(text_surface, (col_x + 10, y_pos))
+                # Blit directly at calculated coordinates (left-aligned within the column)
+                self.screen.blit(text_surface, (col_x + 10, current_y_pos)) # Add small X padding
 
-        # Draw "Back" option
-        back_index_relative = len(self.available_saves) - self.load_scroll_offset # Index relative to scroll start
-        back_y_pos = option_start_y + (back_index_relative + 1) * option_spacing # Position after last potential save
-        num_options = len(self.available_saves) + 1 # Total options including back
-        is_back_selected = (self.selected_load_option == num_options - 1)
+        # --- Draw "Back" option ---
+        num_saves = len(self.available_saves)
+        # The index for "Back" is always after the last save file index
+        back_option_index = num_saves
+        is_back_selected = (self.selected_load_option == back_option_index)
 
-        # Only draw back if it fits on screen or is selected
-        if back_y_pos < self.layout["screen_height"] - 50 or is_back_selected:
-            font_to_use = self.selected_font if is_back_selected else self.font
-            color = (255, 255, 100) if is_back_selected else TEXT_COLOR
-            prefix = "> " if is_back_selected else "  "
-            back_surface = font_to_use.render(f"{prefix}[ Back ]", True, color)
-             # Center the back button horizontally
-            back_rect = back_surface.get_rect(centerx=self.layout["screen_width"] // 2, y=back_y_pos)
-            self.screen.blit(back_surface, back_rect)
+        # Calculate Back button position (place it consistently near the bottom)
+        back_y_pos = self.layout["screen_height"] - 50 # 50px from bottom
 
-        # Draw scroll indicators for save list if needed
-        if len(self.available_saves) > max_display:
-            if self.load_scroll_offset > 0: # Up arrow
-                 pygame.draw.polygon(self.screen, (200, 200, 200), [(col_x + col_width - 15, option_start_y - 15), (col_x + col_width - 5, option_start_y - 5), (col_x + col_width - 25, option_start_y - 5)])
-            if self.load_scroll_offset + max_display < len(self.available_saves): # Down arrow
-                 pygame.draw.polygon(self.screen, (200, 200, 200), [(col_x + col_width - 15, option_start_y + max_display*option_spacing + 5), (col_x + col_width - 5, option_start_y + max_display*option_spacing -5), (col_x + col_width - 25, option_start_y + max_display*option_spacing - 5)])
+        font_to_use = self.selected_font if is_back_selected else self.font
+        color = (255, 255, 100) if is_back_selected else TEXT_COLOR
+        prefix = "> " if is_back_selected else "  "
+        back_surface = font_to_use.render(f"{prefix}[ Back ]", True, color)
+        # Center the back button horizontally using its rect
+        back_rect = back_surface.get_rect(centerx=self.layout["screen_width"] // 2, y=back_y_pos)
+        self.screen.blit(back_surface, back_rect)
 
+        # --- Draw scroll indicators for save list if needed ---
+        if len(self.available_saves) > displayable_count:
+            # Calculate arrow positions relative to the actual list display area
+            list_top_y = option_start_y
+            list_bottom_y = option_start_y + displayable_count * option_spacing
+            arrow_x = col_x + col_width - 15 # X position for arrows (right side of column)
+
+            # Show Up Arrow if scrolled down
+            if self.load_scroll_offset > 0:
+                pygame.draw.polygon(self.screen, (200, 200, 200), [
+                    (arrow_x, list_top_y - 15),        # Top point
+                    (arrow_x + 10, list_top_y - 5),    # Bottom right
+                    (arrow_x - 10, list_top_y - 5)     # Bottom left
+                ])
+            # Show Down Arrow if more items below
+            if self.load_scroll_offset + displayable_count < len(self.available_saves):
+                pygame.draw.polygon(self.screen, (200, 200, 200), [
+                    (arrow_x, list_bottom_y + 5),      # Bottom point (adjusted slightly below list)
+                    (arrow_x + 10, list_bottom_y - 5), # Top right
+                    (arrow_x - 10, list_bottom_y - 5)  # Top left
+                ])
 
     def _draw_playing_screen(self):
-        """Draws the main game screen (text buffer, input, status)."""
+        """Draws the main game screen with stacked left panels."""
         self._draw_time_bar()
-        self._draw_status_indicators() # Uses layout['status_area']['y']
+        self._draw_left_status_panel()
+        self._draw_right_status_panel()        # Draw Status Panel (Right)
+        self._draw_room_info_panel()     # Draw Room Info Panel (Top-Left)
 
-        # --- Text buffer rendering ---
+        # --- Main Text Area Rendering (Uses updated layout['text_area']) ---
+        text_area_layout = self.layout.get("text_area")
+        if not text_area_layout: return # Safety check
+
         visible_text_area_rect = pygame.Rect(
-            self.layout["text_area"]["x"], self.layout["text_area"]["y"],
-            self.layout["text_area"]["width"], self.layout["text_area"]["height"]
+            text_area_layout["x"], text_area_layout["y"],
+            text_area_layout["width"], text_area_layout["height"]
         )
-
-        # --- Clear the text area explicitly before drawing (helps prevent artifacts) ---
+        # --- Clear the text area explicitly before drawing ---
         pygame.draw.rect(self.screen, BG_COLOR, visible_text_area_rect)
-        # --- End Clear ---
-
 
         if self.text_buffer:
-            # Estimate needed height (adjust buffer slightly if needed)
+            # Estimate needed height
+            min_buffer_height = visible_text_area_rect.height + self.text_formatter.line_height_with_text * 5
             estimated_lines = sum(entry.count('\n') + 3 for entry in self.text_buffer)
-            buffer_surface_height = max(visible_text_area_rect.height + 200, estimated_lines * self.text_formatter.line_height) # Generous buffer
+            buffer_surface_height = max(min_buffer_height, estimated_lines * self.text_formatter.line_height_with_text)
+
+            # Ensure TextFormatter has the correct width for the main area
+            self.text_formatter.update_screen_width(visible_text_area_rect.width)
 
             buffer_surface = pygame.Surface((visible_text_area_rect.width, buffer_surface_height), pygame.SRCALPHA)
-            buffer_surface.fill((0, 0, 0, 0)) # Transparent
+            buffer_surface.fill((0, 0, 0, 0)) # Transparent background
 
             full_text_to_render = "\n\n".join(self.text_buffer)
-            content_height = self.text_formatter.render(buffer_surface, full_text_to_render, (0, 0))
+            # Render the text onto the (potentially very tall) buffer surface
+            raw_content_height = self.text_formatter.render(buffer_surface, full_text_to_render, (0, 0))
 
-            # --- Crucial: Adjust content_height measurement ---
-            # Ensure content_height reflects the *actual* pixel height used by render,
-            # including the last line's height if render returns Y *below* last line.
-            # If render returns Y of the *top* of the last line, add line_height.
-            # Assuming render returns Y *below* the last line, this should be okay.
-            content_height = max(visible_text_area_rect.height, content_height) # Ensure it's at least view height
-            # --- End adjustment ---
-
-            self.total_rendered_height = content_height # Store for scrollbar
-
-            # Calculate max scroll offset
+            # Calculate content height and scroll parameters
+            content_height = max(visible_text_area_rect.height, raw_content_height + (self.text_formatter.line_spacing // 2))
+            self.total_rendered_height = content_height
             max_scroll_offset = max(0, content_height - visible_text_area_rect.height)
-            # Clamp current scroll offset
             self.scroll_offset = max(0, min(self.scroll_offset, max_scroll_offset))
+            source_y = max(0, content_height - visible_text_area_rect.height - self.scroll_offset)
+            blit_height = max(0, min(visible_text_area_rect.height, content_height - source_y))
 
-            # --- Recalculate source_y ---
-            # Y position on the buffer surface from which to start copying pixels
-            source_y = content_height - visible_text_area_rect.height - self.scroll_offset
-            source_y = max(0, source_y) # Cannot be negative
+            if blit_height > 0:
+                source_rect = pygame.Rect(0, source_y, visible_text_area_rect.width, blit_height)
+                # Destination is the top-left corner of the text area on the screen
+                dest_pos = (visible_text_area_rect.x, visible_text_area_rect.y)
+                self.screen.blit(buffer_surface, dest_pos, source_rect)
 
-            # --- Recalculate source_rect height ---
-            # The height of the section we copy from the buffer
-            blit_height = min(visible_text_area_rect.height, content_height - source_y)
-            # --- End recalculate ---
-
-            source_rect = pygame.Rect(0, source_y, visible_text_area_rect.width, blit_height)
-            dest_pos = (visible_text_area_rect.x, visible_text_area_rect.y)
-
-            # Blit the calculated portion
-            self.screen.blit(buffer_surface, dest_pos, source_rect)
-
-        # Draw Scroll Indicator and Input Area
-        self._draw_scroll_indicator()
+        # Pass the text area's rect to the scroll indicator
+        self._draw_scroll_indicator(visible_text_area_rect)
         self._draw_input_area()
 
     def _draw_game_over_screen(self):
@@ -709,157 +686,117 @@ class GameManager:
         villager = NPCFactory.create_npc("villager", name="Villager Charlie"); villager.current_region_id = "test"; villager.current_room_id = "garden"
         self.world.add_npc(guard); self.world.add_npc(merchant); self.world.add_npc(villager)
 
-    def _draw_status_indicators(self):
-        """Draws health, mana, XP, etc. in the status area."""
-        if not hasattr(self.world, 'player') or not self.world.player: return
-        player = self.world.player
+    def _draw_scroll_indicator(self, text_area_rect: pygame.Rect):
+        """Draws arrows indicating possible scroll directions, with correct shape placement."""
+        if not hasattr(self, 'total_rendered_height'): return
 
-        status_y_offset = 5 # How far down from the top of the status area the bars/text start
-        bar_height = 10 # Standard height for bars
-        bar_width = 100 # Standard width for bars
-        text_padding = 10 # Space between bar and text
-        bar_padding = 25 # Space between bar sections (e.g., HP text and Mana bar)
-
-        # --- Health Bar ---
-        health_x = self.text_formatter.margin # Start at margin
-        # Use the calculated Y for the status area
-        health_y = self.layout["status_area"]["y"] + status_y_offset
-
-        # Background
-        pygame.draw.rect(self.screen, (80, 0, 0), (health_x, health_y, bar_width, bar_height))
-
-        # Foreground (Filled portion)
-        health_percent = player.health / player.max_health if player.max_health > 0 else 0
-        filled_health_width = int(bar_width * health_percent)
-        if health_percent < 0.3: health_color = (200, 0, 0)      # Red
-        elif health_percent < 0.7: health_color = (200, 200, 0)  # Yellow
-        else: health_color = (0, 200, 0)                         # Green
-        pygame.draw.rect(self.screen, health_color, (health_x, health_y, filled_health_width, bar_height))
-
-        # Health Text
-        health_text = f"HP: {player.health}/{player.max_health}"
-        health_surface = self.font.render(health_text, True, TEXT_COLOR)
-        hp_text_x = health_x + bar_width + text_padding
-        # Center text vertically with the bar center
-        hp_text_y = health_y + (bar_height // 2) - (health_surface.get_height() // 2)
-        self.screen.blit(health_surface, (hp_text_x, hp_text_y))
-
-
-        # --- Mana Bar ---
-        # Position mana bar after HP text, with bar padding
-        mana_x = hp_text_x + health_surface.get_width() + bar_padding
-        mana_y = health_y # Same vertical position as HP bar
-
-        # Mana Background
-        mana_bg_color = (0, 0, 80) # Dark Blue
-        pygame.draw.rect(self.screen, mana_bg_color, (mana_x, mana_y, bar_width, bar_height))
-
-        # Mana Foreground (Filled portion)
-        mana_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
-        filled_mana_width = int(bar_width * mana_percent)
-        mana_fill_color = (50, 100, 255) # Bright Blue
-        pygame.draw.rect(self.screen, mana_fill_color, (mana_x, mana_y, filled_mana_width, bar_height))
-
-        # Mana Text
-        mana_text = f"MP: {player.mana}/{player.max_mana}"
-        mana_surface = self.font.render(mana_text, True, TEXT_COLOR)
-        mp_text_x = mana_x + bar_width + text_padding
-        # Center text vertically with the bar center
-        mp_text_y = mana_y + (bar_height // 2) - (mana_surface.get_height() // 2)
-        self.screen.blit(mana_surface, (mp_text_x, mp_text_y))
-
-
-        # --- Experience (XP) Bar (NEW) ---
-        xp_x = mp_text_x + mana_surface.get_width() + bar_padding
-        xp_y = mana_y # Same vertical position
-
-        # XP Background
-        xp_bg_color = (100, 60, 0) # Dark Orange/Brown
-        pygame.draw.rect(self.screen, xp_bg_color, (xp_x, xp_y, bar_width, bar_height))
-
-        # XP Foreground
-        xp = player.experience
-        xp_needed = player.experience_to_level
-        xp_percent = xp / xp_needed if xp_needed > 0 else 0
-        # Ensure percent doesn't exceed 1 visually even if xp > xp_needed briefly
-        filled_xp_width = int(bar_width * min(1.0, xp_percent))
-        xp_fill_color = COLOR_ORANGE # Use orange from config
-        pygame.draw.rect(self.screen, xp_fill_color, (xp_x, xp_y, filled_xp_width, bar_height))
-
-        # XP Text
-        xp_text = f"XP: {xp}/{xp_needed} (Lvl {player.level})"
-        xp_surface = self.font.render(xp_text, True, TEXT_COLOR)
-        xp_text_x = xp_x + bar_width + text_padding
-        xp_text_y = xp_y + (bar_height // 2) - (xp_surface.get_height() // 2)
-        self.screen.blit(xp_surface, (xp_text_x, xp_text_y))
-        # --- End XP Bar ---
-
-        # --- Separator Line ---
-        line_y = self.layout["status_area"]["y"]
-        pygame.draw.line(self.screen, (80, 80, 100), (0, line_y - 1), (self.layout["screen_width"], line_y - 1), 1)
-
-    # --- Scroll Indicator uses max_scroll ---
-    def _draw_scroll_indicator(self):
-        """Draws arrows if scrolling is possible."""
-        # Check if necessary attributes exist
-        if not hasattr(self, 'layout') or not hasattr(self, 'total_rendered_height'):
-            return
-
-        # Check if text_area is defined in layout
-        text_area = self.layout.get("text_area")
-        if not text_area or not isinstance(text_area, dict):
-            return
-
-        visible_height = text_area.get("height", 0)
-        # Use the stored total rendered height
+        visible_height = text_area_rect.height
         content_height = self.total_rendered_height
         max_scroll = max(0, content_height - visible_height)
 
-        # Show up arrow if not at the very bottom (i.e., can scroll up to see older)
-        # scroll_offset < max_scroll means there's more content above the current view
-        if self.scroll_offset < max_scroll:
-            arrow_points_up = [
-                 (self.layout["screen_width"] - 25, text_area["y"] + 15),
-                 (self.layout["screen_width"] - 15, text_area["y"] + 5),
-                 (self.layout["screen_width"] - 5, text_area["y"] + 15)
-            ]
-            if len(arrow_points_up) >= 3: pygame.draw.polygon(self.screen, (200, 200, 200), arrow_points_up)
+        # No indicators needed if all content fits
+        if max_scroll <= 0:
+            return
 
-        # Show down arrow if not at the very top (i.e., can scroll down to see newer)
-        # scroll_offset > 0 means the top of the content is scrolled off-screen upwards
-        if self.scroll_offset > 0:
-            input_area_y = self.layout.get("input_area", {}).get("y", self.layout["screen_height"]) # Get input area top Y
-            arrow_points_down = [
-                (self.layout["screen_width"] - 25, input_area_y - 15),
-                (self.layout["screen_width"] - 15, input_area_y - 5),
-                (self.layout["screen_width"] - 5, input_area_y - 15)
+        # Arrow drawing parameters
+        arrow_x = text_area_rect.right - 15
+        arrow_width = 8
+        arrow_height = 8
+        arrow_color = (180, 180, 180)
+
+        # --- Draw UP arrow at the TOP if scrolling UP is possible ---
+        if self.scroll_offset < max_scroll:
+            # --- Draw the UP-pointing shape here ---
+            tip_y = text_area_rect.top + 5
+            base_y = tip_y + arrow_height
+            arrow_points_up = [
+                (arrow_x, tip_y),       # Top point
+                (arrow_x - arrow_width, base_y), # Bottom left base
+                (arrow_x + arrow_width, base_y)  # Bottom right base
             ]
-            if len(arrow_points_down) >= 3: pygame.draw.polygon(self.screen, (200, 200, 200), arrow_points_down)
+            pygame.draw.polygon(self.screen, arrow_color, arrow_points_up)
+
+        # --- Draw DOWN arrow at the BOTTOM if scrolling DOWN is possible ---
+        if self.scroll_offset > 0:        
+            # --- Draw the DOWN-pointing shape here ---
+            tip_y = text_area_rect.bottom - 5
+            base_y = tip_y - arrow_height
+            arrow_points_down = [
+                 (arrow_x, tip_y),      # Bottom point (tip)
+                 (arrow_x - arrow_width, base_y), # Top left base
+                 (arrow_x + arrow_width, base_y)  # Top right base
+            ]
+            pygame.draw.polygon(self.screen, arrow_color, arrow_points_down)
 
     def _calculate_layout(self):
-        """Recalculates UI element positions and sizes."""
+        """Recalculates UI element positions with left and right side panels."""
         current_width, current_height = self.screen.get_size()
+
+        # --- Read Config / Defaults ---
+        # Use the imported config value, provide a fallback default
+        side_panel_width = SIDE_PANEL_WIDTH # Directly use imported value
+        padding = STATUS_PANEL_PADDING # Use config padding
 
         time_bar_height = 30
         input_area_height = INPUT_HEIGHT
-        status_area_height = 30 # Height for HP/MP/XP bars
-        margin = self.text_formatter.margin # Use margin from formatter
+        margin = self.text_formatter.margin # Use formatter's margin
 
-        # --- Calculate Y positions ---
+        # --- Vertical Boundaries ---
         time_bar_y = 0
         input_area_y = current_height - input_area_height
-        status_area_y = input_area_y - status_area_height # Status is directly above input
+        panels_top_y = time_bar_y + time_bar_height + margin
+        panels_bottom_y = input_area_y - margin
+        panels_available_height = max(50, panels_bottom_y - panels_top_y) # Min height 50
 
-        # --- Calculate Text Area based on remaining space ---
-        text_area_top_y = time_bar_y + time_bar_height + margin # Start below time bar + margin
-        text_area_bottom_y = status_area_y - margin # End above status bar - margin
+        # --- Left Status Panel (NEW) ---
+        left_panel_x = margin
+        left_panel_rect = pygame.Rect(
+            left_panel_x, panels_top_y,
+            side_panel_width, panels_available_height
+        )
 
-        # The height is simply the difference between the bottom and top Y coordinates
-        text_area_height = text_area_bottom_y - text_area_top_y
-        text_area_height = max(10, text_area_height) # Ensure minimum positive height
+        # --- Right Status Panel (Adjusted) ---
+        right_panel_x = current_width - side_panel_width - margin
+        right_panel_rect = pygame.Rect(
+            right_panel_x, panels_top_y,
+            side_panel_width, panels_available_height
+        )
 
-        # Update TextFormatter's usable width
-        self.text_formatter.update_screen_width(current_width)
+        # --- Center Area Calculation ---
+        center_area_x_start = left_panel_rect.right + margin
+        center_area_x_end = right_panel_rect.left - margin
+        center_area_width = max(100, center_area_x_end - center_area_x_start) # Min width 100
+
+        # --- Define Target Heights (Same as before) ---
+        target_room_panel_height = 250
+        min_text_area_height = 100
+
+        # --- Calculate Actual Room Panel Height (Same as before) ---
+        max_possible_room_height = panels_available_height - margin - min_text_area_height
+        actual_room_panel_height = min(target_room_panel_height, max_possible_room_height)
+        actual_room_panel_height = max(30, actual_room_panel_height)
+
+        # --- Room Info Panel (Top Center) ---
+        room_panel_x = center_area_x_start # Start after left panel + margin
+        room_panel_rect = pygame.Rect(
+            room_panel_x, panels_top_y, # Align top with side panels
+            center_area_width, actual_room_panel_height
+        )
+
+        # --- Text Area (Bottom Center) ---
+        text_area_x = center_area_x_start
+        text_area_y = room_panel_rect.bottom + margin
+        text_area_width = center_area_width
+        # Calculate height to fill remaining space in center column
+        text_area_height = panels_bottom_y - text_area_y
+        text_area_height = max(min_text_area_height, text_area_height)
+        text_area_rect = pygame.Rect(
+            text_area_x, text_area_y,
+            text_area_width, text_area_height
+        )
+
+        # Update TextFormatter's usable width for the main text area
+        self.text_formatter.update_screen_width(text_area_width)
 
         # Store Layout
         self.layout = {
@@ -867,15 +804,126 @@ class GameManager:
             "screen_height": current_height,
             "time_bar": {"height": time_bar_height, "y": time_bar_y},
             "input_area": {"height": input_area_height, "y": input_area_y},
-            "status_area": {"height": status_area_height, "y": status_area_y},
-            "text_area": {
-                "x": margin,
-                "y": text_area_top_y,
-                "width": self.text_formatter.usable_width,
-                "height": text_area_height
+            "left_status_panel": { # <<< NEW
+                "x": left_panel_rect.x, "y": left_panel_rect.y,
+                "width": left_panel_rect.width, "height": left_panel_rect.height
+            },
+            "right_status_panel": { # <<< RENAMED
+                "x": right_panel_rect.x, "y": right_panel_rect.y,
+                "width": right_panel_rect.width, "height": right_panel_rect.height
+            },
+            "room_info_panel": { # Positioned Top-Center
+                "x": room_panel_rect.x, "y": room_panel_rect.y,
+                "width": room_panel_rect.width, "height": room_panel_rect.height
+            },
+            "text_area": {      # Positioned Bottom-Center
+                "x": text_area_rect.x, "y": text_area_rect.y,
+                "width": text_area_rect.width, "height": text_area_rect.height
             }
         }
-        # print(f"[Layout] ScreenH={current_height}, TextY={text_area_top_y}, TextH={text_area_height}, StatusY={status_area_y}, InputY={input_area_y}") # Debug
+
+    def _draw_room_info_panel(self):
+        """Draws the panel showing current room info, with inline, wrapping lists."""
+        # --- Initial Checks ---
+        if not self.world: print("Debug Draw Room Panel: World object missing!"); return
+        if not self.layout: print("Debug Draw Room Panel: Layout not calculated!"); return
+
+        room_panel_layout = self.layout.get("room_info_panel")
+        if not room_panel_layout: print("Error: Room info panel layout missing."); return
+
+        panel_rect = pygame.Rect(
+            room_panel_layout["x"], room_panel_layout["y"],
+            room_panel_layout["width"], room_panel_layout["height"]
+        )
+
+        # Draw background/border
+        pygame.draw.rect(self.screen, (15, 15, 15), panel_rect) # Darker background
+        pygame.draw.rect(self.screen, (70, 70, 70), panel_rect, 1)
+
+        padding = 5
+        start_y = panel_rect.y + padding
+        current_y = start_y
+        max_y = panel_rect.bottom - padding
+        section_spacing = self.text_formatter.line_height_with_text // 2
+        line_height_needed = self.text_formatter.line_height_with_text # Store once
+
+        current_room = self.world.get_current_room()
+        if not current_room: print("Debug Draw Room Panel: Current room not found!"); return
+
+        # --- Store original formatter width ---
+        original_formatter_width = self.text_formatter.usable_width
+        panel_usable_width = panel_rect.width - padding * 2
+        panel_usable_width = max(1, panel_usable_width) # Ensure width is at least 1
+
+        # --- 1. Render Main Room Description ---
+        time_period = self.time_data.get("time_period", "day")
+        weather = self.world.get_plugin_data("weather_plugin", "current_weather", "clear")
+        room_description_text = current_room.get_full_description(time_period, weather)
+        render_position = (panel_rect.x + padding, current_y)
+        render_max_height_desc = max_y - current_y
+
+        y_after_desc = current_y
+        if render_max_height_desc > 0:
+            self.text_formatter.update_screen_width(panel_usable_width)
+            y_after_desc = self.text_formatter.render(
+                self.screen, room_description_text, render_position, max_height=render_max_height_desc
+            )
+        else:
+            print(f"Skipping description render (max_h={render_max_height_desc})")
+
+        current_y = y_after_desc
+        current_y += section_spacing
+
+        # --- 2. Prepare Items Line ---
+        items_in_room = self.world.get_items_in_current_room()
+        full_items_line = ""
+        if items_in_room:
+            item_counts: Dict[str, Dict[str, Any]] = {}
+            for item in items_in_room: item_id = item.obj_id; item_counts.setdefault(item_id, {"name": item.name, "count": 0})["count"] += 1
+            items_text_parts = []
+            for item_id, data in item_counts.items(): base_name = data["name"]; count = data["count"]; formatted_name = f"{FORMAT_CATEGORY}{base_name}{FORMAT_RESET}"; items_text_parts.append(f"{get_article(base_name)} {formatted_name}" if count == 1 else f"{count} {FORMAT_CATEGORY}{simple_plural(base_name)}{FORMAT_RESET}")
+            items_list_str = ", ".join(items_text_parts)
+            full_items_line = f"{FORMAT_CATEGORY}Items:{FORMAT_RESET} {items_list_str}"
+        else:
+            full_items_line = f"{FORMAT_CATEGORY}Items:{FORMAT_RESET} {FORMAT_GRAY}(None){FORMAT_RESET}"
+
+        # --- Render Items Section ---
+        render_max_height_items = max_y - current_y
+
+        y_after_items = current_y
+        if render_max_height_items >= line_height_needed:
+            render_position_items = (panel_rect.x + padding, current_y)
+            self.text_formatter.update_screen_width(panel_usable_width)
+            y_after_items = self.text_formatter.render(self.screen, full_items_line, render_position_items, max_height=render_max_height_items)
+        else:
+             print(f"Skipping Items render (max_h={render_max_height_items})")
+
+        current_y = y_after_items
+        current_y += section_spacing
+
+        # --- 3. Prepare NPCs Line ---
+        npcs_in_room = self.world.get_current_room_npcs()
+        full_npc_line = ""
+        if npcs_in_room:
+            npc_text_parts = [format_name_for_display(self.world.player, npc, False) for npc in npcs_in_room]
+            npc_list_str = ", ".join(npc_text_parts)
+            full_npc_line = f"{FORMAT_CATEGORY}Also here:{FORMAT_RESET} {npc_list_str}"
+        else:
+            full_npc_line = f"{FORMAT_CATEGORY}Also here:{FORMAT_RESET} {FORMAT_GRAY}(None){FORMAT_RESET}"
+
+        # --- Render NPCs Section ---
+        render_max_height_npcs = max_y - current_y
+
+        y_after_npcs = current_y
+        if render_max_height_npcs >= line_height_needed:
+            render_position_npcs = (panel_rect.x + padding, current_y)
+            self.text_formatter.update_screen_width(panel_usable_width)
+            y_after_npcs = self.text_formatter.render(self.screen, full_npc_line, render_position_npcs, max_height=render_max_height_npcs)
+        else:
+            print(f"Skipping NPCs render (max_h={render_max_height_npcs})")
+
+        # --- Restore Formatter Width AFTER ALL panel rendering ---
+        self.text_formatter.update_screen_width(original_formatter_width)
 
     def _draw_input_area(self):
         pygame.draw.rect(self.screen, INPUT_BG_COLOR,
@@ -920,35 +968,59 @@ class GameManager:
                     pygame.event.post(pygame.event.Event(pygame.QUIT)) # Post quit event
 
     def _handle_load_input(self, event):
-        num_options = len(self.available_saves) + 1 # Saves + Back button
-        max_display = 10 # How many saves to show at once
+        # --- MODIFIED: Update total number of options correctly ---
+        num_saves = len(self.available_saves)
+        num_options = num_saves + 1 # Saves + Back button
+        max_display_items = 10 # Or use calculated displayable_count if needed here
 
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_UP:
-                self.selected_load_option = (self.selected_load_option - 1 + num_options) % num_options # Wrap around including Back
+                self.selected_load_option = (self.selected_load_option - 1 + num_options) % num_options
             elif event.key == pygame.K_DOWN:
                 self.selected_load_option = (self.selected_load_option + 1) % num_options
             elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
-                if self.selected_load_option == num_options - 1: # Selected "Back"
+                # Check if 'Back' was selected (index is num_saves)
+                if self.selected_load_option == num_saves:
                     self.game_state = "title_screen"
-                elif self.available_saves and 0 <= self.selected_load_option < len(self.available_saves): # Selected a valid save
+                # Check if a valid save file index was selected
+                elif self.available_saves and 0 <= self.selected_load_option < num_saves:
                     self._load_selected_game()
+                # Else: No saves available, Enter does nothing
             elif event.key == pygame.K_ESCAPE: # Escape also goes back
                  self.game_state = "title_screen"
-            # Add PageUp/PageDown for scrolling saves if needed later
+            # --- Add PageUp/PageDown scrolling ---
+            elif event.key == pygame.K_PAGEUP:
+                 self.load_scroll_offset = max(0, self.load_scroll_offset - max_display_items)
+                 # Optional: Adjust selection to stay within view?
+                 self.selected_load_option = max(self.load_scroll_offset, min(self.selected_load_option, self.load_scroll_offset + max_display_items - 1))
+            elif event.key == pygame.K_PAGEDOWN:
+                 self.load_scroll_offset = min(max(0, num_saves - max_display_items), self.load_scroll_offset + max_display_items)
+                 # Optional: Adjust selection
+                 self.selected_load_option = max(self.load_scroll_offset, min(self.selected_load_option, self.load_scroll_offset + max_display_items - 1))
+            # --- End PageUp/PageDown ---
+
 
         # --- Adjust scroll offset based on selection ---
-        # Ensure selected item is visible
-        visible_start_index = self.load_scroll_offset
-        visible_end_index = self.load_scroll_offset + max_display -1
+        # (Ensure selected item is visible - logic needs refinement based on displayable_count)
+        list_area_height = self.layout["screen_height"] - (self.title_font.get_height() + 90) - 80 # Approximate list height
+        option_spacing = 30
+        displayable_count = max(1, list_area_height // option_spacing)
+        displayable_count = min(displayable_count, max_display_items)
 
+        visible_start_index = self.load_scroll_offset
+        visible_end_index = self.load_scroll_offset + displayable_count - 1
+
+        # If selection moved above the visible area, scroll up
         if self.selected_load_option < visible_start_index:
             self.load_scroll_offset = self.selected_load_option
-        elif self.selected_load_option > visible_end_index:
-            self.load_scroll_offset = self.selected_load_option - max_display + 1
-        # Clamp scroll offset
-        self.load_scroll_offset = max(0, min(self.load_scroll_offset, max(0, num_options - max_display)))
+        # If selection moved below the visible area, scroll down
+        elif self.selected_load_option > visible_end_index and self.selected_load_option < num_saves: # Don't scroll down if Back is selected
+            self.load_scroll_offset = self.selected_load_option - displayable_count + 1
 
+        # Clamp scroll offset to valid range
+        self.load_scroll_offset = max(0, min(self.load_scroll_offset, max(0, num_saves - displayable_count)))
+        # Ensure selected option is valid after scrolling adjustment
+        self.selected_load_option = max(0, min(self.selected_load_option, num_options - 1))
 
     def _handle_playing_input(self, event):
         if event.type == pygame.KEYDOWN:
@@ -980,7 +1052,7 @@ class GameManager:
                     self.tab_suggestions = []
                     self.tab_index = -1
         elif event.type == pygame.MOUSEWHEEL:
-            scroll_amount_pixels = SCROLL_SPEED * self.text_formatter.line_height * event.y # y is -1 or 1
+            scroll_amount_pixels = SCROLL_SPEED * self.text_formatter.line_height_with_text * event.y # y is -1 or 1
             self._scroll_text_buffer(scroll_amount_pixels)
 
     def _handle_game_over_input(self, event):
@@ -1023,3 +1095,373 @@ class GameManager:
             if self.debug_mode: msg += " NPC Levels Visible."
             self.text_buffer.append(msg)
             self._trim_text_buffer()
+
+    def _draw_left_status_panel(self):
+        """Draws the left panel showing player Stats, Skills, and Spells."""
+        if not self.world or not self.world.player: return
+
+        player = self.world.player
+        panel_layout = self.layout.get("left_status_panel")
+        if not panel_layout: print("Error: Left status panel layout missing."); return
+
+        panel_rect = pygame.Rect(
+            panel_layout["x"], panel_layout["y"],
+            panel_layout["width"], panel_layout["height"]
+        )
+
+        # Draw background/border
+        pygame.draw.rect(self.screen, (20, 20, 20), panel_rect)
+        pygame.draw.rect(self.screen, (80, 80, 80), panel_rect, 1)
+
+        padding = STATUS_PANEL_PADDING
+        line_height = self.text_formatter.line_height_with_text
+        current_y = panel_rect.y + padding
+        max_y = panel_rect.bottom - padding
+        section_spacing = line_height // 2 # Smaller spacing between sections
+        col_spacing = 20
+        text_color_tuple = DEFAULT_COLORS.get(FORMAT_RESET, TEXT_COLOR)
+        title_color_tuple = DEFAULT_COLORS.get(FORMAT_TITLE, (255, 255, 0))
+        gray_color_tuple = DEFAULT_COLORS.get(FORMAT_GRAY, (128, 128, 128))
+        error_color_tuple = DEFAULT_COLORS.get(FORMAT_ERROR, (255, 0, 0)) # For cooldown
+
+        # --- 1. Stats Section ---
+        if current_y + line_height <= max_y:
+            title_surface = self.font.render("STATS", True, title_color_tuple)
+            self.screen.blit(title_surface, (panel_rect.x + padding, current_y))
+            current_y += line_height
+        # ... (Stats rendering code remains the same) ...
+        # --- Arrange Stats in Columns ---
+        stats_to_show = {
+            "strength": "STR", "dexterity": "DEX", "constitution": "CON",
+            "agility": "AGI", "intelligence": "INT", "wisdom": "WIS",
+            "spell_power": "SP", "magic_resist": "MR"
+        }
+        num_stats = len(stats_to_show)
+        stats_per_col = math.ceil(num_stats / 2)
+
+        col1_x = panel_rect.x + padding + 5
+        col2_x = col1_x + (panel_rect.width - padding*2 - col_spacing) // 2 # Adjusted calculation slightly
+
+        stat_items = list(stats_to_show.items())
+        col1_y = current_y
+        col2_y = current_y
+
+        for i, (stat_key, stat_abbr) in enumerate(stat_items):
+            if max(col1_y, col2_y) >= max_y: break # Check combined height
+
+            stat_value = player.stats.get(stat_key, 0)
+            stat_text = f"{stat_abbr}: {stat_value}"
+            stat_surface = self.font.render(stat_text, True, text_color_tuple)
+
+            if i < stats_per_col:
+                if col1_y + line_height <= max_y:
+                    self.screen.blit(stat_surface, (col1_x, col1_y))
+                    col1_y += line_height
+            else:
+                if col2_y + line_height <= max_y:
+                    self.screen.blit(stat_surface, (col2_x, col2_y))
+                    col2_y += line_height
+
+        current_y = max(col1_y, col2_y) # Set Y below the stats
+        current_y += section_spacing # Add space after stats
+
+        # --- 2. Skills Section ---
+        if current_y + line_height <= max_y: # Check space for title
+            title_surface = self.font.render("SKILLS", True, title_color_tuple)
+            self.screen.blit(title_surface, (panel_rect.x + padding, current_y))
+            current_y += line_height
+
+        if player.skills:
+            sorted_skills = sorted(player.skills.items())
+            skills_rendered = 0
+            for skill_name, level in sorted_skills:
+                if current_y + line_height > max_y: # Check space for skill line
+                    if current_y <= max_y - line_height // 2 :
+                        more_surf = self.font.render("...", True, gray_color_tuple)
+                        self.screen.blit(more_surf, (panel_rect.x + padding + 5, current_y))
+                        current_y += line_height
+                    break
+                skill_text = f"- {skill_name.capitalize()}: {level}"
+                skill_surface = self.font.render(skill_text, True, text_color_tuple)
+                self.screen.blit(skill_surface, (panel_rect.x + padding + 5, current_y))
+                current_y += line_height
+                skills_rendered += 1
+        else:
+             if current_y + line_height <= max_y: # Check space for "None"
+                none_surface = self.font.render("(None known)", True, gray_color_tuple)
+                self.screen.blit(none_surface, (panel_rect.x + padding + 5, current_y))
+                current_y += line_height
+
+        current_y += section_spacing # Space after skills
+
+        # --- 3. Spells Known Section (NEW) ---
+        if current_y + line_height <= max_y: # Check space for title
+            title_surface = self.font.render("SPELLS", True, title_color_tuple)
+            self.screen.blit(title_surface, (panel_rect.x + padding, current_y))
+            current_y += line_height
+
+        if player.known_spells:
+            sorted_spells = sorted(list(player.known_spells), key=lambda sid: getattr(get_spell(sid), 'name', sid))
+            spells_rendered = 0
+            max_spells_to_show = 5 # Limit displayed spells if needed
+            current_time_abs = time.time() # Get current time once
+
+            for spell_id in sorted_spells:
+                if spells_rendered >= max_spells_to_show or current_y + line_height > max_y:
+                    if len(sorted_spells) > spells_rendered and current_y <= max_y - line_height // 2:
+                        more_surf = self.font.render("...", True, gray_color_tuple)
+                        self.screen.blit(more_surf, (panel_rect.x + padding + 5, current_y))
+                        current_y += line_height
+                    break # Stop rendering spells
+
+                spell = get_spell(spell_id)
+                if spell:
+                    # Cooldown check
+                    cooldown_end = player.spell_cooldowns.get(spell_id, 0)
+                    cd_status = ""
+                    cd_color = text_color_tuple # Default color
+                    if current_time_abs < cooldown_end:
+                        time_left = cooldown_end - current_time_abs
+                        cd_status = f" (CD {time_left:.1f}s)"
+                        cd_color = error_color_tuple # Use error color for cooldown text
+
+                    # Format spell line
+                    spell_text = f"- {spell.name} ({spell.mana_cost} MP)"
+                    spell_surface = self.font.render(spell_text, True, text_color_tuple)
+                    # Render cooldown status separately if present, using its specific color
+                    if cd_status:
+                        cd_surface = self.font.render(cd_status, True, cd_color)
+                        # Blit spell name first
+                        self.screen.blit(spell_surface, (panel_rect.x + padding + 5, current_y))
+                        # Blit cooldown status immediately after
+                        self.screen.blit(cd_surface, (panel_rect.x + padding + 5 + spell_surface.get_width(), current_y))
+                    else:
+                        # Blit only the spell name/cost if no cooldown
+                        self.screen.blit(spell_surface, (panel_rect.x + padding + 5, current_y))
+
+                    current_y += line_height
+                    spells_rendered += 1
+                else:
+                    # Handle case where spell definition might be missing
+                    missing_text = f"- {spell_id} (Error!)"
+                    missing_surface = self.font.render(missing_text, True, error_color_tuple)
+                    self.screen.blit(missing_surface, (panel_rect.x + padding + 5, current_y))
+                    current_y += line_height
+                    spells_rendered += 1
+        else:
+            if current_y + line_height <= max_y: # Check space for "None"
+                none_surface = self.font.render("(None known)", True, gray_color_tuple)
+                self.screen.blit(none_surface, (panel_rect.x + padding + 5, current_y))
+                current_y += line_height
+        # No extra spacing needed after the last section
+
+    def _draw_right_status_panel(self):
+        """Draws the panel showing prioritized player status information."""
+        if not self.world or not self.world.player:
+            return
+
+        player = self.world.player
+        panel_layout = self.layout.get("right_status_panel")
+        if not panel_layout:
+            print("Error: Right status panel layout missing.")
+            return
+
+        panel_rect = pygame.Rect(
+            panel_layout["x"], panel_layout["y"],
+            panel_layout["width"], panel_layout["height"]
+        )
+
+        # Draw background/border
+        pygame.draw.rect(self.screen, (20, 20, 20), panel_rect)
+        pygame.draw.rect(self.screen, (80, 80, 80), panel_rect, 1)
+
+        padding = 5
+        line_height = self.text_formatter.line_height_with_text
+        current_y = panel_rect.y + padding
+        max_y = panel_rect.bottom - padding # Maximum Y coordinate for rendering content
+        section_spacing = line_height // 2 # Reduced spacing between sections
+        bar_spacing = 3
+
+        # --- Draw Bars and Text ---
+        bar_height = 10
+        # Estimate max label width based on HP as it's usually the longest
+        bar_label_width = self.font.size("HP: 9999/9999")[0]
+        max_bar_width = max(20, panel_layout["width"] - (padding * 3) - bar_label_width)
+        bar_x = panel_rect.x + padding
+
+        # --- Health Bar ---
+        if current_y + bar_height <= max_y:
+            hp_text = f"HP: {int(player.health)}/{int(player.max_health)}"
+            hp_percent = player.health / player.max_health if player.max_health > 0 else 0
+            hp_color_code = FORMAT_SUCCESS
+            if hp_percent <= PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD / 100: hp_color_code = FORMAT_ERROR
+            elif hp_percent <= PLAYER_STATUS_HEALTH_LOW_THRESHOLD / 100: hp_color_code = FORMAT_YELLOW
+            bar_fill_color = DEFAULT_COLORS.get(hp_color_code, DEFAULT_COLORS[FORMAT_SUCCESS])
+            pygame.draw.rect(self.screen, (80, 0, 0), (bar_x, current_y, max_bar_width, bar_height))
+            filled_width = int(max_bar_width * hp_percent)
+            pygame.draw.rect(self.screen, bar_fill_color, (bar_x, current_y, filled_width, bar_height))
+            hp_surface = self.font.render(hp_text, True, bar_fill_color)
+            self.screen.blit(hp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (hp_surface.get_height() // 2)))
+            current_y += bar_height + bar_spacing
+
+        # --- Mana Bar ---
+        if current_y + bar_height <= max_y:
+            mp_text = f"MP: {int(player.mana)}/{int(player.max_mana)}"
+            mp_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
+            bar_fill_color = DEFAULT_COLORS[FORMAT_BLUE]
+            pygame.draw.rect(self.screen, (0, 0, 80), (bar_x, current_y, max_bar_width, bar_height))
+            filled_width = int(max_bar_width * mp_percent)
+            pygame.draw.rect(self.screen, bar_fill_color, (bar_x, current_y, filled_width, bar_height))
+            mp_surface = self.font.render(mp_text, True, bar_fill_color)
+            self.screen.blit(mp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (mp_surface.get_height() // 2)))
+            current_y += bar_height + bar_spacing # Keep bar spacing
+
+        # --- Experience Bar --- (Optional, can be removed if space is very tight)
+        if current_y + bar_height <= max_y:
+            xp_text = f"XP: {int(player.experience)}/{int(player.experience_to_level)}"
+            xp_percent = player.experience / player.experience_to_level if player.experience_to_level > 0 else 0
+            bar_fill_color = DEFAULT_COLORS[FORMAT_ORANGE]
+            pygame.draw.rect(self.screen, (80, 40, 0), (bar_x, current_y, max_bar_width, bar_height))
+            filled_width = int(max_bar_width * min(1.0, xp_percent))
+            pygame.draw.rect(self.screen, bar_fill_color, (bar_x, current_y, filled_width, bar_height))
+            xp_surface = self.font.render(xp_text, True, bar_fill_color)
+            self.screen.blit(xp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (xp_surface.get_height() // 2)))
+            current_y += bar_height + padding # Standard padding after last bar
+
+        # --- Basic Info Section ---
+        if current_y < max_y:
+            current_y = self.text_formatter.render(self.screen, f"{FORMAT_TITLE}{player.name}{FORMAT_RESET}", (panel_rect.x + padding, current_y), max_height=(max_y - current_y))
+        if current_y < max_y:
+            level_surface = self.font.render(f"Level: {player.level}", True, TEXT_COLOR)
+            self.screen.blit(level_surface, (panel_rect.x + padding, current_y))
+            current_y += line_height
+        if current_y < max_y:
+            current_y = self.text_formatter.render(self.screen, f"Gold: {FORMAT_YELLOW}{player.gold}{FORMAT_RESET}", (panel_rect.x + padding, current_y), max_height=(max_y - current_y))
+        # Use slightly more spacing after basic info before equipment
+        current_y += line_height # Changed from section_spacing
+
+        # --- Equipment Section ---
+        title_rendered_equipment = False
+        if current_y + line_height <= max_y: # Check for title space
+            title_surface = self.font.render("EQUIPPED", True, DEFAULT_COLORS[FORMAT_TITLE])
+            self.screen.blit(title_surface, (panel_rect.x + padding, current_y))
+            current_y += line_height
+            title_rendered_equipment = True
+
+        if title_rendered_equipment:
+            # Helper function (essential for concise equipment display)
+            def format_equip_slot(slot_abbr: str, item: Optional[Item]) -> str:
+                if not item: return f"{slot_abbr}: {FORMAT_GRAY}(Empty){FORMAT_RESET}"
+                durability_str = ""
+                max_durability = item.get_property("max_durability", 0); current_durability = item.get_property("durability", max_durability)
+                if max_durability > 0:
+                    ratio = current_durability / max_durability if max_durability else 0; dura_color = FORMAT_SUCCESS
+                    if ratio <= 0.1: dura_color = FORMAT_ERROR
+                    elif ratio <= ITEM_DURABILITY_LOW_THRESHOLD: dura_color = FORMAT_YELLOW
+                    durability_str = f" [{dura_color}{int(current_durability)}/{int(max_durability)}{FORMAT_RESET}]"
+
+                est_char_width = self.font.size("A")[0] if self.font else 8
+                # Slightly increase allowed chars as panel might be wider than half screen now
+                max_name_chars = max(8, (panel_layout["width"] // est_char_width) - len(slot_abbr) - len(self.text_formatter.remove_format_codes(durability_str)) - 7)
+                item_name_display = item.name
+                if len(item_name_display) > max_name_chars: item_name_display = item_name_display[:max_name_chars-3] + "..."
+                return f"{slot_abbr}: {item_name_display}{durability_str}"
+
+            slot_abbrs = {"main_hand": "MH", "off_hand": "OH", "head": "Hd", "body": "Bd", "hands": "Hn", "feet": "Ft", "neck": "Nk"}
+            # Display fewer slots if needed, prioritize main/off/body/head?
+            slots_to_display = ["main_hand", "off_hand", "head", "body", "hands", "feet", "neck"]
+
+            for slot_key in slots_to_display:
+                if current_y >= max_y: break # Height check before render
+                item = player.equipment.get(slot_key)
+                abbr = slot_abbrs.get(slot_key, slot_key[:2].upper())
+                line_part = format_equip_slot(abbr, item)
+                combined_line = f"- {line_part}"
+                # Render equipment line, handling format codes
+                current_y = self.text_formatter.render(self.screen, combined_line, (panel_rect.x + padding + 5, current_y), max_height=(max_y - current_y)) # Indent content slightly
+
+            current_y += section_spacing # Space after equipment
+
+        # --- Effects Section ---
+        title_rendered_effects = False
+        if current_y + line_height <= max_y:
+            title_surface = self.font.render("EFFECTS", True, DEFAULT_COLORS[FORMAT_TITLE])
+            self.screen.blit(title_surface, (panel_rect.x + padding, current_y))
+            current_y += line_height
+            title_rendered_effects = True
+
+        if title_rendered_effects:
+            if player.active_effects:
+                sorted_effects = sorted(player.active_effects, key=lambda e: e.get("name", "zzz"))
+                effects_shown = 0
+                max_effects_to_show = 3 # Limit number of effects shown
+                for effect in sorted_effects:
+                    if effects_shown >= max_effects_to_show or current_y + line_height > max_y:
+                        # If more effects exist but aren't shown, add an indicator
+                        if len(sorted_effects) > effects_shown and current_y + line_height <= max_y:
+                            more_surface = self.font.render("  ...", True, DEFAULT_COLORS[FORMAT_GRAY])
+                            self.screen.blit(more_surface, (panel_rect.x + padding + 5, current_y))
+                            current_y += line_height
+                        break
+
+                    name = effect.get('name', 'Unknown'); duration = effect.get('duration_remaining', 0)
+                    duration_str = f"{duration:.1f}s" if duration < 60 else f"{duration/60:.1f}m"
+                    effect_line_text = f"- {name} ({duration_str})"
+                    effect_surface = self.font.render(effect_line_text, True, TEXT_COLOR)
+                    self.screen.blit(effect_surface, (panel_rect.x + padding + 5, current_y))
+                    current_y += line_height
+                    effects_shown += 1
+            else:
+                if current_y + line_height <= max_y:
+                    none_surface = self.font.render("(None)", True, DEFAULT_COLORS[FORMAT_GRAY])
+                    self.screen.blit(none_surface, (panel_rect.x + padding + 5, current_y))
+                    current_y += line_height
+
+            current_y += section_spacing
+
+        # --- REMOVED SPELLS SECTION ---
+
+        # --- REMOVED QUESTS SECTION ---
+
+        # --- Combat Targets Section ---
+        title_rendered_targets = False
+        # Only show targets if actively in combat
+        if player.in_combat and player.combat_targets:
+            if current_y + line_height <= max_y:
+                title_surface = self.font.render("TARGETS", True, DEFAULT_COLORS[FORMAT_TITLE])
+                self.screen.blit(title_surface, (panel_rect.x + padding, current_y))
+                current_y += line_height
+                title_rendered_targets = True
+
+            if title_rendered_targets:
+                valid_targets = [t for t in player.combat_targets if hasattr(t, 'is_alive') and t.is_alive]
+                if valid_targets:
+                    from utils.text_formatter import format_target_name
+                    targets_shown = 0
+                    max_targets_to_show = 3 # Limit displayed targets
+                    for target in valid_targets:
+                        if targets_shown >= max_targets_to_show or current_y >= max_y:
+                            if len(valid_targets) > targets_shown and current_y + line_height <= max_y:
+                                    more_surface = self.font.render("  ...", True, DEFAULT_COLORS[FORMAT_GRAY])
+                                    self.screen.blit(more_surface, (panel_rect.x + padding + 5, current_y))
+                                    current_y += line_height
+                            break
+
+                        formatted_target_name = format_target_name(player, target)
+                        hp_str = ""
+                        if hasattr(target, 'health') and hasattr(target, 'max_health') and target.max_health > 0:
+                                health_percent = (target.health / target.max_health) * 100
+                                hp_color = FORMAT_SUCCESS
+                                if health_percent <= 25: hp_color = FORMAT_ERROR
+                                elif health_percent <= 50: hp_color = FORMAT_HIGHLIGHT
+                                hp_str = f" ({hp_color}{int(target.health)}/{int(target.max_health)}{FORMAT_RESET})"
+
+                        target_line_text = f"- {formatted_target_name}{hp_str}"
+                        current_y = self.text_formatter.render(self.screen, target_line_text, (panel_rect.x + padding + 5, current_y), max_height=(max_y - current_y))
+                        targets_shown += 1
+                else: # No valid targets despite being in combat? Render (None).
+                    if current_y + line_height <= max_y:
+                        none_surface = self.font.render("(None)", True, DEFAULT_COLORS[FORMAT_GRAY])
+                        self.screen.blit(none_surface, (panel_rect.x + padding + 5, current_y))
+                        current_y += line_height
+                # No extra spacing needed at the very end

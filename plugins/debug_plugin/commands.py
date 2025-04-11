@@ -2,9 +2,12 @@
 plugins/debug_plugin/commands.py
 Command module for the Debug plugin.
 """
+import uuid
 from commands.commands import command
 from core.config import FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS
 from items.item_factory import ItemFactory
+from npcs.npc_factory import NPCFactory
+from utils.text_formatter import format_target_name
 
 def register_commands(plugin):
     @command("debug", ["dbg"], "system", "Control debug mode and list available debug commands.\n\nUsage: debug [on|off|status]")
@@ -185,43 +188,131 @@ def register_commands(plugin):
             plugin.world.game.plugin_manager.on_room_enter(region_id, room_id)
         return f"Teleported to {region_id}:{room_id}\n\n{plugin.world.look()}"
     
-    @command("spawn", ["create"], "debug", "Spawn an item or NPC.\n\nUsage: spawn item <item_type> [<n>] or spawn npc <template_name> [<n>]")
+    @command("spawn", ["create"], "debug", "Spawn an item or NPC.\n\nUsage:\n  spawn item <item_id> [quantity]\n  spawn npc <template_id> [level] [name...]")
     def spawn_command_handler(args, context):
-        if not plugin.world:
-            return "World not available"
-        if not args or args[0] not in ["item", "npc"]:
-            return "Usage: spawn item <item_type> [<n>] or spawn npc <template_name> [<n>]"
-        spawn_type = args[0]
-        if spawn_type == "item" and len(args) > 1:
-            from items.item import ItemFactory
-            item_type = args[1]
-            name = " ".join(args[2:]) if len(args) > 2 else f"Debug {item_type}"
+        world = plugin.world
+        player = world.player if world else None # Get player for context if needed
+
+        if not world:
+            return f"{FORMAT_ERROR}World not available{FORMAT_RESET}"
+        if not args or args[0].lower() not in ["item", "npc"]:
+            return f"{FORMAT_ERROR}Usage: spawn item <item_id> [qty] | spawn npc <template_id> [level] [name...]{FORMAT_RESET}"
+
+        spawn_type = args[0].lower()
+
+        # --- Item Spawning (Unchanged, but added quantity) ---
+        if spawn_type == "item":
+            if len(args) < 2:
+                # List available item templates
+                available_items = sorted(world.item_templates.keys()) if hasattr(world, 'item_templates') else ["None"]
+                return f"{FORMAT_ERROR}Usage: spawn item <item_id> [quantity]\nAvailable IDs (partial): {', '.join(available_items[:20])}...{FORMAT_RESET}"
+            item_id = args[1]
+            quantity = 1
+            if len(args) > 2:
+                try:
+                    quantity = int(args[2])
+                    if quantity <= 0: return f"{FORMAT_ERROR}Quantity must be positive.{FORMAT_RESET}"
+                except ValueError:
+                    return f"{FORMAT_ERROR}Invalid quantity '{args[2]}'.{FORMAT_RESET}"
+
             try:
-                item = ItemFactory.create_item(item_type, name=name, description=f"A debug {item_type.lower()} item.")
-                plugin.world.add_item_to_room(
-                    plugin.world.current_region_id,
-                    plugin.world.current_room_id,
-                    item
-                )
-                return f"Spawned {item.name} ({item_type}) in current room"
+                spawned_count = 0
+                item_name = ""
+                for _ in range(quantity):
+                    item = ItemFactory.create_item_from_template(item_id, world) # Use template creation
+                    if item:
+                        item_name = item.name # Store name from first successful creation
+                        world.add_item_to_room(
+                            world.current_region_id,
+                            world.current_room_id,
+                            item
+                        )
+                        spawned_count += 1
+                    else:
+                        return f"{FORMAT_ERROR}Failed to create item from template ID: {item_id}{FORMAT_RESET}"
+
+                plural_s = "s" if spawned_count > 1 else ""
+                return f"{FORMAT_SUCCESS}Spawned {spawned_count} {item_name}{plural_s} ({item_id}) in current room.{FORMAT_RESET}"
+
             except Exception as e:
-                return f"Error spawning item: {str(e)}"
-        elif spawn_type == "npc" and len(args) > 1:
-            from npcs.npc_factory import NPCFactory
-            template_name = args[1]
-            name = " ".join(args[2:]) if len(args) > 2 else None
+                return f"{FORMAT_ERROR}Error spawning item: {e}{FORMAT_RESET}"
+
+        # --- NPC Spawning (REVISED) ---
+        elif spawn_type == "npc":
+            if not hasattr(world, 'npc_templates'):
+                return f"{FORMAT_ERROR}NPC templates not loaded in world.{FORMAT_RESET}"
+            if len(args) < 2:
+                # List available NPC templates
+                available_npcs = sorted(world.npc_templates.keys()) if world.npc_templates else ["None"]
+                return f"{FORMAT_ERROR}Usage: spawn npc <template_id> [level] [name...]\nAvailable IDs (partial): {', '.join(available_npcs[:20])}...{FORMAT_RESET}"
+
+            template_id = args[1]
+
+            # Validate template ID
+            if template_id not in world.npc_templates:
+                available_npcs = sorted(world.npc_templates.keys())
+                return f"{FORMAT_ERROR}Unknown NPC template ID: '{template_id}'.\nAvailable: {', '.join(available_npcs)}{FORMAT_RESET}"
+
+            # Parse optional level and name
+            level_override = None
+            name_override = None
+            remaining_args = args[2:]
+
+            if remaining_args:
+                # Check if the first remaining arg is a number (level)
+                if remaining_args[0].isdigit():
+                    try:
+                        level_override = int(remaining_args[0])
+                        if level_override <= 0:
+                             return f"{FORMAT_ERROR}Level override must be positive.{FORMAT_RESET}"
+                        # The rest is the name
+                        if len(remaining_args) > 1:
+                            name_override = " ".join(remaining_args[1:])
+                    except ValueError: # Should not happen due to isdigit, but safety
+                         return f"{FORMAT_ERROR}Invalid level value '{remaining_args[0]}'.{FORMAT_RESET}"
+                else:
+                    # If not a number, the whole remaining part is the name
+                    name_override = " ".join(remaining_args)
+
             try:
-                npc_args = {"name": name} if name else {}
-                npc = NPCFactory.create_npc(template_name, **npc_args)
+                # Prepare overrides for the factory
+                overrides = {
+                    "current_region_id": world.current_region_id,
+                    "current_room_id": world.current_room_id,
+                    "home_region_id": world.current_region_id, # Spawned NPCs consider current location home
+                    "home_room_id": world.current_room_id
+                }
+                if level_override is not None:
+                    overrides["level"] = level_override
+                if name_override is not None:
+                    overrides["name"] = name_override # Pass name override
+
+                # Generate a unique instance ID for the spawned NPC
+                instance_id = f"debug_spawn_{template_id}_{uuid.uuid4().hex[:6]}"
+
+                # Use the correct factory method
+                npc = NPCFactory.create_npc_from_template(template_id, world, instance_id, **overrides)
+
                 if not npc:
-                    return f"Unknown NPC template: {template_name}"
-                npc.current_region_id = plugin.world.current_region_id
-                npc.current_room_id = plugin.world.current_room_id
-                plugin.world.add_npc(npc)
-                return f"Spawned {npc.name} ({template_name}) in current room"
+                    # Factory method already prints errors, but add context
+                    return f"{FORMAT_ERROR}Failed to create NPC instance from template '{template_id}'. Check logs.{FORMAT_RESET}"
+
+                # Add the NPC to the world
+                world.add_npc(npc)
+
+                # Format the success message using the NPC's *actual* final name and level
+                final_name = npc.name
+                final_level = npc.level
+                # Use the text formatter helper for consistent display
+                formatted_name = format_target_name(player, npc) if player else final_name
+                return f"{FORMAT_SUCCESS}Spawned {formatted_name} (Lvl {final_level}, ID: {instance_id}) in current room.{FORMAT_RESET}"
+
             except Exception as e:
-                return f"Error spawning NPC: {str(e)}"
-        return "Invalid spawn command"
+                import traceback
+                traceback.print_exc()
+                return f"{FORMAT_ERROR}Error spawning NPC: {e}{FORMAT_RESET}"
+
+        return f"{FORMAT_ERROR}Invalid spawn type '{spawn_type}'.{FORMAT_RESET}" # Should not be reached
     
     @command("heal", ["restore"], "debug", "Heal the player.\n\nUsage: heal [amount]")
     def heal_command_handler(args, context):

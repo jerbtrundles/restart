@@ -37,7 +37,8 @@ DEFAULT_CONFIG = {
             "wolf": 5,
             "goblin": 3,
             "giant_rat": 2,
-            "bandit": 1 # Bandits might hide in forests
+            "bandit": 1, # Bandits might hide in forests
+            "giant_spider": 4
         },
         "caves": {
             "giant_rat": 4,
@@ -60,7 +61,8 @@ DEFAULT_CONFIG = {
             "giant_rat": 3, # Swamp rats
             "goblin": 2, # Mire Goblins?
             # Add swamp monsters later (e.g., "giant_leech", "bog_creeper")
-            "skeleton": 1 # Lost souls
+            "skeleton": 1, # Lost souls
+            "giant_spider": 4
         },
         "farmland": { # Should be safe if marked, but maybe occasional pests?
             "giant_rat": 2,
