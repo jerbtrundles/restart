@@ -30,71 +30,83 @@ def _serialize_item_reference(item: 'Item', quantity: int, world: 'World') -> Op
     """
     Creates a dictionary representing an item reference for saving.
     Includes item_id (template ID), quantity (if stackable & >1), and property overrides
-    that differ from the template or represent dynamic state.
+    that differ from the template OR represent dynamic state.
     """
     if not item:
         return None
-    # Ensure item has an obj_id, which we assume corresponds to its template ID for lookup
     if not hasattr(item, 'obj_id') or not item.obj_id:
          print(f"Warning: Item '{getattr(item, 'name', 'Unknown')}' missing obj_id during serialization.")
          return None
 
     # Import factory locally to avoid circular dependencies at module level
-    from items.item_factory import ItemFactory
+    from items.item_factory import ItemFactory # Keep local import
 
-    template_id = item.obj_id # Assume obj_id IS the template_id for items
+    template_id = item.obj_id
     template = ItemFactory.get_template(template_id, world)
 
     override_props = {}
     # Define properties that ALWAYS represent dynamic state and should be saved if present
     known_dynamic_props = {"durability", "uses", "is_open", "locked", "contains"} # 'contains' for Containers
 
+    # --- Revised Property Comparison Logic ---
     if template:
-        # Compare current item properties against template properties
         template_props = template.get("properties", {})
         for key, current_value in item.properties.items():
-            # Always save known dynamic properties if they exist on the item
+            # Condition 1: Always save known dynamic properties if they exist on the item
             if key in known_dynamic_props:
                 # Special handling for container contents
-                if key == "contains" and isinstance(item, ItemFactory._get_item_class("Container")): # Check if it's a Container
-                    # Serialize contained items recursively
+                # Get the Container class safely using the factory's helper
+                ContainerClass = ItemFactory._get_item_class("Container")
+                if key == "contains" and ContainerClass and isinstance(item, ContainerClass):
                     contained_refs = []
-                    for contained_item in current_value: # current_value is List[Item]
-                         ref = _serialize_item_reference(contained_item, 1, world) # Quantity inside container is 1 per entry
-                         if ref: contained_refs.append(ref)
-                    # Only save 'contains' if it's different from template's initial items,
-                    # or if it's simply not empty (safer)
-                    # TODO: Refine comparison with template's initial_items if necessary
-                    if contained_refs: # Save if container has items dynamically added
-                         override_props[key] = contained_refs
+                    # Ensure current_value is iterable (it should be a list)
+                    if isinstance(current_value, list):
+                        for contained_item in current_value:
+                            # Recursively serialize contained items
+                            ref = _serialize_item_reference(contained_item, 1, world)
+                            if ref: contained_refs.append(ref)
+                    # Only save 'contains' if it has items (simplest robust approach)
+                    if contained_refs:
+                        override_props[key] = contained_refs
                 else:
-                    # Save if dynamic prop exists
+                    # Save other known dynamic props directly
                     override_props[key] = current_value
-            # Check other properties: save if not in template or value differs
+
+            # Condition 2: Save other properties if not in template or value differs
+            # (This handles properties not in known_dynamic_props)
             elif key not in template_props or template_props.get(key) != current_value:
-                 # Exclude core attributes that should come from template unless explicitly overridden elsewhere
-                 # (e.g., weight, value, stackable, name, description, equip_slot, type)
-                 # This assumes these core attributes DON'T change dynamically relative to template.
-                 # If they *can* (e.g., name change), they need different handling.
-                 if key not in ["weight", "value", "stackable", "name", "description", "equip_slot", "type"]:
+                 # Exclude core attributes unless they *can* be different from template
+                 # (e.g., if a spell temporarily changes an item's value/weight - unlikely now)
+                 # We primarily rely on template for these base stats.
+                 if key not in ["weight", "value", "stackable", "name", "description", "equip_slot", "type", "max_durability", "max_uses", "effect_type", "effect_value", "damage", "defense", "target_id", "treasure_type"]: # Added more potentially static props
                     override_props[key] = current_value
+
     else:
-        # No template found - this is problematic for reference saving.
-        # Fallback: Save known dynamic state, but log a clear warning.
-        print(f"Warning: Item template '{template_id}' not found during serialization of '{item.name}'. Saving limited dynamic state.")
+        # No template: Fallback - save known dynamic state + log warning
+        print(f"Warning: Item template '{template_id}' not found during serialization of '{item.name}'. Saving only known dynamic state.")
         for key in known_dynamic_props:
             if key in item.properties:
-                if key == "contains" and isinstance(item, ItemFactory._get_item_class("Container")):
+                # Handle container contents here too
+                ContainerClass = ItemFactory._get_item_class("Container")
+                if key == "contains" and ContainerClass and isinstance(item, ContainerClass):
                     contained_refs = []
-                    for contained_item in item.properties[key]:
-                         ref = _serialize_item_reference(contained_item, 1, world)
-                         if ref: contained_refs.append(ref)
+                    if isinstance(item.properties[key], list):
+                        for contained_item in item.properties[key]:
+                            ref = _serialize_item_reference(contained_item, 1, world)
+                            if ref: contained_refs.append(ref)
                     if contained_refs: override_props[key] = contained_refs
                 else:
                     override_props[key] = item.properties[key]
+    # --- End Revised Logic ---
+
+    # --- Add Debug Logging ---
+    # Check debug mode via the game manager linked to the world
+    if world and world.game and world.game.debug_mode and override_props:
+         print(f"[Save DBG] Overrides for {item.name} ({template_id}): {override_props}")
+    # --- End Debug Logging ---
 
     # --- Construct the final reference dictionary ---
-    ref = {"item_id": template_id} # Use the template ID
+    ref = {"item_id": template_id}
 
     # Only include quantity if stackable and more than 1 is being referenced
     if item.stackable and quantity > 1:

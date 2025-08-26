@@ -185,11 +185,12 @@ NPC_DEFAULT_BEHAVIOR = "stationary"
 NPC_DEFAULT_WANDER_CHANCE = 0.3
 NPC_DEFAULT_MOVE_COOLDOWN = 10 # Seconds
 NPC_DEFAULT_AGGRESSION = 0.0
+NPC_DEFAULT_WANDER = 0.3
 NPC_DEFAULT_FLEE_THRESHOLD = 0.2 # Flee below 20% health
 NPC_DEFAULT_RESPAWN_COOLDOWN = 600 # Seconds (10 minutes)
 NPC_DEFAULT_COMBAT_COOLDOWN = 3.0 # Seconds between any combat action
 NPC_DEFAULT_ATTACK_COOLDOWN = 3.0 # Seconds between physical attacks
-NPC_DEFAULT_SPELL_CAST_CHANCE = 0.3 # 30% chance to try casting a spell if available
+NPC_DEFAULT_SPELL_CAST_CHANCE = 0.0 # 30% chance to try casting a spell if available
 NPC_BASE_ATTACK_POWER = 3
 NPC_BASE_DEFENSE = 2
 NPC_MAX_COMBAT_MESSAGES = 5
@@ -324,9 +325,17 @@ VILLAGER_LAST_NAMES = [
 # --- Status Effect Settings ---
 EFFECT_DEFAULT_TICK_INTERVAL = 3.0 # How often DoTs tick by default (seconds)
 EFFECT_POISON_DAMAGE_TYPE = "poison" # Damage type for standard poison
+EFFECT_FIRE_DAMAGE_TYPE = "fire"
+EFFECT_COLD_DAMAGE_TYPE = "cold"
+EFFECT_ELECTRIC_DAMAGE_TYPE = "electric"
 
 STATUS_PANEL_WIDTH = 400
 STATUS_PANEL_PADDING = 5
 
 SIDE_PANEL_WIDTH = 250 # <<< NEW: Width for left and right status panels
 STATUS_PANEL_PADDING = 5
+
+NPC_BASE_XP_TO_LEVEL = 150 # NPCs might level a bit slower?
+NPC_XP_TO_LEVEL_MULTIPLIER = 1.6
+NPC_LEVEL_UP_STAT_INCREASE = 1 # Simple stat gain for now
+NPC_LEVEL_UP_HEALTH_HEAL_PERCENT = 0.5 # Heal 50% on level up

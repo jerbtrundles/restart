@@ -4,7 +4,7 @@ Base class for all game objects with common functionality.
 """
 from typing import Dict, Any, List, Optional, Tuple
 import uuid
-
+from core.config import EFFECT_DEFAULT_TICK_INTERVAL 
 
 class GameObject:
     def __init__(self, obj_id: str = None, name: str = "Unknown", 
@@ -12,8 +12,9 @@ class GameObject:
         self.obj_id = obj_id if obj_id else f"{self.__class__.__name__.lower()}_{uuid.uuid4().hex[:8]}"
         self.name = name
         self.description = description
-        self.properties: Dict[str, Any] = {}  # Additional properties for derived classes
-        self.active_effects: List[Dict[str, Any]] = [] # <<< ADD active effects list
+        self.properties: Dict[str, Any] = {}
+        self.active_effects: List[Dict[str, Any]] = [] 
+        self.is_alive: bool = True # Assume objects start alive
 
     def get_description(self) -> str:
         return f"{self.name}\n\n{self.description}"
@@ -24,7 +25,8 @@ class GameObject:
             "id": self.obj_id,
             "name": self.name,
             "description": self.description,
-            "properties": self.properties
+            "properties": self.properties,
+            "is_alive": self.is_alive 
         }
     
     @classmethod
@@ -35,6 +37,7 @@ class GameObject:
             description=data.get("description", "No description")
         )
         obj.properties = data.get("properties", {})
+        obj.is_alive = data.get("is_alive", True) 
         return obj
     
     def update_property(self, key: str, value: Any) -> None:
@@ -44,54 +47,115 @@ class GameObject:
         return self.properties.get(key, default)
 
     def apply_effect(self, effect_data: Dict[str, Any], current_time: float) -> Tuple[bool, str]:
-        """
-        Applies a status effect to this game object.
-
-        Args:
-            effect_data: A dictionary containing the base definition of the effect
-                         (type, name, base_duration, damage_per_tick, etc.).
-            current_time: The current absolute time (time.time()).
-
-        Returns:
-            Tuple (success: bool, message: str)
-        """
-        if not self.is_alive: return False, f"{self.name} cannot be affected." # Assuming is_alive exists
+        if not self.is_alive: return False, f"{self.name} cannot be affected."
 
         effect_name = effect_data.get("name", "Unknown Effect")
-        effect_type = effect_data.get("type", "unknown")
+        # print(f"[DEBUG {self.__class__.__name__}.apply_effect] Received attempt to apply effect: '{effect_name}' to {self.name}")
 
-        # --- Check for existing effect of the same name ---
-        # Simple rule: New application refreshes duration (overwrites old one)
         existing_effect_index = -1
         for i, existing in enumerate(self.active_effects):
             if existing.get("name") == effect_name:
                 existing_effect_index = i
                 break
 
-        # Prepare the new effect instance
-        new_effect_instance = effect_data.copy() # Copy base data
-        new_effect_instance["id"] = f"effect_{uuid.uuid4().hex[:8]}" # Unique instance ID
-        new_effect_instance["duration_remaining"] = new_effect_instance.get("base_duration", 10.0) # Set remaining from base
-        new_effect_instance["last_tick_time"] = current_time # Initialize tick timer
+        new_effect_instance = effect_data.copy()
+        new_effect_instance["id"] = f"effect_{uuid.uuid4().hex[:8]}"
+        new_effect_instance["duration_remaining"] = new_effect_instance.get("base_duration", 10.0)
+        new_effect_instance["last_tick_time"] = current_time 
+        new_effect_instance["last_processed_time"] = current_time
 
-        # --- Apply or Replace ---
         if existing_effect_index != -1:
-            # Replace existing effect
             self.active_effects[existing_effect_index] = new_effect_instance
-            # Message depends on viewer (implemented where apply_effect is called)
-            # Base message could be: f"The {effect_name} on {self.name} is renewed."
+            # print(f"[DEBUG {self.__class__.__name__}.apply_effect] Refreshed effect '{effect_name}' on {self.name}.")
         else:
-            # Add new effect
             self.active_effects.append(new_effect_instance)
-            # Base message could be: f"{self.name} is afflicted with {effect_name}."
+            # print(f"[DEBUG {self.__class__.__name__}.apply_effect] Added new effect '{effect_name}' to {self.name}.")
+        
+        # print(f"[DEBUG {self.__class__.__name__}.apply_effect] Active effects on {self.name} count: {len(self.active_effects)}")
+        return True, ""
 
-        # Success - actual message formatting happens in the calling function (attack/cast)
-        # This just confirms the effect was added/refreshed internally.
-        return True, "" # Return success, message handled by caller
-
-    # --- NEW: Method to remove effects ---
     def remove_effect(self, effect_name: str) -> bool:
-        """Removes the first found effect instance with the matching name."""
         original_count = len(self.active_effects)
         self.active_effects = [eff for eff in self.active_effects if eff.get("name") != effect_name]
-        return len(self.active_effects) < original_count # Return True if an effect was removed
+        return len(self.active_effects) < original_count
+
+    def process_active_effects(self, current_time: float, time_delta: float) -> List[str]:
+        """
+        Processes active status effects, applying ticks and handling expirations.
+        Args:
+            current_time: The current absolute game time.
+            time_delta: The time elapsed since the last update tick for effects.
+        Returns:
+            A list of simple, factual messages generated by effects.
+        """
+        if not self.is_alive: # If object died between updates, clear effects.
+            if self.active_effects:
+                self.active_effects.clear()
+                # print(f"[DEBUG {self.name}] Effects cleared due to death prior to processing.")
+            return []
+
+        effects_processed_this_tick = []
+        expired_effects_indices = []
+        tick_messages = []
+
+        for i in range(len(self.active_effects) - 1, -1, -1):
+            effect = self.active_effects[i]
+            effect_id = effect.get("id")
+            if not effect_id or effect_id in effects_processed_this_tick: continue
+            effects_processed_this_tick.append(effect_id)
+
+            # 1. Update Duration
+            # Use the provided time_delta which should be accurate for this processing cycle.
+            effect["duration_remaining"] -= time_delta
+            effect["last_processed_time"] = current_time # Update last processed to current
+
+            # 2. Check Expiration
+            if effect["duration_remaining"] <= 0:
+                expired_effects_indices.append(i)
+                tick_messages.append(f"The {effect.get('name', 'effect')} on {self.name} wears off.")
+                continue
+
+            # 3. Process Ticks (for DoTs)
+            if effect.get("type") == "dot":
+                tick_interval = effect.get("tick_interval", EFFECT_DEFAULT_TICK_INTERVAL)
+                last_tick = effect.get("last_tick_time", current_time - tick_interval) # Ensure first tick can happen
+
+                # Check how many ticks should have occurred
+                time_since_last_tick = current_time - last_tick
+                num_ticks_due = int(time_since_last_tick // tick_interval)
+
+                for _ in range(num_ticks_due):
+                    if not self.is_alive: break # Stop ticking if DoT killed it
+
+                    damage = effect.get("damage_per_tick", 0)
+                    dmg_type = effect.get("damage_type", "unknown")
+                    if damage > 0 and hasattr(self, 'take_damage'):
+                        damage_taken = self.take_damage(damage, dmg_type)
+                        effect["last_tick_time"] += tick_interval # Advance last_tick_time by one interval
+                        
+                        if damage_taken > 0:
+                            tick_messages.append(f"{self.name} takes {damage_taken} {dmg_type} damage from {effect.get('name', 'effect')}.")
+                        # else: # Optional: message if resisted
+                        #     tick_messages.append(f"{self.name} resists the {dmg_type} damage from {effect.get('name', 'effect')}.")
+
+                        if not self.is_alive: # Check death *after* take_damage
+                            tick_messages.append(f"{self.name} succumbs to the {effect.get('name', 'effect')}!")
+                            break # Exit the tick loop for this effect if dead
+                    elif not hasattr(self, 'take_damage'):
+                        print(f"Warning: {self.name} has a DoT but no take_damage method.")
+                        break # Cannot process DoT further
+
+            if not self.is_alive: # If a DoT killed the object, stop processing other effects
+                break
+        
+        # Remove expired effects safely
+        for index in sorted(expired_effects_indices, reverse=True):
+            if 0 <= index < len(self.active_effects):
+                del self.active_effects[index]
+        
+        # If object died during effect processing, ensure all effects are cleared
+        if not self.is_alive and self.active_effects:
+            # print(f"[DEBUG {self.name}] Effects cleared because object died during processing.")
+            self.active_effects.clear()
+
+        return tick_messages

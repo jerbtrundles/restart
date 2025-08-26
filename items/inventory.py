@@ -137,44 +137,57 @@ class Inventory:
 
         return True, f"Added {item.name} to inventory." # Use generic message
 
-
     def remove_item(self, obj_id: str, quantity: int = 1) -> Tuple[Optional[Item], int, str]:
         """
         Remove an item from the inventory by obj_id.
+        Returns the specific item instance removed (last one processed if stackable),
+        the quantity actually removed, and a status message.
         """
         total_available = sum(slot.quantity for slot in self.slots
                              if slot.item and slot.item.obj_id == obj_id)
 
         if total_available == 0:
-            return None, 0, "You don't have that item."
+            # Attempt to find by instance ID if obj_id failed (e.g., for unique quest items)
+            instance_to_remove = self.find_item_by_id(obj_id)
+            if instance_to_remove:
+                 if self.remove_item_instance(instance_to_remove):
+                      # Removed a specific instance successfully
+                      return instance_to_remove, 1, f"Removed {instance_to_remove.name}."
+                 else:
+                      return None, 0, f"Failed to remove specific instance {obj_id}."
+            else:
+                 # Truly not found by template ID or instance ID
+                 return None, 0, "You don't have that item."
+
 
         quantity_to_remove = min(total_available, quantity)
         actual_removed_count = 0
-        removed_item_type = None # To store the type of item removed
+        # --- Store the *instance* removed ---
+        last_removed_instance: Optional[Item] = None
 
         # Iterate backwards to handle removing from multiple slots correctly
         for slot in reversed(self.slots):
             if slot.item and slot.item.obj_id == obj_id:
                  if actual_removed_count < quantity_to_remove:
                       needed = quantity_to_remove - actual_removed_count
-                      item_ref, removed_from_slot = slot.remove(needed)
-                      if item_ref and not removed_item_type:
-                           removed_item_type = item_ref # Get the item type
-                      actual_removed_count += removed_from_slot
+                      # slot.remove returns (ItemType, quantity_removed)
+                      removed_item_type, removed_from_slot = slot.remove(needed)
+
+                      if removed_item_type and removed_from_slot > 0:
+                           # Store the actual instance from the slot *before* potentially clearing it
+                           last_removed_instance = removed_item_type # Store the instance reference
+                           actual_removed_count += removed_from_slot
 
             if actual_removed_count >= quantity_to_remove:
                  break
 
-        if removed_item_type:
-             # Return a *copy* or the reference depending on desired behavior.
-             # Returning the type allows creating a new instance if needed.
-             # For dropping, returning the type might be enough.
-             # If putting in container, maybe pass the actual instance? Let's return type for now.
-             return removed_item_type, actual_removed_count, f"Removed {actual_removed_count} {removed_item_type.name}."
+        if last_removed_instance:
+             # Return the instance, count, and message
+             return last_removed_instance, actual_removed_count, f"Removed {actual_removed_count} {last_removed_instance.name}."
         else:
-             # Should not happen if total_available > 0
+             # Should not happen if total_available > 0 and quantity_to_remove > 0
+             print(f"Warning: Inventory removal logic failed for {obj_id}, qty {quantity}")
              return None, 0, "Error removing item."
-
 
     def get_item(self, obj_id: str) -> Optional[Item]:
         """Get an item reference by obj_id without removing."""

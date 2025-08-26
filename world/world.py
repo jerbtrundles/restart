@@ -506,10 +506,6 @@ class World:
              return messages
         self.last_update_time = current_time_abs
 
-        # Update Player (e.g., for regeneration)
-        if self.player and self.player.is_alive:
-             self.player.update(current_time_abs) # Pass absolute time
-
         # --- NPC Update and Removal ---
         npcs_to_remove = [] # Store IDs of NPCs to remove
         # Iterate over a copy of keys, as we might modify the dictionary

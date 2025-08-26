@@ -12,8 +12,8 @@ from utils.text_formatter import format_target_name
 from utils.utils import _reverse_direction, calculate_xp_gain, format_loot_drop_message, format_name_for_display, format_npc_arrival_message, format_npc_departure_message, get_arrival_phrase, get_departure_phrase
 from core.config import (
     DEFAULT_FACTION_RELATIONS, EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_ATTACK_POWER, NPC_BASE_DEFENSE,
-    NPC_BASE_HEALTH, NPC_BASE_HIT_CHANCE, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_ATTACK_COOLDOWN, NPC_DEFAULT_BEHAVIOR, NPC_DEFAULT_COMBAT_COOLDOWN, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_STATS, NPC_DEFAULT_WANDER_CHANCE, NPC_HEALTH_DESC_THRESHOLDS,
-    NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_MAX_COMBAT_MESSAGES, WORLD_UPDATE_INTERVAL
+    NPC_BASE_HEALTH, NPC_BASE_HIT_CHANCE, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_ATTACK_COOLDOWN, NPC_DEFAULT_BEHAVIOR, NPC_DEFAULT_COMBAT_COOLDOWN, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_STATS, NPC_DEFAULT_WANDER_CHANCE, NPC_HEALTH_DESC_THRESHOLDS,
+    NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_LEVEL_UP_HEALTH_HEAL_PERCENT, NPC_LEVEL_UP_STAT_INCREASE, NPC_MAX_COMBAT_MESSAGES, NPC_XP_TO_LEVEL_MULTIPLIER, WORLD_UPDATE_INTERVAL
 )
 
 if TYPE_CHECKING:
@@ -32,15 +32,25 @@ class NPC(GameObject):
         self.stats = NPC_DEFAULT_STATS.copy() # Use copy
 
         self.level = level
+        # --- Experience Attributes ---
+        self.experience: int = 0
+        self.experience_to_level: int = NPC_BASE_XP_TO_LEVEL # <<< Use config
+        # --- End Experience ---
+
         self.is_trading: bool = False # <<< ADDED: Flag to indicate trading state
 
+        # --- Max Health Calculation (Ensure it uses self.level) ---
         base_hp = NPC_BASE_HEALTH + int(self.stats.get('constitution', 8) * NPC_CON_HEALTH_MULTIPLIER)
         level_hp_bonus = (self.level - 1) * (NPC_LEVEL_HEALTH_BASE_INCREASE + int(self.stats.get('constitution', 8) * NPC_LEVEL_CON_HEALTH_MULTIPLIER))
         self.max_health = base_hp + level_hp_bonus
-        self.health = min(health, self.max_health) # Use provided health arg, clamped by calculated max
+        # --- End Max Health ---
 
-        self.friendly = friendly
-        self.faction = "neutral"
+        # Health initialization (clamp by calculated max)
+        # Note: If loading from save, self.health will be overwritten later
+        self.health = min(health, self.max_health)
+
+        self.faction = "neutral" # Default, often overridden by template
+        self.friendly = friendly # Set based on arg, potentially overridden
 
         self.inventory = Inventory(max_slots=10, max_weight=50.0)
         self.current_region_id = None
@@ -273,29 +283,42 @@ class NPC(GameObject):
 
         return result
 
-
     def take_damage(self, amount: int, damage_type: str) -> int:
         """
-        Handle taking damage from combat
+        Handle taking damage from combat, considering damage type for resistances.
         
         Returns: Actual damage taken
         """
-        # Add basic magic resist?
-        magic_resist = getattr(self, 'stats', {}).get('magic_resist', 0) # Check if NPC has stats and resist
-        # How to know if damage is magic? Needs more info passed to take_damage potentially.
-        # For now, just use physical defense.
-        reduced_damage = max(0, amount - self.defense)
-        actual_damage = max(MINIMUM_DAMAGE_TAKEN, reduced_damage) if amount > 0 else 0
+        if not self.is_alive: return 0 # Cannot take damage if already dead
+
+        final_reduction = 0
+        if damage_type == "physical":
+            final_reduction = self.defense # Physical defense from NPC stats/armor
+        # --- MODIFIED: Handle various damage types for magic_resist ---
+        elif damage_type in ["magical", "fire", "cold", "electric", "poison", "arcane"]: # Add all relevant non-physical types
+            final_reduction = self.stats.get("magic_resist", 0) # Use magic_resist stat
+        # --- END MODIFIED ---
+        # Future: Add specific elemental resistances (e.g., self.properties.get("fire_resist", 0))
+
+        reduced_damage = max(0, amount - final_reduction)
+        # Ensure minimum 1 damage IF any damage got past reduction AND initial amount was > 0
+        actual_damage = max(MINIMUM_DAMAGE_TAKEN, reduced_damage) if amount > 0 and reduced_damage > 0 else 0
 
         old_health = self.health
         new_health = old_health - actual_damage
-        self.health = new_health
-        self.in_combat = True # Enter combat when damaged       
+        self.health = new_health # Apply damage
         
+        # Enter combat if damaged (and not already in it implicitly)
+        self.in_combat = True 
+
         if self.health <= 0:
-            self.is_alive = False
-            self.health = 0
-        return actual_damage
+            self.is_alive = False # Set flag immediately
+            self.health = 0       # Ensure health doesn't go negative
+            # Note: The actual self.die() method with loot drops is usually called
+            # by the attacker's logic (Player.attack, Player.cast_spell, NPC.try_attack)
+            # after this take_damage method returns.
+        
+        return old_health - self.health # Return actual damage dealt
 
     def heal(self, amount: int) -> int:
         """
@@ -328,86 +351,60 @@ class NPC(GameObject):
         relation = self.get_relation_to(other)
         return relation < 0
 
-    def die(self, world: 'World') -> List[Item]: # Return Item instances
-        """Handle death - check if summoned before dropping loot."""
-        # --- Check if Summoned ---
+    def die(self, world: 'World') -> List[Item]:
         if self.properties.get("is_summoned"):
-            self.despawn(world, silent=True) # Despawn silently on death
-            return [] # Return empty list, no loot from summons
-        # --- End Summon Check ---
-        self.is_alive = False
+            self.despawn(world, silent=True)
+            return []
+        
+        self.is_alive = False # Ensure is_alive is set before clearing effects
         self.health = 0
         self.in_combat = False
         self.combat_target = None
-        self.combat_targets.clear() # Clear targets on death
+        self.combat_targets.clear()
 
-        # Record time of death for respawn calculation
         self.spawn_time = time.time() - getattr(world, 'start_time', time.time())
 
-        # Generate loot from loot table (references item_ids)
         dropped_items: List[Item] = []
         if self.loot_table:
             for item_id, loot_data in self.loot_table.items():
-                if item_id == "gold_value":
-                    continue # Gold is handled directly on kill, not as a dropped item
-
-                # Check if loot_data is a dictionary (new format)
+                if item_id == "gold_value": continue
                 if isinstance(loot_data, dict):
                     chance = loot_data.get("chance", 0)
                     if random.random() < chance:
                         try:
-                            # Determine quantity
                             qty_range = loot_data.get("quantity", [1, 1])
-                            # Ensure qty_range is a list/tuple of two ints
-                            if not isinstance(qty_range, (list, tuple)) or len(qty_range) != 2:
-                                qty_range = [1, 1]
+                            if not isinstance(qty_range, (list, tuple)) or len(qty_range) != 2: qty_range = [1, 1]
                             quantity = random.randint(qty_range[0], qty_range[1])
-
-                            # Create item(s) using ItemFactory
                             for _ in range(quantity):
-                                item = ItemFactory.create_item_from_template(item_id, world) # Pass world
+                                item = ItemFactory.create_item_from_template(item_id, world)
                                 if item:
                                     if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
                                         dropped_items.append(item)
-                                    elif not world:
-                                            print(f"Warning: World object missing in die() for {self.name}, cannot drop {item_id}")
-                                else:
-                                        print(f"Warning: ItemFactory failed to create loot item '{item_id}' for {self.name}.")
-
+                                    elif not world: print(f"Warning: World object missing in die() for {self.name}, cannot drop {item_id}")
+                                else: print(f"Warning: ItemFactory failed to create loot item '{item_id}' for {self.name}.")
                         except Exception as e:
-                            print(f"Error processing loot item '{item_id}' for {self.name}: {e}")
-                            import traceback
-                            traceback.print_exc()
+                            print(f"Error processing loot item '{item_id}' for {self.name}: {e}"); import traceback; traceback.print_exc()
                 else:
-                    # Handle old format (direct chance) - DEPRECATED?
+                    # Old format handling (unchanged)
                     chance = loot_data
                     if random.random() < chance:
                             print(f"Warning: Deprecated loot format for {item_id} in {self.name}. Use object format.")
-                            # Attempt to create item assuming item_id is the template ID
                             item = ItemFactory.create_item_from_template(item_id, world)
                             if item:
                                 if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item):
                                     dropped_items.append(item)
-
-
-        # Drop inventory items (optional, based on game design)
         if hasattr(self, 'inventory'):
                 for slot in self.inventory.slots:
-                    if slot.item and random.random() < 0.1: # Low chance to drop inventory
+                    if slot.item and random.random() < 0.1:
                         item_to_drop = slot.item
                         qty_to_drop = slot.quantity if slot.item.stackable else 1
-                        # Create copies to drop if needed, or drop instance? Dropping instance is simpler
                         for _ in range(qty_to_drop):
-                            # Need to handle removing from NPC inventory vs dropping instance
-                            # Let's just add the item type to the room for now
-                            item_copy = ItemFactory.create_item_from_template(item_to_drop.obj_id, world) # Create a fresh copy
+                            item_copy = ItemFactory.create_item_from_template(item_to_drop.obj_id, world)
                             if item_copy:
                                 if world and world.add_item_to_room(self.current_region_id, self.current_room_id, item_copy):
                                     dropped_items.append(item_copy)
-                            elif not world:
-                                print(f"Warning: World object missing in die() for {self.name}, cannot drop inventory item {item_to_drop.name}")
-
-        return dropped_items # Return the list of actual Item instances dropped
+                            elif not world: print(f"Warning: World object missing in die() for {self.name}, cannot drop inventory item {item_to_drop.name}")
+        return dropped_items
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -421,7 +418,9 @@ class NPC(GameObject):
             "current_region_id": self.current_region_id,
             "current_room_id": self.current_room_id,
             "health": self.health,
-            "level": self.level,             # <<< SAVE ACTUAL LEVEL
+            "level": self.level,
+            "experience": self.experience, # <<< SAVE CURRENT XP
+            "experience_to_level": self.experience_to_level, # <<< SAVE XP TO LEVEL
             "is_alive": self.is_alive,
             "stats": self.stats.copy(),
             "ai_state": self.ai_state.copy(),
@@ -825,155 +824,127 @@ class NPC(GameObject):
     def try_attack(self, world, current_time: float) -> Optional[str]:
         """
         Try to perform a combat action (attack or spell) based on cooldowns and chance.
-        Awards XP to player if minion gets kill, and handles loot drops.
+        Awards XP to NPC killer or Player (if minion). Handles loot drops.
+        Formats messages for the player if they are present.
         """
         # General action cooldown check
         if current_time - self.last_combat_action < self.combat_cooldown:
             return None
 
-        # --- Target Validation ---
-        player = getattr(world, 'player', None) # Get player reference
-        target = self.combat_target
-        if not target:
-            # Try finding a valid target from the set if primary is invalid/missing
-            valid_targets_in_set = [t for t in self.combat_targets
-                                    if hasattr(t, "is_alive") and t.is_alive
-                                    and hasattr(t, "health") and t.health > 0
-                                    and hasattr(t, 'current_region_id')
-                                    and t.current_region_id == self.current_region_id
-                                    and t.current_room_id == self.current_room_id]
-            if not valid_targets_in_set:
-                # print(f"[NPC Debug] {self.name}: No valid targets left in room. Exiting combat.") # Debug
-                self.exit_combat()
-                return None
-            target = random.choice(valid_targets_in_set)
-            self.combat_target = target # Assign the new primary target
+        player = getattr(world, 'player', None)
 
-        # --- Spellcasting Logic ---
+        # --- Target Validation and Selection (Keep improved validation from previous step) ---
+        target = self.combat_target
+        target_is_currently_valid = False
+        if target: # Validate existing target
+            if target.is_alive and target.current_region_id == self.current_region_id and target.current_room_id == self.current_room_id:
+                target_is_currently_valid = True
+            else:
+                self.combat_target = None; self.combat_targets.discard(target); target = None
+        if not target: # Find new target if needed
+            valid_targets_in_set = [t for t in self.combat_targets if t and t.is_alive and hasattr(t, 'current_region_id') and t.current_region_id == self.current_region_id and t.current_room_id == self.current_room_id]
+            if not valid_targets_in_set: self.exit_combat(); return None
+            target = random.choice(valid_targets_in_set); self.combat_target = target; target_is_currently_valid = True
+        if not target_is_currently_valid or not target: self.exit_combat(); return None
+        # --- End Target Validation ---
+
+        # --- Action Selection (Spell or Attack - keep validation inside) ---
         chosen_spell = None
+        # ... (spell selection logic with internal target validation remains the same) ...
         if self.usable_spells and random.random() < self.spell_cast_chance:
-            available_spells = []
+            available_spells = [];
             for spell_id in self.usable_spells:
-                spell = get_spell(spell_id)
-                cooldown_end = self.spell_cooldowns.get(spell_id, 0)
+                spell = get_spell(spell_id); cooldown_end = self.spell_cooldowns.get(spell_id, 0)
                 if spell and current_time >= cooldown_end:
-                    # Simplified target type check for brevity
-                    is_enemy = target.faction != self.faction
-                    is_friendly = (target == self or target.faction == self.faction)
-                    if (spell.target_type == "enemy" and is_enemy) or \
-                       (spell.target_type == "friendly" and is_friendly) or \
-                       (spell.target_type == "self"):
-                         available_spells.append(spell)
+                    spell_target = target if spell.target_type != "self" else self
+                    if (not spell_target or not spell_target.is_alive or spell_target.current_region_id != self.current_region_id or spell_target.current_room_id != self.current_room_id): continue
+                    is_enemy = spell_target.faction != self.faction; is_friendly = (spell_target == self or spell_target.faction == self.faction)
+                    if (spell.target_type == "enemy" and is_enemy) or (spell.target_type == "friendly" and is_friendly) or (spell.target_type == "self"): available_spells.append(spell)
             if available_spells: chosen_spell = random.choice(available_spells)
 
-
         # --- Perform Action ---
-        action_result: Optional[Dict[str, Any]] = None # Explicitly type hint
+        action_result: Optional[Dict[str, Any]] = None
         target_defeated_this_turn = False
-
         if chosen_spell:
             spell_target = target if chosen_spell.target_type != "self" else self
             action_result = self.cast_spell(chosen_spell, spell_target, current_time)
             if action_result: target_defeated_this_turn = action_result.get("target_defeated", False)
             self.last_combat_action = current_time
-            # print(f"[NPC Debug] {self.name} CAST {chosen_spell.name} on {spell_target.name}. Target defeated: {target_defeated_this_turn}") # Debug
-        else:
-            if self.can_attack(current_time):
+        elif self.can_attack(current_time):
+            if target.is_alive and target.current_region_id == self.current_region_id and target.current_room_id == self.current_room_id:
                 action_result = self.attack(target)
                 if action_result: target_defeated_this_turn = action_result.get("target_defeated", False)
                 self.last_attack_time = current_time
                 self.last_combat_action = current_time
-                # print(f"[NPC Debug] {self.name} ATTACKED {target.name}. Target defeated: {target_defeated_this_turn}") # Debug
-            # else:
-                # print(f"[NPC Debug] {self.name} Attack on cooldown.") # Debug
 
+        # --- *** Process Messages FOR THE PLAYER *** ---
+        messages_for_player = [] # Build list of messages player should see
 
-        # --- Process Message and Target Death ---
-        # Initialize messages
-        message_to_return = ""
-        base_action_message = action_result.get("message") if action_result else ""
-        loot_message = ""
-        xp_message = ""
-        level_up_message = ""
-
-        # Log the base action internally
+        # 1. Add base action message (hit/miss/spell)
+        # The 'message' in action_result should already be formatted for the player
+        base_action_message = action_result.get("message") if action_result else None
         if base_action_message:
-            self._add_combat_message(base_action_message)
-            message_to_return += base_action_message # Start building the return message
+            messages_for_player.append(base_action_message)
+            # Note: We don't need self._add_combat_message unless NPC needs its own log
 
-        # Handle target defeat
+        # 2. Handle target defeat messages
         if target_defeated_this_turn:
             self.exit_combat(target)
             if self.combat_target == target: self.combat_target = None
 
-            # --- Call target.die() and Format Loot Message (REVISED) ---
-            dropped_loot_items = []
-            loot_message = "" # Initialize loot message
+            # Format names for defeat message (relative to player)
+            viewer = player # Use player as the viewer context
+            attacker_name_fmt = format_name_for_display(viewer, self, True) # Capitalize attacker
+            target_name_fmt = format_name_for_display(viewer, target, False) # Capitalize target
 
-            # Check if the target is NOT the player before calling die() with world context
-            # Also ensure the target actually has a 'die' method
+            # Add Defeat Message (Player-centric)
+            defeat_message = f"{attacker_name_fmt} has defeated {target_name_fmt}!"
+            messages_for_player.append(defeat_message)
+
+            # Add Loot Message (Player-centric)
+            dropped_loot_items = []; loot_message = ""
             if target is not player and hasattr(target, 'die'):
-                try:
-                    # Only call die with world for non-player targets (like other NPCs)
-                    # that are expected to drop loot into the world.
-                    dropped_loot_items = target.die(self.world) # Call NPC.die() or similar
-                except TypeError:
-                    # Fallback if a non-player target's die() doesn't take world (less likely for NPCs)
-                    target.die() # Call without world
-                    print(f"Warning: target {target.name}'s die() method might not accept world argument.")
-                except Exception as e:
-                    print(f"Error calling die() on target {target.name}: {e}")
-
-                # Format loot message ONLY if items were dropped (relevant for NPCs)
+                try: dropped_loot_items = target.die(self.world)
+                except Exception as e: print(f"Error calling die() on target {target.name}: {e}")
                 if dropped_loot_items:
-                    # Need viewer context for formatting
-                    viewer = self.world.player if self.world and hasattr(self.world, 'player') else None
-                    # --- Make sure format_loot_drop_message is imported ---
-                    from utils.utils import format_loot_drop_message
-                    # ---
+                    # format_loot_drop_message already takes viewer context
                     loot_message = format_loot_drop_message(viewer, target, dropped_loot_items)
-
-            # If the target WAS the player, player.die() was already called internally via take_damage.
-            # No loot is generated by Player.die(), so dropped_loot_items remains empty.
-
-            # Log and append loot message if generated
             if loot_message:
-                self._add_combat_message(loot_message) # Log internally
-                if message_to_return: message_to_return += "\n" # Add newline if action message exists
-                message_to_return += loot_message # Append to return message
-            # --- End Revised Loot Handling ---
+                messages_for_player.append(loot_message)
 
-            # --- Check for Player XP Gain (Minion Kill) ---
-            is_player_minion = (self.properties.get("is_summoned", False) and
-                                player and
-                                self.properties.get("owner_id") == player.obj_id)
+            # Add XP/Level Messages (Only show player-relevant ones by default)
+            target_max_hp = getattr(target, 'max_health', 10); target_lvl = getattr(target, 'level', 1)
+            is_player_minion = (self.properties.get("is_summoned", False) and player and self.properties.get("owner_id") == player.obj_id)
 
             if is_player_minion:
-                # Calculate XP using PLAYER's level
-                target_max_hp = getattr(target, 'max_health', 10)
-                target_lvl = getattr(target, 'level', 1)
+                # Player gets XP - Show player messages
                 xp_gained = calculate_xp_gain(player.level, target_lvl, target_max_hp)
-
                 if xp_gained > 0:
                     leveled_up = player.gain_experience(xp_gained)
-                    xp_message = f"{FORMAT_SUCCESS}Your {self.name} earns you {xp_gained} experience!{FORMAT_RESET}"
-                    self._add_combat_message(xp_message) # Log internally
-                    if message_to_return: message_to_return += "\n"
-                    message_to_return += xp_message # Append to return message
+                    messages_for_player.append(f"{FORMAT_SUCCESS}Your {self.name} earns you {xp_gained} experience!{FORMAT_RESET}")
+                    if leveled_up: messages_for_player.append(f"{FORMAT_HIGHLIGHT}You leveled up to level {player.level}!{FORMAT_RESET}")
+            else:
+                # NPC gets XP - Award XP but *don't* show player message unless debug
+                xp_gained = calculate_xp_gain(self.level, target_lvl, target_max_hp)
+                if xp_gained > 0:
+                    npc_leveled_up = self.gain_experience(xp_gained)
+                    if world and world.game:
+                        if npc_leveled_up:
+                            messages_for_player.append(f"{self.name} is now level {self.level}!")
+                            print(f"{self.name} is now level {self.level}!")
+                        if world.game.debug_mode:
+                            messages_for_player.append(f"[NPC XP DBG] {self.name} (L{self.level}) gained {xp_gained} XP defeating {target.name} (L{target_lvl}).")
+                            print(f"[NPC XP DBG] {self.name} (L{self.level}) gained {xp_gained} XP defeating {target.name} (L{target_lvl}).")
+                        
 
-                    if leveled_up:
-                        level_up_message = f"{FORMAT_HIGHLIGHT}You leveled up to level {player.level}!{FORMAT_RESET}"
-                        self._add_combat_message(level_up_message) # Log internally
-                        if message_to_return: message_to_return += "\n"
-                        message_to_return += level_up_message # Append to return message
-            # --- End Player XP Gain ---
+        # --- Combine and Return Message If Player Present ---
+        final_message_for_player = "\n".join(msg for msg in messages_for_player if msg) # Join non-empty messages
 
-        # --- Return message ONLY if the player is in the room AND a message was generated ---
         player_present = player and player.is_alive and \
                          world.current_region_id == self.current_region_id and \
                          world.current_room_id == self.current_room_id
 
-        return message_to_return if player_present and message_to_return else None
+        return final_message_for_player if player_present and final_message_for_player else None
 
     def _add_combat_message(self, message: str) -> None:
         """
@@ -1069,91 +1040,40 @@ class NPC(GameObject):
         Update the NPC's state, perform actions, and process effects.
         """
         player = getattr(world, 'player', None)
-        # Calculate time delta since last World update (approximate)
-        time_delta = WORLD_UPDATE_INTERVAL # Use world update interval as rough delta
+        # Use WORLD_UPDATE_INTERVAL as the time_delta for NPC effect processing,
+        # as NPC AI logic is typically tied to this coarser interval.
+        time_delta_effects = WORLD_UPDATE_INTERVAL 
+        all_messages_for_player = []
 
-        # --- Process Active Effects (Similar to Player) ---
-        effects_processed_this_tick = []
-        expired_effects_indices = []
-        effect_messages_for_player = [] # Messages relevant if player sees the NPC
+        # --- Process Active Effects (if NPC is alive) ---
+        if self.is_alive:
+            effect_messages = self.process_active_effects(current_time, time_delta_effects)
+            if effect_messages:
+                # These messages are simple facts; determine if player sees them
+                player_present_for_effects = (
+                    player and player.is_alive and
+                    self.current_region_id == player.current_region_id and
+                    self.current_room_id == player.current_room_id
+                )
+                if player_present_for_effects:
+                    all_messages_for_player.extend(effect_messages)
+        # --- End Process Active Effects ---
 
-        # Check if player is present *before* iterating effects
-        player_present = (
-            player and player.is_alive and
-            self.current_region_id == player.current_region_id and
-            self.current_room_id == player.current_room_id
-        )
-
-        # Iterate backwards for safe removal
-        if self.is_alive: # Only process effects if alive
-            for i in range(len(self.active_effects) - 1, -1, -1):
-                effect = self.active_effects[i]
-                effect_id = effect.get("id")
-                if not effect_id or effect_id in effects_processed_this_tick: continue
-                effects_processed_this_tick.append(effect_id)
-
-                # 1. Update Duration
-                effect["duration_remaining"] -= time_delta
-
-                # 2. Check Expiration
-                if effect["duration_remaining"] <= 0:
-                    expired_effects_indices.append(i)
-                    if player_present: # Only generate message if player sees it
-                        effect_messages_for_player.append(f"{FORMAT_HIGHLIGHT}The {effect.get('name', 'effect')} on {self.name} wears off.{FORMAT_RESET}")
-                    continue
-
-                # 3. Process Ticks (DoTs)
-                if effect.get("type") == "dot":
-                    tick_interval = effect.get("tick_interval", EFFECT_DEFAULT_TICK_INTERVAL)
-                    last_tick = effect.get("last_tick_time", 0)
-
-                    if current_time - last_tick >= tick_interval:
-                        damage = effect.get("damage_per_tick", 0)
-                        dmg_type = effect.get("damage_type", "unknown")
-                        if damage > 0:
-                            damage_taken = self.take_damage(damage, dmg_type) # Apply damage
-                            effect["last_tick_time"] = current_time # Update tick time
-
-                            if player_present: # Only generate message if player sees it
-                                if damage_taken > 0:
-                                    effect_messages_for_player.append(f"{self.name} takes {damage_taken} {dmg_type} damage from {effect.get('name', 'effect')}.")
-                                # else: Optional message if resisted? Might be too spammy.
-
-                            # Check for death from DoT
-                            if not self.is_alive:
-                                if player_present:
-                                    effect_messages_for_player.append(f"{FORMAT_ERROR}{self.name} succumbs to the {effect.get('name', 'effect')}!{FORMAT_RESET}")
-                                # Handle death - loot/XP should be handled elsewhere (e.g., when `is_alive` is checked later or by the effect source)
-                                # For now, just break effect processing loop if dead
-                                break
-
-
-        # Remove expired effects after iteration
-        for index in sorted(expired_effects_indices, reverse=True):
-            if 0 <= index < len(self.active_effects):
-                del self.active_effects[index]
-
-        # --- Combine effect messages with AI messages ---
-        # Run the normal AI logic *after* effect processing
-        ai_message = None
-        if self.is_alive: # Don't run AI if DoT killed the NPC
-            # ... (existing NPC AI logic: check idle, minion logic, trading, combat, movement) ...
-            # Replace the existing 'return None' or 'return combat_message' etc.
-            # with assigning the result to `ai_message`
+        # --- AI Logic (only if alive after effects) ---
+        ai_message_for_player = None
+        if self.is_alive: 
             if self.behavior_type == "minion":
-                 ai_message = self._handle_minion_ai(world, current_time, player) # Encapsulate minion logic
+                ai_message_for_player = self._handle_minion_ai(world, current_time, player)
             else:
-                 ai_message = self._handle_standard_ai(world, current_time, player) # Encapsulate standard logic
-
-        # Combine messages, prioritizing AI action message if both exist
-        final_message = ""
-        if ai_message:
-            final_message += ai_message
-        if effect_messages_for_player:
-            if final_message: final_message += "\n" # Add separator
-            final_message += "\n".join(effect_messages_for_player)
-
-        return final_message if final_message else None # Return combined message or None
+                ai_message_for_player = self._handle_standard_ai(world, current_time, player)
+        
+        if ai_message_for_player:
+            all_messages_for_player.append(ai_message_for_player)
+        
+        # Combine and return messages
+        final_message = "\n".join(msg for msg in all_messages_for_player if msg)
+        return final_message if final_message else None
+    # --- END MODIFIED ---
 
     # --- NEW: Helper methods to organize AI ---
     def _handle_minion_ai(self, world, current_time, player):
@@ -1221,38 +1141,60 @@ class NPC(GameObject):
          # --- End Minion Logic ---
 
     def _handle_standard_ai(self, world, current_time, player):
-        # ... (Cut and paste the logic previously under the `else:` block for non-minions) ...
-        # Remember to return the message string or None.
-        # --- Start Standard Logic (Copied) ---
+        """Handles standard AI, including engaging nearby hostiles."""
+        # ... (existing checks for trading, fleeing, player aggro - remain the same) ...
         if self.is_trading:
-            if (player and player.trading_with == self.obj_id and
-                player.current_region_id == self.current_region_id and
-                player.current_room_id == self.current_room_id): return None # Still trading
-            else: self.is_trading = False; # print(f"NPC {self.name} resuming AI")
-
-        combat_message = None
+             # ... (trading check logic) ...
+             if (player and player.trading_with == self.obj_id and player.current_region_id == self.current_region_id and player.current_room_id == self.current_room_id): return None
+             else: self.is_trading = False;
         if self.in_combat:
-            combat_message = self.try_attack(world, current_time) # This now returns message if needed
-            if self.is_alive and self.health < self.max_health * self.flee_threshold:
-                # ... (flee logic - unchanged, but returns message if player sees) ...
-                # IMPORTANT: Flee logic needs to return the generated message string or None
-                flee_message = self._try_flee(world, current_time, player)
-                if flee_message: return flee_message # Return flee message if successful and seen
-            if self.in_combat: return combat_message # Return combat message if still fighting and action happened
+             combat_message = self.try_attack(world, current_time)
+             if self.is_alive and self.health < self.max_health * self.flee_threshold:
+                 flee_message = self._try_flee(world, current_time, player)
+                 if flee_message: return flee_message
+             if self.in_combat: return combat_message # Return combat message if still fighting
+             # Else: Exited combat during flee check or try_attack, proceed to other checks
 
+        # --- Player Aggro Check (remain the same) ---
         elif (self.faction == "hostile" and self.aggression > 0 and
-              player and player.is_alive and
-              world.current_region_id == self.current_region_id and
-              world.current_room_id == self.current_room_id):
-            if random.random() < self.aggression:
-                self.enter_combat(player)
-                action_result_message = self.try_attack(world, current_time)
-                if action_result_message: return action_result_message # Show attack message
-                else: return f"{format_target_name(player, self)} prepares to attack you!" # Show engage message
+               player and player.is_alive and
+               world.current_region_id == self.current_region_id and
+               world.current_room_id == self.current_room_id):
+             if random.random() < self.aggression:
+                 self.enter_combat(player)
+                 action_result_message = self.try_attack(world, current_time)
+                 if action_result_message: return action_result_message
+                 else: return f"{format_target_name(player, self)} prepares to attack you!"
 
-        # If combat message generated above (e.g., initial aggro), return it
-        # This check might be redundant now as returns happen inside the blocks
-        # if combat_message: return combat_message
+        # --- *** NEW: Engage Nearby Hostiles *** ---
+        # Only engage if not already in combat and not busy
+        elif not self.in_combat and not self.is_trading and self.is_alive:
+            # Check if this NPC type should engage hostiles (e.g., guards, potentially friendly adventurers)
+            # For now, let's assume *all* non-hostile, non-passive NPCs will fight nearby hostiles.
+            # We can add more nuance later (e.g., check properties like "combat_role" == "protector")
+            if self.faction != "hostile": # Ensure the NPC itself isn't hostile
+                npcs_in_room = world.get_npcs_in_room(self.current_region_id, self.current_room_id)
+                hostiles_in_room = [npc for npc in npcs_in_room
+                                     if npc.faction == "hostile" and npc.is_alive]
+
+                if hostiles_in_room:
+                    # Choose a hostile target
+                    target_hostile = random.choice(hostiles_in_room)
+                    # Engage the target
+                    self.enter_combat(target_hostile)
+                    # Optionally, print a message if player is present
+                    engage_message = ""
+                    if player and player.is_alive and player.current_region_id == self.current_region_id and player.current_room_id == self.current_room_id:
+                        viewer = player
+                        attacker_name_fmt = format_name_for_display(viewer, self, start_of_sentence=True)
+                        target_name_fmt = format_name_for_display(viewer, target_hostile, start_of_sentence=False)
+                        engage_message = f"{attacker_name_fmt} moves to attack {target_name_fmt}!"
+                        # Maybe try an immediate attack?
+                        immediate_attack_msg = self.try_attack(world, current_time)
+                        if immediate_attack_msg:
+                            engage_message += "\n" + immediate_attack_msg # Combine messages
+                    return engage_message # Return engage message (or combined)
+        # --- *** END NEW *** ---
 
         if current_time - self.last_moved < self.move_cooldown: return None # Wait for move cooldown
 
@@ -1304,3 +1246,43 @@ class NPC(GameObject):
                             npc_display_name = format_name_for_display(player, self, start_of_sentence=True)
                             return f"{npc_display_name} flees to the {direction}!"
         return None # Did not flee or player didn't see
+
+    def gain_experience(self, amount: int) -> bool:
+        """Adds experience to the NPC and checks for level up."""
+        if not self.is_alive: return False
+        if amount <= 0: return False
+
+        self.experience += amount
+        # print(f"[NPC XP Debug] {self.name} gained {amount} XP. Total: {self.experience}/{self.experience_to_level}") # Debug
+        leveled_up = False
+        while self.experience >= self.experience_to_level:
+            self.level_up()
+            leveled_up = True
+        return leveled_up
+
+    # --- NEW: level_up method for NPC ---
+    def level_up(self) -> None:
+        """Handles the NPC leveling up process."""
+        self.level += 1
+        self.experience -= self.experience_to_level
+        self.experience_to_level = int(self.experience_to_level * NPC_XP_TO_LEVEL_MULTIPLIER)
+
+        # Increase stats (simple uniform increase for now)
+        for stat in self.stats:
+            if stat not in ["spell_power", "magic_resist"]: # Don't auto-increase these maybe?
+                self.stats[stat] += NPC_LEVEL_UP_STAT_INCREASE
+
+        # Recalculate Max Health based on new level and stats
+        old_max_health = self.max_health
+        final_con = self.stats.get('constitution', 8)
+        base_hp = NPC_BASE_HEALTH + int(final_con * NPC_CON_HEALTH_MULTIPLIER)
+        level_hp_bonus = (self.level - 1) * (NPC_LEVEL_HEALTH_BASE_INCREASE + int(final_con * NPC_LEVEL_CON_HEALTH_MULTIPLIER))
+        self.max_health = base_hp + level_hp_bonus
+
+        # Heal a percentage of the health gained
+        health_gained = self.max_health - old_max_health
+        heal_amount = int(health_gained * NPC_LEVEL_UP_HEALTH_HEAL_PERCENT)
+        self.heal(heal_amount) # Use the heal method to apply and cap
+
+        # Optional: Message if player is present? Probably too spammy.
+        # print(f"[NPC Level Debug] {self.name} leveled up to {self.level}!") # Debug

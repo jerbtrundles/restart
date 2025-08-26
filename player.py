@@ -76,95 +76,38 @@ class Player(GameObject):
 
         self.trading_with: Optional[str] = None
 
-    def update(self, current_time: float):
-        """Update player state like mana and health regeneration."""
-        if not self.is_alive: return
+    def update(self, current_time: float, time_delta_effects: float): # <<< ADD time_delta_effects
+        """Update player state like mana/health regeneration and active effects."""
+        if not self.is_alive: return [] # Return empty list if dead
 
-        # --- Regeneration ---
-        time_since_last_update = current_time - self.last_mana_regen_time # Use one timer for both
-
-        if time_since_last_update >= PLAYER_REGEN_TICK_INTERVAL:
+        # --- Regeneration (uses its own timer, PLAYER_REGEN_TICK_INTERVAL) ---
+        time_since_last_regen_update = current_time - self.last_mana_regen_time 
+        if time_since_last_regen_update >= PLAYER_REGEN_TICK_INTERVAL:
+            # ... (existing regeneration logic - unchanged) ...
             base_mana_regen = self.mana_regen_rate * (1 + self.stats.get('wisdom', 10) / PLAYER_MANA_REGEN_WISDOM_DIVISOR)
             base_health_regen = PLAYER_BASE_HEALTH_REGEN_RATE * (1 + self.stats.get('strength', 10) / PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR)
-
-            # Calculate boost from gear
             regen_boost = 0
             for item in self.equipment.values():
-                 if item:
-                      regen_boost += item.get_property("regen_boost", 0)
+                 if item: regen_boost += item.get_property("regen_boost", 0)
+             
+            # Apply boost and time factor based on PLAYER_REGEN_TICK_INTERVAL
+            # Use PLAYER_REGEN_TICK_INTERVAL as the delta for regen amounts
+            mana_regen_amount = int(PLAYER_REGEN_TICK_INTERVAL * (base_mana_regen + regen_boost))
+            health_regen_amount = int(PLAYER_REGEN_TICK_INTERVAL * (base_health_regen + regen_boost))
 
-            # Apply boost and time factor
-            mana_regen_amount = int(time_since_last_update * (base_mana_regen + regen_boost))
-            health_regen_amount = int(time_since_last_update * (base_health_regen + regen_boost))
-
-            # Apply regeneration (clamped)
             self.mana = min(self.max_mana, self.mana + mana_regen_amount)
-            self.health = min(self.max_health, self.health + health_regen_amount) # Regen health too
+            self.health = min(self.max_health, self.health + health_regen_amount)
+            self.last_mana_regen_time = current_time 
+        # --- End Regeneration ---
 
-            self.last_mana_regen_time = current_time # Reset timer
-            # --- End Regeneration ---
-
-        # --- Process Active Effects ---
-        effects_processed_this_tick = [] # Track IDs processed
-        expired_effects_indices = []
-        tick_messages = []
-
-        # Iterate backwards to allow safe removal by index
-        for i in range(len(self.active_effects) - 1, -1, -1):
-            effect = self.active_effects[i]
-            effect_id = effect.get("id")
-            if not effect_id or effect_id in effects_processed_this_tick: continue # Skip if no ID or already processed
-
-            effects_processed_this_tick.append(effect_id)
-
-            # 1. Update Duration (Using suggested accurate method)
-            last_processed = effect.get("last_processed_time", current_time)
-            actual_delta = current_time - last_processed
-            effect["duration_remaining"] -= actual_delta
-            effect["last_processed_time"] = current_time
-
-            # 2. Check Expiration
-            if effect["duration_remaining"] <= 0:
-                expired_effects_indices.append(i)
-                # Add expiration message to the list to be returned
-                tick_messages.append(f"{FORMAT_HIGHLIGHT}The {effect.get('name', 'effect')} on you wears off.{FORMAT_RESET}")
-                continue # Move to next effect if expired
-
-            # 3. Process Ticks (for DoTs)
-            if effect.get("type") == "dot":
-                tick_interval = effect.get("tick_interval", EFFECT_DEFAULT_TICK_INTERVAL)
-                last_tick = effect.get("last_tick_time", 0)
-
-                if current_time - last_tick >= tick_interval:
-                    damage = effect.get("damage_per_tick", 0)
-                    dmg_type = effect.get("damage_type", "unknown")
-                    if damage > 0:
-                        damage_taken = self.take_damage(damage, dmg_type)
-                        effect["last_tick_time"] = current_time
-
-                        # Add DoT damage message to the list to be returned
-                        if damage_taken > 0:
-                             tick_messages.append(f"{FORMAT_ERROR}You take {damage_taken} {dmg_type} damage from {effect.get('name', 'effect')}!{FORMAT_RESET}")
-                        else:
-                             tick_messages.append(f"You resist the {dmg_type} damage from {effect.get('name', 'effect')}.")
-
-                        # Check for death RIGHT AFTER taking DoT damage
-                        if not self.is_alive:
-                            # Add death message if DoT killed player
-                            tick_messages.append(f"{FORMAT_ERROR}You succumb to the {effect.get('name', 'effect')}!{FORMAT_RESET}")
-                            break # Exit the effect processing loop
-
-            # 4. Process Buffs/Debuffs (placeholder)
-            # if effect.get("type") in ["buff", "debuff"]:
-                # Apply continuous effects or reapply periodic ones if needed
-
-        # Remove expired effects safely (after iteration)
-        # Sort indices descending to avoid messing up subsequent indices during removal
-        for index in sorted(expired_effects_indices, reverse=True):
-             if 0 <= index < len(self.active_effects): # Bounds check
-                  del self.active_effects[index]
-
-        return tick_messages
+        # --- Process Active Effects using GameObject's method ---
+        # Pass the time_delta_effects received from GameManager for effect processing.
+        # This delta is based on frame time, suitable for frequent updates.
+        effect_messages = self.process_active_effects(current_time, time_delta_effects)
+        # --- End Process Active Effects ---
+        
+        # Player.update now returns messages from effects only
+        return effect_messages
 
     def get_status(self) -> str:
         """Returns a formatted string representing the player's current status."""
@@ -417,23 +360,18 @@ class Player(GameObject):
         self.is_alive = False
         self.in_combat = False
         self.combat_targets.clear()
-        self.active_effects = []
-        # *** Reset mana on death? Optional. ***
-        # self.mana = 0
-        print(f"{self.name} has died!")
 
-        # --- Despawn Summons on Player Death ---
+        print(f"[DEBUG] Player {self.name} died.")
         if self.world:
             all_summon_ids = []
             for ids in self.active_summons.values():
                 all_summon_ids.extend(ids)
-
             for instance_id in all_summon_ids:
                 summon = self.world.get_npc(instance_id)
                 if summon and hasattr(summon, 'despawn'):
-                    summon.despawn(self.world, silent=True) # Despawn silently
+                    summon.despawn(self.world, silent=True)
+        self.active_summons = {}
 
-        self.active_summons = {} # Clear the tracking dict
         # --- End Despawn ---
 
     def respawn(self) -> None:
@@ -446,6 +384,8 @@ class Player(GameObject):
         self.spell_cooldowns.clear() # Reset cooldowns on respawn
         self.active_summons = {} # Clear summons on respawn too
         self.active_effects = []
+
+        print(f"[DEBUG] Player {self.name} respawned. Active effects CLEARED.")
 
     # Make sure method name matches usage
     def get_is_alive(self) -> bool:

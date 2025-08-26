@@ -331,24 +331,172 @@ def examine_handler(args, context):
     if not args: return f"{FORMAT_ERROR}What do you want to examine?{FORMAT_RESET}"
     return look_handler(args, context) # Delegate to look handler
 
-@command("drop", ["putdown"], "interaction", "Drop an item.\nUsage: drop <item>")
+@command("drop", ["putdown"], "interaction", "Drop one, multiple, or all matching items.\nUsage: drop [all|quantity] <item_name>")
 def drop_handler(args, context):
     player = context["world"].player
     if not player.is_alive:
-        return f"{FORMAT_ERROR}You are dead. You cannot move.{FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You are dead. You cannot drop items.{FORMAT_RESET}"
     world = context["world"]
-    if not args: return f"{FORMAT_ERROR}Drop what?{FORMAT_RESET}"
-    item_name = " ".join(args).lower()
-    # Use find_item_by_name for easier searching
-    item_to_drop = world.player.inventory.find_item_by_name(item_name)
-    if item_to_drop:
-        item, quantity, message = world.player.inventory.remove_item(item_to_drop.obj_id, 1)
-        if item:
-            world.add_item_to_room(world.current_region_id, world.current_room_id, item)
-            return f"{FORMAT_SUCCESS}You drop the {item.name}.{FORMAT_RESET}"
-        else: return f"{FORMAT_ERROR}{message}{FORMAT_RESET}" # Should not happen if find_item worked
-    return f"{FORMAT_ERROR}You don't have a {' '.join(args)}.{FORMAT_RESET}"
+    if not args:
+        return f"{FORMAT_ERROR}Drop what? Usage: drop [all|quantity] <item_name>{FORMAT_RESET}"
 
+    # --- Argument Parsing (remains the same) ---
+    drop_all = False
+    quantity_to_drop = 1
+    item_name_input = ""
+    item_name_lower = ""
+    # ... (parsing logic for 'all', quantity, name) ...
+    if args[0].lower() == "all":
+        if len(args) < 2: return f"{FORMAT_ERROR}Drop all of what? Usage: drop all <item_name>{FORMAT_RESET}"
+        drop_all = True; item_name_input = " ".join(args[1:]); item_name_lower = item_name_input.lower()
+    elif args[0].isdigit():
+        try:
+            quantity_to_drop = int(args[0])
+            if quantity_to_drop <= 0: return f"{FORMAT_ERROR}Quantity must be positive.{FORMAT_RESET}"
+            if len(args) < 2: return f"{FORMAT_ERROR}Drop {quantity_to_drop} of what? Usage: drop <quantity> <item_name>{FORMAT_RESET}"
+            item_name_input = " ".join(args[1:]); item_name_lower = item_name_input.lower()
+        except ValueError: return f"{FORMAT_ERROR}Invalid quantity '{args[0]}'.{FORMAT_RESET}"
+    else:
+        quantity_to_drop = 1; item_name_input = " ".join(args); item_name_lower = item_name_input.lower()
+    # --- End Argument Parsing ---
+
+    if drop_all:
+        # --- Logic for 'drop all <item_name>' (remains the same) ---
+        # ... (find all matching, drop all, summarize) ...
+        items_to_potentially_drop = []
+        for slot in player.inventory.slots:
+             if slot.item:
+                  item = slot.item; item_singular_lower = item.name.lower(); item_plural_lower = simple_plural(item_singular_lower)
+                  match = (item_name_lower == item_singular_lower or item_name_lower == item_plural_lower or item_name_lower == item.obj_id or (item_name_lower in item_singular_lower or item_name_lower in item_plural_lower))
+                  if match: items_to_potentially_drop.append({"item_id": item.obj_id, "name": item.name, "quantity": slot.quantity, "stackable": item.stackable})
+        if not items_to_potentially_drop:
+            suggestion = ""; # ... (suggestion logic remains same) ...
+            if item_name_lower.endswith('s'):
+                 potential_singular = item_name_lower[:-1]
+                 if item_name_lower.endswith('es'):
+                      potential_singular_es = item_name_lower[:-2]
+                      if player.inventory.find_item_by_name(potential_singular_es, partial=False): suggestion = f" Did you mean '{potential_singular_es}'?"
+                      elif player.inventory.find_item_by_name(potential_singular, partial=False): suggestion = f" Did you mean '{potential_singular}'?"
+                 elif player.inventory.find_item_by_name(potential_singular, partial=False): suggestion = f" Did you mean '{potential_singular}'?"
+            return f"{FORMAT_ERROR}You don't have any '{item_name_input}' to drop.{suggestion}{FORMAT_RESET}"
+        dropped_summary: Dict[str, Dict[str, Any]] = {}; failures = 0; items_processed_from_inventory = 0
+        unique_item_ids = {item_info["item_id"] for item_info in items_to_potentially_drop}
+        for item_id_to_drop in unique_item_ids:
+            total_quantity_in_inventory = player.inventory.count_item(item_id_to_drop)
+            if total_quantity_in_inventory <= 0: continue
+            item_name_for_summary = next((info["name"] for info in items_to_potentially_drop if info["item_id"] == item_id_to_drop), item_id_to_drop)
+            for _ in range(total_quantity_in_inventory):
+                 items_processed_from_inventory += 1
+                 removed_item_type, quantity_removed, remove_msg = player.inventory.remove_item(item_id_to_drop, 1)
+                 if removed_item_type and quantity_removed == 1:
+                      item_instance_to_drop = ItemFactory.create_item_from_template(removed_item_type.obj_id, world)
+                      if not item_instance_to_drop: print(f"CRITICAL ERROR: Factory failed for {removed_item_type.name} during 'drop all'."); failures += 1; continue
+                      added_to_room = world.add_item_to_room(world.current_region_id, world.current_room_id, item_instance_to_drop)
+                      if added_to_room:
+                           if item_id_to_drop not in dropped_summary: dropped_summary[item_id_to_drop] = {"name": item_name_for_summary, "dropped": 0}
+                           dropped_summary[item_id_to_drop]["dropped"] += 1
+                      else:
+                           print(f"Warning: Failed adding dropped {item_name_for_summary} to room. Returning."); added_back, _ = player.inventory.add_item(item_instance_to_drop, 1)
+                           if not added_back: print(f"CRITICAL ERROR: Failed drop AND return for {item_name_for_summary}!"); failures += 1
+                 else: print(f"Warning: Failed removing {item_name_for_summary} (ID: {item_id_to_drop}) during 'drop all'."); failures += 1; break
+        # --- Construct Summary Message --- (remains same) ---
+        if not dropped_summary:
+            if failures > 0: return f"{FORMAT_ERROR}You tried to drop items, but something went wrong.{FORMAT_RESET}"
+            else: return f"{FORMAT_ERROR}You don't have any '{item_name_input}' to drop.{FORMAT_RESET}"
+        success_parts = []
+        total_dropped = 0
+        for data in dropped_summary.values(): name = data["name"]; count = data["dropped"]; total_dropped += count
+        if count == 1: success_parts.append(f"{get_article(name)} {name}")
+        else: success_parts.append(f"{count} {simple_plural(name)}")
+        if not success_parts: final_message = f"{FORMAT_ERROR}An unknown error occurred during drop all.{FORMAT_RESET}"
+        elif len(success_parts) == 1: final_message = f"{FORMAT_SUCCESS}You drop {success_parts[0]}.{FORMAT_RESET}"
+        elif len(success_parts) == 2: final_message = f"{FORMAT_SUCCESS}You drop {success_parts[0]} and {success_parts[1]}.{FORMAT_RESET}"
+        else: all_but_last = ", ".join(success_parts[:-1]); last = success_parts[-1]; final_message = f"{FORMAT_SUCCESS}You drop {all_but_last}, and {last}.{FORMAT_RESET}"
+        if failures > 0: final_message += f" {FORMAT_ERROR}(Failed to drop {failures} item(s)){FORMAT_RESET}"
+        return final_message
+        # --- End Logic for 'drop all <item_name>' ---
+
+    else:
+        # --- REVISED Logic for 'drop <quantity> <item_name>' (or drop 1) ---
+        # Instead of just finding *one* item type, find *all* potential matches first
+        potential_matches = []
+        for slot in player.inventory.slots:
+            if slot.item:
+                item = slot.item
+                item_singular_lower = item.name.lower()
+                item_plural_lower = simple_plural(item_singular_lower)
+
+                # Check exact singular, exact plural, ID, or partial singular/plural
+                match = (
+                    item_name_lower == item_singular_lower or
+                    item_name_lower == item_plural_lower or
+                    item_name_lower == item.obj_id or
+                    (item_name_lower in item_singular_lower or item_name_lower in item_plural_lower)
+                )
+                if match:
+                    # Store the actual item instance found
+                    if item not in [m['item'] for m in potential_matches]: # Avoid duplicates if checking slots
+                         potential_matches.append({'item': item, 'id': item.obj_id, 'name': item.name})
+
+        # Handle results of the search
+        if not potential_matches:
+            # No matches found - provide suggestion feedback
+            suggestion = ""; # ... (suggestion logic remains same) ...
+            if item_name_lower.endswith('s'):
+                 potential_singular = item_name_lower[:-1]
+                 if item_name_lower.endswith('es'):
+                      potential_singular_es = item_name_lower[:-2]
+                      if player.inventory.find_item_by_name(potential_singular_es, partial=False): suggestion = f" Did you mean '{potential_singular_es}'?"
+                      elif player.inventory.find_item_by_name(potential_singular, partial=False): suggestion = f" Did you mean '{potential_singular}'?"
+                 elif player.inventory.find_item_by_name(potential_singular, partial=False): suggestion = f" Did you mean '{potential_singular}'?"
+            return f"{FORMAT_ERROR}You don't have '{item_name_input}'.{suggestion}{FORMAT_RESET}"
+
+        elif len(potential_matches) > 1:
+            # Ambiguity check: Did the input match multiple *different* item types?
+            unique_ids_matched = {match['id'] for match in potential_matches}
+            if len(unique_ids_matched) > 1:
+                ambiguous_names = sorted([match['name'] for match in potential_matches])
+                return f"{FORMAT_ERROR}Did you mean: {', '.join(ambiguous_names)}?{FORMAT_RESET}"
+            # else: Multiple matches, but all the same item type (e.g., non-stackable swords). Proceed.
+
+        # If exactly one item type matched
+        item_to_drop_info = potential_matches[0]
+        item_id = item_to_drop_info['id']
+        item_name_display = item_to_drop_info['name'] # Use the actual name for messages
+
+        # Check available quantity
+        available_quantity = player.inventory.count_item(item_id)
+        if available_quantity < quantity_to_drop:
+            return f"{FORMAT_ERROR}You only have {available_quantity} {simple_plural(item_name_display)}.{FORMAT_RESET}"
+
+        # --- Attempt to remove the requested quantity (Same logic as before) ---
+        removed_item_type, actual_removed_count, remove_message = player.inventory.remove_item(item_id, quantity_to_drop)
+
+        if not removed_item_type or actual_removed_count != quantity_to_drop:
+            return f"{FORMAT_ERROR}Could not drop {quantity_to_drop} {simple_plural(item_name_display)}: {remove_message}{FORMAT_RESET}"
+
+        # --- Drop the items into the room (Same logic as before) ---
+        items_added_to_room = 0
+        failures = 0
+        for _ in range(actual_removed_count):
+            item_instance_to_drop = ItemFactory.create_item_from_template(removed_item_type.obj_id, world)
+            if not item_instance_to_drop: print(f"CRITICAL ERROR: Factory failed for {removed_item_type.name}."); failures += 1; continue
+            added = world.add_item_to_room(world.current_region_id, world.current_room_id, item_instance_to_drop)
+            if added: items_added_to_room += 1
+            else:
+                print(f"Warning: Failed adding dropped {removed_item_type.name} to room. Returning."); added_back, _ = player.inventory.add_item(item_instance_to_drop, 1)
+                if not added_back: print(f"CRITICAL ERROR: Failed drop AND return for {removed_item_type.name}!")
+                failures += 1
+
+        # --- Construct Result Message (Same logic as before) ---
+        if items_added_to_room == 0:
+            return f"{FORMAT_ERROR}You tried to drop {quantity_to_drop} {simple_plural(item_name_display)}, but couldn't place them here.{FORMAT_RESET}"
+        plural_suffix = "" if items_added_to_room == 1 else "s"
+        success_message = f"{FORMAT_SUCCESS}You drop {items_added_to_room} {item_name_display}{plural_suffix}.{FORMAT_RESET}"
+        if failures > 0: success_message += f" {FORMAT_ERROR}(Failed to drop {failures} item(s)){FORMAT_RESET}"
+        return success_message
+        # --- End Logic for dropping quantity ---
+        
 @command("talk", ["speak", "chat", "ask"], "interaction", "Talk to an NPC.\nUsage: talk <npc_name> [topic | complete quest <quest_title_part>]")
 def talk_handler(args, context):
     world = context["world"]
@@ -1857,39 +2005,76 @@ def _handle_item_acquisition(args: List[str], context: Dict[str, Any], command_v
             return f"There is nothing here to {command_verb}."
 
     elif item_name:
-        # Find specific item(s) by name
+        # --- REVISED MATCHING LOGIC ---
         matches = []
         exact_match_found = False
-        # Pass 1: Exact matches (name or ID)
-        for item in items_in_room:
-            if item_name == item.name.lower() or item_name == item.obj_id:
-                matches.append(item)
-                exact_match_found = True
+        partial_match_found = False # <<< ADD flag for partial matches
+        user_input_name_lower = item_name
 
-        # Pass 2: Partial matches (only if no exact match)
+        # Pass 1: Exact matches (Singular Name, Plural Name, or ID)
+        for item in items_in_room:
+            item_singular_lower = item.name.lower()
+            item_plural_lower = simple_plural(item_singular_lower)
+
+            if (user_input_name_lower == item_singular_lower or
+                user_input_name_lower == item_plural_lower or
+                user_input_name_lower == item.obj_id):
+                # Add only if not already added (handles cases where ID might match name)
+                if item not in matches:
+                    matches.append(item)
+                exact_match_found = True # Prioritize exact matches
+
+        # Pass 2: Partial matches (Check against singular AND plural)
+        # Run this pass ONLY if no exact match was found on Pass 1
         if not exact_match_found:
             for item in items_in_room:
-                if item_name in item.name.lower():
-                    matches.append(item)
+                item_singular_lower = item.name.lower()
+                item_plural_lower = simple_plural(item_singular_lower)
 
-        if not matches:
-            return f"{FORMAT_ERROR}You don't see any '{item_name}' here.{FORMAT_RESET}"
+                # Check if user input is PART of the singular OR plural name
+                if (user_input_name_lower in item_singular_lower or
+                    user_input_name_lower in item_plural_lower): # <<< EXPANDED CHECK
+                    # Add only if not already in matches (important if loop runs again)
+                    if item not in matches:
+                         matches.append(item)
+                    partial_match_found = True # Mark that we found at least a partial match
+
+        if not matches: # No exact or partial matches found at all
+            # ... (Existing error message logic with singular hint remains the same) ...
+            potential_singular = ""
+            if user_input_name_lower.endswith('s'):
+                potential_singular = user_input_name_lower[:-1]
+                if user_input_name_lower.endswith('es'):
+                     potential_singular_es = user_input_name_lower[:-2]
+                     if any(potential_singular_es == itm.name.lower() for itm in items_in_room):
+                          potential_singular = potential_singular_es
+                     elif not any(potential_singular == itm.name.lower() for itm in items_in_room):
+                          potential_singular = ""
+                elif not any(potential_singular == itm.name.lower() for itm in items_in_room):
+                     potential_singular = ""
+
+            if potential_singular:
+                 return f"{FORMAT_ERROR}You don't see any '{user_input_name_lower}' here. Did you mean '{potential_singular}'?{FORMAT_RESET}"
+            else:
+                 return f"{FORMAT_ERROR}You don't see any '{user_input_name_lower}' here.{FORMAT_RESET}"
+        # --- END REVISED MATCHING LOGIC ---
 
         # Handle ambiguity (multiple *different* item types matched)
         matched_ids = {item.obj_id for item in matches}
         if len(matched_ids) > 1:
-            # Create list of unique names for ambiguous matches
+            # If we only found partial matches for multiple types, the ambiguity message is good.
+            # If we found an exact match for one type AND partial for another, maybe prioritize the exact?
+            # For now, keep the ambiguity check simple: if multiple template IDs matched, ask.
             ambiguous_names = sorted(list({item.name for item in matches}))
             return f"{FORMAT_ERROR}Did you mean: {', '.join(ambiguous_names)}?{FORMAT_RESET}"
 
         # If only one item type matched, group all its instances
         target_item_id = matches[0].obj_id
+        # Collect all instances of the *matched template ID* present in the room
         target_items_by_id[target_item_id] = [item for item in items_in_room if item.obj_id == target_item_id]
 
     else:
-        # Should have been caught earlier (e.g., "take 5" with no item)
         return f"{FORMAT_ERROR}{command_verb.capitalize()} what?{FORMAT_RESET}"
-
 
     # --- Process Acquisition ---
     items_taken_summary: Dict[str, Dict[str, Any]] = {} # item_id -> {"name": str, "taken": int}

@@ -6,7 +6,7 @@ import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
 from core.config import (
     FORMAT_ERROR, FORMAT_RESET,
-    NPC_BASE_HEALTH, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE, VILLAGER_LAST_NAMES # Import NPC health constants
+    NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE, VILLAGER_LAST_NAMES # Import NPC health constants
 )
 # ItemFactory needed if NPCs have initial inventory defined by references
 from items.item_factory import ItemFactory
@@ -205,6 +205,7 @@ class NPCFactory:
             npc.stats = {**base_stats, **template_stats, **saved_stats}
 
             # 4. Recalculate Max Health
+            npc.level = init_args["level"] # Ensure level is set from overrides/template *before* recalc
             npc_level = npc.level
             final_con = npc.stats.get('constitution', 8)
             base_hp = NPC_BASE_HEALTH + int(final_con * NPC_CON_HEALTH_MULTIPLIER)
@@ -215,6 +216,13 @@ class NPCFactory:
 
             npc.health = creation_args.get("health", npc.max_health) # Prioritize saved health
             npc.health = max(0, min(npc.health, npc.max_health))
+
+            # <<< Load/Initialize XP attributes >>>
+            npc.experience = overrides.get("experience", 0) # Load saved XP if present
+            # Load saved threshold, or calculate based on current level if loading a new NPC or old save
+            npc.experience_to_level = overrides.get("experience_to_level",
+                                                int(NPC_BASE_XP_TO_LEVEL * (NPC_XP_TO_LEVEL_MULTIPLIER**(npc.level - 1))))
+            # --- <<< End XP Handling >>> ---
 
             # 5. Apply remaining attributes
             npc.faction = creation_args.get("faction", npc.faction)
@@ -256,9 +264,9 @@ class NPCFactory:
             # --- Set attributes derived from properties (with warnings if missing) ---
             # (Keep the warning logic as it was)
             default_aggression = NPC_DEFAULT_AGGRESSION
-            default_wander = 0.3
-            default_cooldown = 10
-            default_spell_chance = 0.0
+            default_wander = NPC_DEFAULT_WANDER
+            default_cooldown = NPC_DEFAULT_MOVE_COOLDOWN
+            default_spell_chance = NPC_DEFAULT_SPELL_CAST_CHANCE
             default_flee_threshold = NPC_DEFAULT_FLEE_THRESHOLD
 
             if "aggression" in npc.properties: npc.aggression = npc.properties["aggression"]

@@ -190,11 +190,29 @@
     "value": 200,
     "stackable": false,
     "properties": {
-        "uses": 1,
-        "max_uses": 1,
-        "effect_type": "learn_spell",
-        "spell_to_learn": "raise_skeletal_mage",
-        "category": "scroll"
+      "uses": 1,
+      "max_uses": 1,
+      "effect_type": "learn_spell",
+      "spell_to_learn": "raise_skeletal_mage",
+      "category": "scroll"
+    }
+  },
+  "debug_poison_vial": {
+    "type": "Consumable",
+    "name": "Debug Poison Vial",
+    "description": "A vial containing a potent, fast-acting poison for testing purposes.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": true,
+    "properties": {
+      "uses": 1,
+      "max_uses": 1,
+      "effect_type": "apply_dot",
+      "dot_name": "Debug Poison",
+      "dot_duration": 30.0,
+      "dot_damage_per_tick": 5,
+      "dot_tick_interval": 3.0,
+      "dot_damage_type": "poison"
     }
   }
 }

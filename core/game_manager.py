@@ -26,7 +26,7 @@ from commands.commands import register_movement_commands, save_handler, load_han
 class GameManager:
     def __init__(self, save_file: str = "default_save.json"): # Use save file name
         pygame.init()
-        print(pygame.font.get_fonts())
+        # print(pygame.font.get_fonts())
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.RESIZABLE)
         pygame.display.set_caption("Pygame MUD")
         self.font = pygame.font.SysFont(FONT_FAMILY, FONT_SIZE, bold=False)
@@ -236,63 +236,68 @@ class GameManager:
     def update(self):
         """Update game state."""
         if self.game_state == "game_over":
-            # Only update cursor blink in game over
             self.cursor_timer += self.clock.get_time()
             if self.cursor_timer >= 500: self.cursor_visible = not self.cursor_visible; self.cursor_timer = 0
             return
 
-        current_time = time.time() # Use absolute time
-        player_update_messages = [] # <<< Initialize list for player messages
+        current_time_abs = time.time() 
+        # --- MODIFIED: Calculate elapsed_real_time for player effects ---
+        # Use self.clock.get_time() for more accurate frame-delta for player
+        # Convert milliseconds to seconds
+        elapsed_real_time_frame = self.clock.get_time() / 1000.0 
+        # --- END MODIFIED ---
 
-        # Update Plugins (Publish tick event)
+        player_update_messages = [] 
+
         if self.plugin_manager:
-            self.plugin_manager.on_tick(current_time)
+            self.plugin_manager.on_tick(current_time_abs) # Pass absolute time to plugins
 
-        # Update Player (e.g., for regeneration, effects)
         if self.world and self.world.player and self.world.player.is_alive:
-            # <<< Capture returned messages >>>
-            player_update_messages = self.world.player.update(current_time)
-            # <<< End Capture >>>
+            # --- MODIFIED: Pass elapsed_real_time_frame to player.update ---
+            player_effect_messages = self.world.player.update(current_time_abs, elapsed_real_time_frame)
+            if player_effect_messages:
+                 player_update_messages.extend(player_effect_messages)
+            # --- END MODIFIED ---
+        
+        npc_updates = []
+        if self.world:
+            # --- MODIFIED: Ensure NPC updates use a consistent interval or calculated delta ---
+            # World.update itself will pass appropriate delta to NPC.update if needed
+            # For now, NPC.update uses WORLD_UPDATE_INTERVAL internally for its effect processing.
+            npc_updates = self.world.update() 
+            # --- END MODIFIED ---
 
         # --- Append Player Messages to Buffer ---
+        # (This logic for adding messages to buffer remains the same)
         if player_update_messages:
             buffer_changed = False
             for msg in player_update_messages:
                 if msg:
                     clean_msg = self._sanitize_text(msg)
-                    if clean_msg not in self.text_buffer[-len(player_update_messages):]: # Basic duplicate check
+                    if clean_msg not in self.text_buffer[-len(player_update_messages):]: 
                         self.text_buffer.append(clean_msg)
                         buffer_changed = True
             if buffer_changed:
                 self._trim_text_buffer()
-                self.scroll_offset = 0 # Scroll to bottom on player effect messages
+                self.scroll_offset = 0 
         # --- End Append Player Messages ---
 
-        # Update NPCs via World update
-        npc_updates = []
-        if self.world:
-            npc_updates = self.world.update() # world.update handles NPC logic and returns messages
-
-        # --- Append NPC Messages to Buffer ---
         if npc_updates:
             buffer_changed = False
             for message in npc_updates:
                 if message:
                     clean_msg = self._sanitize_text(message)
-                    if clean_msg not in self.text_buffer[-len(npc_updates):]: # Basic duplicate check
+                    if clean_msg not in self.text_buffer[-len(npc_updates):]: 
                         self.text_buffer.append(clean_msg)
                         buffer_changed = True
             if buffer_changed:
                 self._trim_text_buffer()
-                self.scroll_offset = 0 # Scroll to bottom on NPC messages too
-        # --- End Append NPC Messages ---
+                self.scroll_offset = 0 
 
-        # Check for player death (AFTER player/NPC updates)
         if self.world and self.world.player and not self.world.player.is_alive:
              self.game_state = "game_over"
 
-        # Update cursor blink
-        self.cursor_timer += self.clock.get_time()
+        self.cursor_timer += self.clock.get_time() # Use raw milliseconds for cursor
         if self.cursor_timer >= 500: self.cursor_visible = not self.cursor_visible; self.cursor_timer = 0
 
     def draw(self):
@@ -768,7 +773,7 @@ class GameManager:
         center_area_width = max(100, center_area_x_end - center_area_x_start) # Min width 100
 
         # --- Define Target Heights (Same as before) ---
-        target_room_panel_height = 250
+        target_room_panel_height = 300
         min_text_area_height = 100
 
         # --- Calculate Actual Room Panel Height (Same as before) ---
@@ -869,7 +874,8 @@ class GameManager:
                 self.screen, room_description_text, render_position, max_height=render_max_height_desc
             )
         else:
-            print(f"Skipping description render (max_h={render_max_height_desc})")
+            # Not enough space even for the description
+            pass # Skip rendering description
 
         current_y = y_after_desc
         current_y += section_spacing
@@ -878,25 +884,44 @@ class GameManager:
         items_in_room = self.world.get_items_in_current_room()
         full_items_line = ""
         if items_in_room:
+            # --- Group Items (same logic as before) ---
             item_counts: Dict[str, Dict[str, Any]] = {}
-            for item in items_in_room: item_id = item.obj_id; item_counts.setdefault(item_id, {"name": item.name, "count": 0})["count"] += 1
+            for item in items_in_room:
+                item_id = item.obj_id
+                item_counts.setdefault(item_id, {"name": item.name, "count": 0})["count"] += 1
             items_text_parts = []
-            for item_id, data in item_counts.items(): base_name = data["name"]; count = data["count"]; formatted_name = f"{FORMAT_CATEGORY}{base_name}{FORMAT_RESET}"; items_text_parts.append(f"{get_article(base_name)} {formatted_name}" if count == 1 else f"{count} {FORMAT_CATEGORY}{simple_plural(base_name)}{FORMAT_RESET}")
+            # Sort items alphabetically for consistent display
+            for item_id, data in sorted(item_counts.items(), key=lambda item: item[1]['name']):
+                base_name = data["name"]
+                count = data["count"]
+                # Apply category formatting to the item name
+                formatted_name = f"{FORMAT_CATEGORY}{base_name}{FORMAT_RESET}"
+                if count == 1:
+                    items_text_parts.append(f"{get_article(base_name)} {formatted_name}")
+                else:
+                    plural_base_name = simple_plural(base_name)
+                    formatted_plural_name = f"{FORMAT_CATEGORY}{plural_base_name}{FORMAT_RESET}"
+                    items_text_parts.append(f"{count} {formatted_plural_name}")
+            # --- End Grouping ---
             items_list_str = ", ".join(items_text_parts)
+            # Add the label *inside* the string to be rendered/wrapped
             full_items_line = f"{FORMAT_CATEGORY}Items:{FORMAT_RESET} {items_list_str}"
         else:
             full_items_line = f"{FORMAT_CATEGORY}Items:{FORMAT_RESET} {FORMAT_GRAY}(None){FORMAT_RESET}"
 
-        # --- Render Items Section ---
+        # --- Render Items Section (using TextFormatter) ---
         render_max_height_items = max_y - current_y
-
         y_after_items = current_y
-        if render_max_height_items >= line_height_needed:
+        if render_max_height_items >= line_height_needed: # Check if there's space for at least one line
             render_position_items = (panel_rect.x + padding, current_y)
             self.text_formatter.update_screen_width(panel_usable_width)
-            y_after_items = self.text_formatter.render(self.screen, full_items_line, render_position_items, max_height=render_max_height_items)
+            # Pass the full line (including label) to render
+            y_after_items = self.text_formatter.render(
+                self.screen, full_items_line, render_position_items, max_height=render_max_height_items
+            )
         else:
-             print(f"Skipping Items render (max_h={render_max_height_items})")
+            # Not enough space to render the items section
+            pass
 
         current_y = y_after_items
         current_y += section_spacing
@@ -905,22 +930,27 @@ class GameManager:
         npcs_in_room = self.world.get_current_room_npcs()
         full_npc_line = ""
         if npcs_in_room:
+            # Format each NPC name individually using the helper
             npc_text_parts = [format_name_for_display(self.world.player, npc, False) for npc in npcs_in_room]
             npc_list_str = ", ".join(npc_text_parts)
+            # Add the label *inside* the string to be rendered/wrapped
             full_npc_line = f"{FORMAT_CATEGORY}Also here:{FORMAT_RESET} {npc_list_str}"
         else:
             full_npc_line = f"{FORMAT_CATEGORY}Also here:{FORMAT_RESET} {FORMAT_GRAY}(None){FORMAT_RESET}"
 
-        # --- Render NPCs Section ---
+        # --- Render NPCs Section (using TextFormatter) ---
         render_max_height_npcs = max_y - current_y
-
         y_after_npcs = current_y
-        if render_max_height_npcs >= line_height_needed:
+        if render_max_height_npcs >= line_height_needed: # Check if there's space for at least one line
             render_position_npcs = (panel_rect.x + padding, current_y)
             self.text_formatter.update_screen_width(panel_usable_width)
-            y_after_npcs = self.text_formatter.render(self.screen, full_npc_line, render_position_npcs, max_height=render_max_height_npcs)
+            # Pass the full line (including label) to render
+            y_after_npcs = self.text_formatter.render(
+                self.screen, full_npc_line, render_position_npcs, max_height=render_max_height_npcs
+            )
         else:
-            print(f"Skipping NPCs render (max_h={render_max_height_npcs})")
+            # Not enough space to render the NPCs section
+            pass
 
         # --- Restore Formatter Width AFTER ALL panel rendering ---
         self.text_formatter.update_screen_width(original_formatter_width)

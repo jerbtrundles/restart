@@ -20,18 +20,31 @@
           "template_id": "village_elder",
           "instance_id": "elder_thorne_townsquare"
         },
-        {
-          "template_id": "wandering_villager",
-          "instance_id": "wanderer_villager_sq1"
-        },
-        {
-          "template_id": "wandering_villager",
-          "instance_id": "wanderer_villager_sq2"
-        },
-        {
-          "template_id": "wandering_villager",
-          "instance_id": "wanderer_villager_sq3"
-        }
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq1"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq2"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq3"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq4"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq5"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq6"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq7"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq8"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq9"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq10"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq11"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq12"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq13"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq14"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq15"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq16"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq17"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq18"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq19"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq20"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq21"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq22"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq23"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq24"},
+        {"template_id": "wandering_villager","instance_id": "wanderer_villager_sq25"}
       ],
       "items": [],
       "visited": true,

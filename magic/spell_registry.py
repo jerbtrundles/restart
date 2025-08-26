@@ -3,7 +3,7 @@
 Registry of all available spells in the game.
 """
 from typing import Dict, Optional
-from core.config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_POISON_DAMAGE_TYPE
+from core.config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_FIRE_DAMAGE_TYPE, EFFECT_POISON_DAMAGE_TYPE
 from magic.spell import Spell
 
 SPELL_REGISTRY: Dict[str, Spell] = {}
@@ -68,7 +68,8 @@ register_spell(Spell(
     target_type="enemy",
     cast_message="{caster_name} summons a sphere of fire!",
     hit_message="A fireball engulfs {target_name}, dealing {value} fire damage!",
-    level_required=3
+    level_required=3,
+    damage_type=EFFECT_FIRE_DAMAGE_TYPE
 ))
 
 register_spell(Spell(
@@ -149,6 +150,58 @@ register_spell(Spell(
     dot_tick_interval=EFFECT_DEFAULT_TICK_INTERVAL, # Use config default (e.g., 3.0)
     dot_damage_type=EFFECT_POISON_DAMAGE_TYPE # Use config constant ("poison")
     # No base effect_value needed if primary purpose is applying DoT
+))
+
+# Ice Equivalent of Fireball
+register_spell(Spell(
+    spell_id="ice_shard",
+    name="Ice Shard",
+    description="Launches a jagged shard of ice at the target.",
+    mana_cost=14, # Slightly different cost for flavor
+    cooldown=8.0,
+    effect_type="damage",
+    effect_value=18, # Slightly different damage for flavor
+    target_type="enemy",
+    cast_message="{caster_name} gathers chilling frost...",
+    hit_message="{caster_name}'s ice shard pierces {target_name}, dealing {value} cold damage!",
+    level_required=3, # Same level as Fireball
+    damage_type="cold" # Define damage type
+))
+
+# Lightning Equivalent of Fireball
+register_spell(Spell(
+    spell_id="chain_lightning", # Name allows for future multi-target expansion
+    name="Chain Lightning",
+    description="Calls down a crackling bolt of lightning upon the target.",
+    mana_cost=16, # Slightly higher cost?
+    cooldown=8.0,
+    effect_type="damage",
+    effect_value=22, # Slightly higher base damage?
+    target_type="enemy",
+    cast_message="{caster_name} calls upon the storm!",
+    hit_message="{caster_name}'s lightning bolt strikes {target_name} for {value} electric damage!",
+    level_required=3, # Same level as Fireball
+    damage_type="electric" # Define damage type
+))
+
+# Fire DoT Spell
+register_spell(Spell(
+    spell_id="immolate",
+    name="Immolate",
+    description="Engulfs the target in magical flames that burn over time.",
+    mana_cost=14, # Similar cost to poison DoT
+    cooldown=9.0, # Similar cooldown
+    effect_type="apply_dot", # Use the apply_dot effect type
+    target_type="enemy",
+    cast_message="{caster_name} gestures, and flames erupt around {target_name}!", # Updated cast message
+    hit_message="{target_name} bursts into magical flames!", # Message when effect *applied*
+    level_required=4, # Similar level to poison DoT
+    # --- DoT Specific Properties ---
+    dot_name="Burning", # Name of the effect shown to player
+    dot_duration=12.0, # Duration in seconds (e.g., 12 seconds)
+    dot_damage_per_tick=5, # Damage per tick (e.g., 5 fire damage)
+    dot_tick_interval=3.0, # How often it ticks (e.g., every 3 seconds -> 4 ticks total)
+    dot_damage_type="fire" # Damage type of the DoT
 ))
 
 # Add more spells here...
