@@ -69,8 +69,6 @@
     },
     "default_dialog": "{name} growls.",
     "loot_table": {
-     
-     
       "item_wolf_pelt": { "chance": 0.9 },
       "item_wolf_fang": { "chance": 0.7 },
       "item_raw_meat": { "chance": 0.5 }
@@ -153,7 +151,6 @@
     },
     "default_dialog": "{name} squeaks.",
     "loot_table": {
-     
       "item_rat_tail": { "chance": 0.8 },
       "item_rat_fur": { "chance": 0.6 }
     },
@@ -164,7 +161,16 @@
       "respawn_cooldown": 240,
       "spell_cast_chance": 0.0,
       "wander_chance": 0.7,
-      "move_cooldown": 5
+      "move_cooldown": 5,
+      "on_hit_effect_chance": 0.2,
+      "on_hit_effect": {
+        "type": "dot",
+        "name": "Sewer Plague",
+        "base_duration": 12.0,
+        "damage_per_tick": 1,
+        "tick_interval": 3.0,
+        "damage_type": "disease"
+      }
     }
   },
   "bandit": {

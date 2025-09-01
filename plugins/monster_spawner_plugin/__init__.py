@@ -17,6 +17,7 @@ from npcs.npc import NPC
 from npcs.npc_factory import NPCFactory # Use the unified NPC Factory
 
 # --- Utility Imports ---
+from utils.utils import get_article
 from utils.text_formatter import format_target_name # For formatting monster names in commands
 
 # Required imports for type checking
@@ -339,7 +340,7 @@ class MonsterSpawnerPlugin(PluginBase):
 
         player = self.world.player # Get player for formatting context
         formatted_name = format_target_name(player, monster) if player else monster.name
-        return f"{FORMAT_SUCCESS}{formatted_name} appears!{FORMAT_RESET}"
+        return f"{get_article(formatted_name).upper()} {formatted_name} appears!{FORMAT_RESET}"
 
 
     def _monsters_command_handler(self, args, context):

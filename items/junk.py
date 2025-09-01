@@ -3,12 +3,13 @@
 Represents generic junk items, often dropped by monsters or found as clutter.
 These items primarily exist to be sold.
 """
+from typing import Optional
 from items.item import Item
 
 class Junk(Item):
     """A junk item, usually for selling."""
 
-    def __init__(self, obj_id: str = None, name: str = "Unknown Junk",
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Junk",
                  description: str = "An item of little apparent use, but maybe someone will buy it.",
                  weight: float = 0.2, value: int = 1, # Junk typically has low value
                  **kwargs):

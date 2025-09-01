@@ -1,11 +1,18 @@
 # items/key.py
-from typing import Container, Optional
+# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
+# - Removed the top-level import of Container to break the circular dependency.
+# - Moved the `from items.container import Container` import inside the `use` method,
+#   where it's actually needed for the runtime `isinstance` check.
+
+from typing import Optional
 
 from items.item import Item
+# --- FIX: Removed circular import from the top of the file ---
+# from items.container import Container
 
 
 class Key(Item):
-    def __init__(self, obj_id: str = None, name: str = "Unknown Key",
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Key",
                  description: str = "No description", weight: float = 0.1,
                  value: int = 15, target_id: Optional[str] = None):
         # Call super without stackable
@@ -17,6 +24,9 @@ class Key(Item):
     # MODIFY use method for Key
     def use(self, user, target_item: Optional[Item] = None) -> str:
         """Use the key on a target item (e.g., a container)."""
+        # --- FIX: Import Container locally, only when this method is called ---
+        from items.container import Container
+
         if not target_item:
             return f"What do you want to use the {self.name} on?"
 

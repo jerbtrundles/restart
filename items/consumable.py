@@ -1,10 +1,11 @@
 # items/consumable.py
 import time
+from typing import Optional
 from core.config import FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS
 from items.item import Item
 
 class Consumable(Item):
-    def __init__(self, obj_id: str = None, name: str = "Unknown Consumable",
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Consumable",
                  description: str = "No description", weight: float = 0.5,
                  value: int = 5, uses: int = 1, effect_value: int = 10,
                  effect_type: str = "heal"):

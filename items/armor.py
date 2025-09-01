@@ -7,7 +7,7 @@ class Armor(Item):
     Represents a piece of armor that provides defense when equipped.
     """
     def __init__(self,
-                 obj_id: str = None,
+                 obj_id: Optional[str] = None,
                  name: str = "Unknown Armor",
                  description: str = "A piece of protective gear.",
                  weight: float = 5.0, # Armor tends to be heavier

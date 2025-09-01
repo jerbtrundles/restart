@@ -7,13 +7,28 @@
     "value": 0,
     "stackable": false,
     "properties": {
-      "damage": 9999,
-      "durability": 99,
-      "max_durability": 99,
-      "equip_slot": ["main_hand", "off_hand"],
+      "damage": 999,
+      "durability": 9999,
+      "max_durability": 9999,
+      "equip_slot": ["main_hand"],
       "always_hit": true,
       "regen_boost": 50,
       "haste_multiplier": 0.1
+    }
+  },
+  "debug_shield": {
+    "type": "Armor",
+    "name": "Debug Shield",
+    "description": "An unbreakable shield for testing.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "defense": 500,
+      "magic_resist": 500,
+      "durability": 9999,
+      "max_durability": 9999,
+      "equip_slot": ["off_hand"]
     }
   },
   "debug_armor": {
@@ -24,11 +39,80 @@
     "value": 0,
     "stackable": false,
     "properties": {
-      "defense": 10000,
-      "magic_resist": 10000,
+      "defense": 1000,
+      "magic_resist": 1000,
       "damage_immunity_chance": 0.95,
       "equip_slot": ["body"],
-       "regen_boost": 50
+      "regen_boost": 50,
+      "durability": 9999,
+      "max_durability": 9999
+    }
+  },
+  "debug_helmet": {
+    "type": "Armor",
+    "name": "Debug Helmet",
+    "description": "A flawless helmet for testing.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "defense": 500,
+      "magic_resist": 500,
+      "durability": 9999,
+      "max_durability": 9999,
+      "equip_slot": ["head"]
+    }
+  },
+  "debug_gauntlets": {
+    "type": "Armor",
+    "name": "Debug Gauntlets",
+    "description": "Perfectly crafted gauntlets for testing.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "defense": 500,
+      "magic_resist": 500,
+      "durability": 9999,
+      "max_durability": 9999,
+      "equip_slot": ["hands"]
+    }
+  },
+  "debug_boots": {
+    "type": "Armor",
+    "name": "Debug Boots",
+    "description": "Boots of impossible speed and protection for testing.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "defense": 500,
+      "magic_resist": 500,
+      "durability": 9999,
+      "max_durability": 9999,
+      "equip_slot": ["feet"]
+    }
+  },
+  "debug_amulet": {
+    "type": "Armor",
+    "name": "Debug Amulet",
+    "description": "An amulet granting immense power and regeneration for testing.",
+    "weight": 0.1,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+      "defense": 500,
+      "magic_resist": 500,
+      "durability": 9999,
+      "max_durability": 9999,
+      "equip_slot": ["neck"],
+      "regen_boost": 100,
+      "equip_effect": {
+        "type": "hot",
+        "name": "Debug Regeneration",
+        "heal_per_tick": 50,
+        "tick_interval": 1.0
+      }
     }
   }
 }

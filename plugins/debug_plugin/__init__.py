@@ -24,7 +24,7 @@ class DebugPlugin(PluginBase):
         
         # Store the original debug mode state
         self.debug_mode_enabled = False
-        if hasattr(world, "game") and hasattr(world.game, "debug_mode"):
+        if world and hasattr(world, "game") and hasattr(world.game, "debug_mode"):
             self.debug_mode_enabled = world.game.debug_mode
     
     def initialize(self):

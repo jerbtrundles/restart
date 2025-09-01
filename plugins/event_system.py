@@ -3,7 +3,7 @@ plugins/event_system.py
 Event system for the MUD game.
 Provides a centralized way for plugins and game components to communicate.
 """
-from typing import Dict, List, Any, Callable, Set
+from typing import Dict, List, Any, Callable, Optional, Set
 
 
 class EventSystem:
@@ -80,7 +80,7 @@ class EventSystem:
         """
         return self.event_history.get(event_type, default)
     
-    def clear_history(self, event_types: Set[str] = None) -> None:
+    def clear_history(self, event_types: Optional[Set[str]] = None) -> None:
         """
         Clear event history.
         

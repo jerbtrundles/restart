@@ -21,7 +21,7 @@ class Spell:
                  heal_message: str = "{caster_name} heals {target_name} with {spell_name} for {value} points!",
                  self_heal_message="You heal yourself for {value} health!",
                  level_required: int = 1,
-                 damage_type: Optional[str] = None, # Added for damage type consistency
+                 damage_type: str = "nonelemental", # Added for damage type consistency
                  summon_template_id: Optional[str] = None,
                  summon_duration: float = 0.0,
                  max_summons: int = 0,

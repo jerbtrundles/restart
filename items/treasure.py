@@ -1,9 +1,10 @@
 # items/treasure.py
+from typing import Optional
 from items.item import Item
 
 
 class Treasure(Item):
-    def __init__(self, obj_id: str = None, name: str = "Unknown Treasure",
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Treasure",
                  description: str = "No description", weight: float = 0.5,
                  value: int = 100):
         # Call super without stackable

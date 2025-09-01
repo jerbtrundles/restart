@@ -1,19 +1,21 @@
-"""main.py"""
 import argparse
 import os
 from core.game_manager import GameManager
 from core.config import DATA_DIR, DEFAULT_SAVE_FILE, SAVE_GAME_DIR
-from commands.commands import register_movement_commands
+# --- FIX: Import the entire 'commands' package to trigger its __init__.py ---
+import commands
 
 def main():
+    print(SAVE_GAME_DIR)
+
     parser = argparse.ArgumentParser(description='Pygame MUD Game')
-    # Change argument to specify save file, not world definition
     parser.add_argument('--save', '-s', type=str, default=DEFAULT_SAVE_FILE,
                         help='Save game file to load/save (default: default_save.json)')
     args = parser.parse_args()
 
     create_initial_directories()
-    register_movement_commands()
+    # --- FIX: The line below is now handled by commands/__init__.py and should be REMOVED ---
+    # register_movement_commands() 
 
     game = GameManager(args.save)
     game.run()

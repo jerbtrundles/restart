@@ -9,7 +9,7 @@ import math
 
 from core.config import (
     DEFAULT_COLORS, COLOR_DEFAULT, FORMAT_GRAY, FORMAT_PURPLE, # Import base colors if needed
-    FORMAT_RED, FORMAT_ORANGE, FORMAT_YELLOW, FORMAT_GREEN, FORMAT_BLUE,
+    FORMAT_RED, FORMAT_ORANGE, FORMAT_YELLOW, FORMAT_GREEN, FORMAT_BLUE, FORMAT_DARK_BLUE,
     FORMAT_CYAN, FORMAT_WHITE, FORMAT_RESET,
     SEMANTIC_FORMAT # Import the semantic mapping too
 )
@@ -203,7 +203,7 @@ LEVEL_DIFF_COLORS = {
     "red": FORMAT_RED,        # Very hard -> Red
     "orange": FORMAT_ORANGE,    # Hard -> Orange
     "yellow": FORMAT_YELLOW,    # Even/Slightly hard -> Yellow
-    "blue": FORMAT_BLUE,      # Easy -> Blue
+    "blue": FORMAT_CYAN,      # Easy -> Cyan
     "green": FORMAT_GREEN,      # Very easy -> Green
     "gray": FORMAT_GRAY,
 }

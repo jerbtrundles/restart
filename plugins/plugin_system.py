@@ -342,7 +342,7 @@ import inspect
 from commands.command_system import command, unregister_plugin_commands, registered_commands
 
 def register_plugin_command(plugin_id: str, name: str, handler: Callable, 
-                          aliases: List[str] = None, category: str = "other", 
+                          aliases: Optional[List[str]] = None, category: str = "other", 
                           help_text: str = "No help available.") -> bool:
     """
     Register a command for a plugin.
@@ -398,25 +398,6 @@ def unregister_all_plugin_commands(plugin_id: str) -> int:
         Number of commands unregistered.
     """
     return unregister_plugin_commands(plugin_id)
-
-def get_plugin_commands(plugin_id: str) -> List[Dict[str, Any]]:
-    """
-    Get all commands registered by a plugin.
-    
-    Args:
-        plugin_id: The ID of the plugin.
-        
-    Returns:
-        A list of command data dictionaries.
-    """
-    plugin_cmds = []
-    
-    for cmd_name, cmd_data in registered_commands.items():
-        if cmd_data.get("plugin_id") == plugin_id and cmd_data["name"] == cmd_name:
-            # Only include primary command names, not aliases
-            plugin_cmds.append(cmd_data)
-    
-    return plugin_cmds
 
 def has_plugin_command(plugin_id: str, command_name: str) -> bool:
     """

@@ -2,6 +2,11 @@
 plugins/npc_schedule_plugin/schedule_templates.py
 Creates more dynamic schedules with NPCs moving between different locations
 """
+# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
+# - Fixed Pylance "OptionalSubscript" error by adding a fallback for the
+#   'special_place' variable in create_villager_schedule, ensuring it's never None
+#   before its keys are accessed.
+
 import random
 
 def create_example_schedules(plugin):
@@ -504,7 +509,12 @@ def create_villager_schedule(plugin, obj_id, town_spaces):
         special_place = get_random_location(town_spaces[special_category])
     else:
         special_place = square
-    
+        
+    # --- FIX: Add fallback for special_place to prevent None ---
+    if not special_place:
+        special_place = square
+    # --- END FIX ---
+
     # Create a varied schedule
     schedule = {
         7: {"activity": "waking up", "region_id": home["region_id"], "room_id": home["room_id"]},

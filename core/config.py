@@ -7,9 +7,9 @@ Configuration settings for the game with enhanced text system support.
 import os
 
 
-SCREEN_WIDTH = 1200
-SCREEN_HEIGHT = 720
-FONT_SIZE = 14
+SCREEN_WIDTH = 1600
+SCREEN_HEIGHT = 920
+FONT_SIZE = 18
 LINE_SPACING = 5
 INPUT_HEIGHT = 30
 
@@ -24,10 +24,13 @@ COLOR_ORANGE = (255, 165, 0)
 COLOR_YELLOW = (255, 255, 0)
 COLOR_GREEN = (0, 255, 0)
 COLOR_BLUE = (0, 0, 255)
+COLOR_DARK_BLUE = (0, 0, 128)
 COLOR_CYAN = (0, 255, 255)
 COLOR_WHITE = (255, 255, 255)
-COLOR_GRAY = (128, 128, 128)
-COLOR_DEFAULT = COLOR_WHITE # Explicit default
+COLOR_GRAY = (192, 192, 192)
+COLOR_BEIGE = (245, 222, 179)
+COLOR_STEEL_BLUE = (173, 216, 230)
+COLOR_DEFAULT = COLOR_WHITE
 
 FORMAT_PURPLE = "[[PURPLE]]"
 FORMAT_RED = "[[RED]]"
@@ -35,10 +38,12 @@ FORMAT_ORANGE = "[[ORANGE]]"
 FORMAT_YELLOW = "[[YELLOW]]"
 FORMAT_GREEN = "[[GREEN]]"
 FORMAT_BLUE = "[[BLUE]]"
+FORMAT_DARK_BLUE = "[[DARK_BLUE]]"
 FORMAT_GRAY = "[[GRAY]]"
+FORMAT_BEIGE = "[[BEIGE]]"
+FORMAT_STEEL_BLUE = "[[STEEL_BLUE]]"
 FORMAT_CYAN = "[[CYAN]]"
 FORMAT_WHITE = "[[WHITE]]"
-# Keep FORMAT_RESET for resetting to default, makes semantic sense
 FORMAT_RESET = "[[/]]"
 
 FORMAT_ERROR = FORMAT_RED
@@ -46,32 +51,33 @@ FORMAT_TITLE = FORMAT_YELLOW
 FORMAT_HIGHLIGHT = FORMAT_GREEN
 FORMAT_SUCCESS = FORMAT_GREEN
 FORMAT_CATEGORY = FORMAT_CYAN
-FORMAT_FRIENDLY_NPC = FORMAT_CYAN
+FORMAT_FRIENDLY_NPC = FORMAT_BEIGE
 
 # Default color values for format codes (RGB)
 DEFAULT_COLORS = {
-    FORMAT_RESET: (255, 255, 255),     # White (default)
     FORMAT_PURPLE: COLOR_PURPLE,
     FORMAT_RED: COLOR_RED,
     FORMAT_ORANGE: COLOR_ORANGE,
     FORMAT_YELLOW: COLOR_YELLOW,
     FORMAT_GREEN: COLOR_GREEN,
-    FORMAT_BLUE: COLOR_CYAN,
+    FORMAT_BLUE: COLOR_BLUE,
+    FORMAT_DARK_BLUE: COLOR_DARK_BLUE,
+    FORMAT_STEEL_BLUE: COLOR_STEEL_BLUE,
     FORMAT_GRAY: COLOR_GRAY,
     FORMAT_CYAN: COLOR_CYAN,
     FORMAT_WHITE: COLOR_WHITE,
-    FORMAT_RESET: COLOR_DEFAULT, # Reset goes to the default color
-    FORMAT_FRIENDLY_NPC: COLOR_CYAN
+    FORMAT_RESET: COLOR_DEFAULT,
+    FORMAT_FRIENDLY_NPC: COLOR_BEIGE
 }
 
 SEMANTIC_FORMAT = {
-    "TITLE": FORMAT_ORANGE,     # Titles will be Orange
-    "CATEGORY": FORMAT_BLUE,      # Category labels will be Blue
-    "HIGHLIGHT": FORMAT_CYAN,     # Highlights will be Cyan
-    "SUCCESS": FORMAT_GREEN,      # Success messages will be Green
-    "ERROR": FORMAT_RED,        # Error messages will be Red
-    "NEUTRAL": FORMAT_YELLOW,     # Neutral/near-level mobs will be Yellow
-    "DEFAULT": FORMAT_RESET       # Default text reset
+    "TITLE": FORMAT_ORANGE,
+    "CATEGORY": FORMAT_BLUE,
+    "HIGHLIGHT": FORMAT_CYAN,
+    "SUCCESS": FORMAT_GREEN,
+    "ERROR": FORMAT_RED,
+    "NEUTRAL": FORMAT_YELLOW,
+    "DEFAULT": FORMAT_RESET
 }
 
 # Scrolling settings
@@ -225,7 +231,7 @@ SPELL_DAMAGE_VARIATION_FACTOR = 0.1 # e.g., +/- 10%
 MINIMUM_SPELL_EFFECT_VALUE = 1
 
 # --- UI & Display ---
-FONT_FAMILY = "cascadiamonoregular"
+FONT_FAMILY = "helvetica"
 TITLE_FONT_SIZE_MULTIPLIER = 2
 TARGET_FPS = 30
 LOAD_SCREEN_MAX_SAVES = 10
@@ -328,6 +334,7 @@ EFFECT_POISON_DAMAGE_TYPE = "poison" # Damage type for standard poison
 EFFECT_FIRE_DAMAGE_TYPE = "fire"
 EFFECT_COLD_DAMAGE_TYPE = "cold"
 EFFECT_ELECTRIC_DAMAGE_TYPE = "electric"
+EFFECT_DISEASE_DAMAGE_TYPE = "disease" # <<< ADDED THIS LINE
 
 STATUS_PANEL_WIDTH = 400
 STATUS_PANEL_PADDING = 5
@@ -339,3 +346,13 @@ NPC_BASE_XP_TO_LEVEL = 150 # NPCs might level a bit slower?
 NPC_XP_TO_LEVEL_MULTIPLIER = 1.6
 NPC_LEVEL_UP_STAT_INCREASE = 1 # Simple stat gain for now
 NPC_LEVEL_UP_HEALTH_HEAL_PERCENT = 0.5 # Heal 50% on level up
+
+# --- Status Effect Flavor Text ---
+# Used for displaying DoT effects on NPCs to the player.
+NPC_DOT_FLAVOR_MESSAGES = [
+    "{npc_name} winces in pain from the {effect_name}.",
+    "The {effect_name} visibly weakens {npc_name}.",
+    "{npc_name} stumbles as the {effect_name} takes its toll.",
+    "A flicker of pain crosses {npc_name}'s face due to the {effect_name}.",
+    "{npc_name} lets out a pained grunt from the effects of the {effect_name}."
+]

@@ -5,7 +5,7 @@ from game_object import GameObject
 class Item(GameObject):
     """Base class for all items in the game."""
 
-    def __init__(self, obj_id: str = None, name: str = "Unknown Item",
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Item",
                  description: str = "No description", weight: float = 1.0,
                  value: int = 0, stackable: bool = False,
                  equip_slot: Optional[List[str]] = None,

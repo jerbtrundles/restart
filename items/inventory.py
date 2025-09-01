@@ -1,5 +1,5 @@
+# items/inventory.py
 """
-items/inventory.py
 Enhanced inventory system for the MUD game with improved text formatting.
 Handles storage and management of items.
 """
@@ -8,6 +8,21 @@ from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_
 from items.item import Item
 from items.item_factory import ItemFactory
 from utils.utils import _serialize_item_reference # If defined in utils/utils.py
+
+# --- HELPER FUNCTION FOR SORTING ---
+def _get_item_sort_key(slot: 'InventorySlot') -> Tuple[str, str]:
+    """
+    Helper function to get a stable sort key for an inventory slot.
+    This function is intended to be called only with slots guaranteed to have an item.
+    """
+    # The calling code already filters for non-None items, so this check is for
+    # absolute safety and to satisfy static analysis tools like Pylance.
+    if slot.item:
+        return (type(slot.item).__name__, slot.item.name)
+    # Fallback, though this path should not be taken with the current logic.
+    return ("", "")
+# --- END HELPER FUNCTION ---
+
 
 class InventorySlot:
     """Represents a slot in an inventory that can hold items."""
@@ -329,11 +344,18 @@ class Inventory:
                     return slot.item # Return the actual item instance
         return None
 
-    # sort_items method remains useful
     def sort_items(self) -> None:
+        """Sorts the inventory, grouping items by type and then alphabetically."""
+        # Create a list of slots that are not empty.
         item_slots = [slot for slot in self.slots if slot.item]
+        # Create a list of the empty slots.
         empty_slots = [slot for slot in self.slots if not slot.item]
-        item_slots.sort(key=lambda slot: (type(slot.item).__name__, slot.item.name))
+
+        # Sort the item-containing slots using the helper function.
+        # This resolves the Pylance error by making the sort key logic explicit.
+        item_slots.sort(key=_get_item_sort_key)
+
+        # Recombine the sorted item slots with the empty slots at the end.
         self.slots = item_slots + empty_slots
 
     def count_item(self, obj_id: str) -> int:
@@ -353,10 +375,14 @@ class Inventory:
 
     def remove_item_instance(self, item_instance: Item) -> bool:
         """Removes a specific item *instance* from the inventory."""
-        if not item_instance: return False
+        if not item_instance:
+            return False
 
         for slot in self.slots:
             # Use 'is' for identity check first
             if slot.item is item_instance:
                 removed_type, removed_count = slot.remove(1) # Remove just this one instance
                 return removed_type is not None and removed_count == 1
+        
+        # <<< FIX: Added the missing return path >>>
+        return False

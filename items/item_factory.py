@@ -30,7 +30,7 @@ ITEM_CLASS_MAP: Dict[str, Type[Item]] = {
      "Junk": Junk
      # Add other mappings directly
 }
-print(f"[Factory Startup] Final ITEM_CLASS_MAP: {ITEM_CLASS_MAP}")
+print(f"[Item Factory Startup] Final ITEM_CLASS_MAP: {ITEM_CLASS_MAP}")
     
 class ItemFactory:
     """Factory class for creating items from templates or data."""

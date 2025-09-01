@@ -3,7 +3,7 @@ from items.item import Item
 from typing import List, Optional # Import List, Optional
 
 class Weapon(Item):
-    def __init__(self, obj_id: str = None, name: str = "Unknown Weapon",
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Weapon",
                  description: str = "No description", weight: float = 2.0,
                  value: int = 10, damage: int = 5, durability: int = 100,
                  equip_slot: Optional[List[str]] = None,
