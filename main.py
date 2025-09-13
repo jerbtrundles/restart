@@ -2,7 +2,6 @@ import argparse
 import os
 from core.game_manager import GameManager
 from core.config import DATA_DIR, DEFAULT_SAVE_FILE, SAVE_GAME_DIR
-# --- FIX: Import the entire 'commands' package to trigger its __init__.py ---
 import commands
 
 def main():
@@ -14,9 +13,6 @@ def main():
     args = parser.parse_args()
 
     create_initial_directories()
-    # --- FIX: The line below is now handled by commands/__init__.py and should be REMOVED ---
-    # register_movement_commands() 
-
     game = GameManager(args.save)
     game.run()
 

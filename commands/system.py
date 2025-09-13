@@ -15,9 +15,10 @@ def help_handler(args, context):
 def quit_handler(args, context):
     game = context.get("game")
     if game:
-        game._shutdown_gameplay_systems()
-        game.game_state = "title_screen"
+        # This method now correctly resets the game state without plugin logic
+        game.quit_to_title()
         return f"{FORMAT_HIGHLIGHT}Returning to title screen...{FORMAT_RESET}"
+    return f"{FORMAT_ERROR}Game context not found.{FORMAT_RESET}"
 
 @command("save", [], "system", "Save game state.\nUsage: save [filename]")
 def save_handler(args, context):
@@ -42,24 +43,29 @@ def load_handler(args, context):
     save_path = os.path.join(SAVE_GAME_DIR, fname)
     if not os.path.exists(save_path):
          return f"{FORMAT_ERROR}Save file '{fname}' not found in '{SAVE_GAME_DIR}'.{FORMAT_RESET}"
+    
     print(f"Attempting to load game state from {fname}...")
-    if game.plugin_manager: game.plugin_manager.unload_all_plugins()
-    success = world.load_save_game(fname)
-    if success:
+    
+    # --- REFACTORED LOGIC ---
+    # Load game now returns states for core managers
+    load_success, loaded_time_data, loaded_weather_data = world.load_save_game(fname)
+    
+    if load_success:
          game.current_save_file = fname
-         game.text_buffer = []
-         game.scroll_offset = 0
-         game.input_text = ""
-         game.command_history = []
-         game.history_index = -1
+         
+         # Apply loaded states to core managers
+         game.time_manager.apply_loaded_time_state(loaded_time_data)
+         game.weather_manager.apply_loaded_weather_state(loaded_weather_data)
+         
+         # Reset UI and input state
+         game.renderer.text_buffer = []
+         game.renderer.scroll_offset = 0
+         game.input_handler.input_text = ""
+         game.input_handler.command_history = []
+         game.input_handler.history_index = -1
+         
          game.game_state = "playing"
-         if game.plugin_manager:
-             game.plugin_manager.service_locator.register_service("world", game.world)
-             game.plugin_manager.load_all_plugins()
-             time_plugin = game.plugin_manager.get_plugin("time_plugin")
-             if time_plugin: time_plugin._update_world_time_data()
-             weather_plugin = game.plugin_manager.get_plugin("weather_plugin")
-             if weather_plugin: weather_plugin._notify_weather_change()
+         
          return f"{FORMAT_SUCCESS}World state loaded from {fname}{FORMAT_RESET}\n\n{world.look()}"
     else:
          return f"{FORMAT_ERROR}Error loading world state from {fname}. Game state might be unstable.{FORMAT_RESET}"

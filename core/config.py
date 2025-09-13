@@ -97,6 +97,8 @@ COMMAND_HISTORY_SIZE = 50  # Number of commands to keep in history
 
 # Debug settings
 DEBUG_COLOR = (255, 0, 0)  # Red for debug text
+DEBUG_IGNORE_PLAYER_COMBAT = False
+DEBUG_SHOW_LEVEL = True
 
 DEFAULT_SAVE_FILE = "default_save.json"
 DATA_DIR = "data"
@@ -148,8 +150,6 @@ VENDOR_CAN_BUY_ALL_ITEMS = False # Should vendors only buy certain types?
 REPAIR_COST_PER_VALUE_POINT = 0.1 # e.g., 10% of item value to repair fully
 REPAIR_MINIMUM_COST = 1
 
-DEBUG_SHOW_LEVEL = True
-
 # core/config.py
 # ... (existing imports and constants) ...
 
@@ -188,12 +188,19 @@ PLAYER_ATTACK_DAMAGE_VARIATION_RANGE = (-1, 2) # Min/Max added/subtracted from b
 
 # --- NPC Defaults & Base Values ---
 NPC_DEFAULT_BEHAVIOR = "stationary"
+NPC_DEFAULT_MAX_MANA = 0 # <<< NEW
+NPC_MANA_LEVEL_UP_MULTIPLIER = 1.10 # <<< NEW
+NPC_MANA_LEVEL_UP_INT_DIVISOR = 3 # <<< NEW
+NPC_MANA_REGEN_WISDOM_DIVISOR = 22 # <<< NEW
+NPC_BASE_MANA_REGEN_RATE = 0.5 # <<< NEW
+NPC_LOW_MANA_RETREAT_THRESHOLD = 0.20 # Retreat if below 20% mana <<< NEW
 NPC_DEFAULT_WANDER_CHANCE = 0.3
 NPC_DEFAULT_MOVE_COOLDOWN = 10 # Seconds
 NPC_DEFAULT_AGGRESSION = 0.0
 NPC_DEFAULT_WANDER = 0.3
 NPC_DEFAULT_FLEE_THRESHOLD = 0.2 # Flee below 20% health
 NPC_DEFAULT_RESPAWN_COOLDOWN = 600 # Seconds (10 minutes)
+NAMED_NPC_RESPAWN_COOLDOWN = 60 # seconds until important NPC respawn after death
 NPC_DEFAULT_COMBAT_COOLDOWN = 3.0 # Seconds between any combat action
 NPC_DEFAULT_ATTACK_COOLDOWN = 3.0 # Seconds between physical attacks
 NPC_DEFAULT_SPELL_CAST_CHANCE = 0.0 # 30% chance to try casting a spell if available
@@ -270,6 +277,18 @@ VENDOR_ID_HINTS = ["shop", "merchant", "bartender"] # Lowercase hints in NPC IDs
 # --- World Settings ---
 WORLD_UPDATE_INTERVAL = 0.5 # Seconds between world update ticks
 
+# --- Monster Spawner Core Settings ---
+SPAWN_INTERVAL_SECONDS = 1.0
+SPAWN_CHANCE_PER_TICK = 1.0
+SPAWN_ROOMS_PER_MONSTER = 5
+SPAWN_MIN_MONSTERS_PER_REGION = 1
+SPAWN_MAX_MONSTERS_PER_REGION_CAP = 10
+SPAWN_NO_SPAWN_ROOM_KEYWORDS = [
+    "town_square", "tavern", "inn", "shop", "temple", "shrine", "home",
+    "general_store", "blacksmith", "farmhouse_yard", "shepherds_hut"
+]
+SPAWN_DEBUG = False
+
 # --- Time Plugin Settings ---
 TIME_PLUGIN_UPDATE_THRESHOLD = 0.001 # Minimum game_time difference to trigger update
 TIME_PLUGIN_MAX_CATCHUP_SECONDS = 5.0 # Max real seconds to process in one tick
@@ -298,14 +317,32 @@ PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD = 25
 PLAYER_STATUS_HEALTH_LOW_THRESHOLD = 50
 DEFAULT_PLAYER_NAME = 'Adventurer'
 
-FACTIONS = ["player", "friendly", "neutral", "hostile", "player_minion"] # Add new one
+FACTIONS = ["player", "friendly", "neutral", "hostile", "player_minion"]
 
-DEFAULT_FACTION_RELATIONS = {
-    "player": 100,
-    "player_minion": 100, # Minions are friendly to player and other minions
-    "friendly": 0,      # Neutral to friendly villagers initially?
-    "neutral": 0,
-    "hostile": -100     # Hostile to monsters
+# Defines the default relationship score from the "viewer" faction (outer key)
+# to the "target" faction (inner key).
+# 100: Allied, 0: Neutral, -100: Hostile
+FACTION_RELATIONSHIP_MATRIX = {
+    "player": {
+        "player": 100, "player_minion": 100, "friendly": 100,
+        "neutral": 0, "hostile": -100
+    },
+    "player_minion": {
+        "player": 100, "player_minion": 100, "friendly": 100,
+        "neutral": 0, "hostile": -100
+    },
+    "friendly": { # Villagers, etc.
+        "player": 100, "player_minion": 100, "friendly": 100,
+        "neutral": 0, "hostile": -100
+    },
+    "neutral": { # Animals, ambient creatures
+        "player": 0, "player_minion": 0, "friendly": 0,
+        "neutral": 0, "hostile": 0
+    },
+    "hostile": { # Goblins, skeletons, etc.
+        "player": -100, "player_minion": -100, "friendly": -100,
+        "neutral": -100, "hostile": 0  # <<< THE KEY FIX: Hostiles are NEUTRAL to each other
+    }
 }
 
 SPELL_EFFECT_TYPES = ["damage", "heal", "buff", "debuff", "summon"] # Added summon
@@ -356,3 +393,69 @@ NPC_DOT_FLAVOR_MESSAGES = [
     "A flicker of pain crosses {npc_name}'s face due to the {effect_name}.",
     "{npc_name} lets out a pained grunt from the effects of the {effect_name}."
 ]
+
+# --- Quest System Settings (Migrated from Plugin) ---
+QUEST_SYSTEM_CONFIG = {
+    "quest_board_locations": [
+        "town:town_square",
+        "portbridge:harbor_district" # Example of a second location
+    ],
+    "max_quests_on_board": 5,             # How many quests are visible at once
+    "min_quests_on_board": 2,             # Always try to have at least this many
+    "initial_quests_per_type": 1,       # How many of each type to generate initially
+    "quest_level_range_player": 3,        # Generate quests +/- this many levels from player
+    "quest_level_min": 1,                 # Minimum level for any generated quest objective
+    # --- Reward Scaling ---
+    "reward_base_xp": 50,
+    "reward_xp_per_level": 15,
+    "reward_xp_per_quantity": 5, # For kill/fetch
+    "reward_base_gold": 10,
+    "reward_gold_per_level": 5,
+    "reward_gold_per_quantity": 2, # For kill/fetch
+    # --- Generation Tuning ---
+    "kill_quest_quantity_base": 3,
+    "kill_quest_quantity_per_level": 0.5, # e.g., level 10 player might need 3 + 5 = 8 kills
+    "fetch_quest_quantity_base": 5,
+    "fetch_quest_quantity_per_level": 1,
+    # --- NPC Quest Giver Interests (Example Mapping) ---
+    "npc_quest_interests": {
+        "blacksmith": ["kill", "deliver", "fetch", "kill_nearby_threats", "fetch_materials_metal", "fetch_materials_ore", "fetch_materials_hide", "fetch_simple", "kill_pests"],
+        "tavern_keeper": ["kill", "deliver", "fetch", "fetch_ingredients", "fetch_consumables", "kill_pests", "deliver_messages", "fetch_simple"],
+        "merchant": ["kill", "deliver", "fetch", "fetch_trade_goods", "deliver_cargo", "kill_bandits", "fetch_materials_rare", "fetch_simple", "deliver_local"],
+        "village_elder": ["kill", "deliver", "fetch", "kill_major_threats", "investigate_problems", "deliver_official", "fetch_historical", "kill_nearby_threats", "deliver_local"],
+        "guard": ["kill", "deliver", "fetch", "kill_any_hostile", "patrol_area", "deliver_reports", "kill_nearby_threats"],
+        "villager": ["kill", "deliver", "fetch", "fetch_simple", "kill_pests", "deliver_local", "fetch_ingredients"]
+    },
+    # --- Mapping from broad quest types to specific interests for giver selection ---
+    "quest_type_interest_map": {
+        "kill": ["kill_nearby_threats", "kill_pests", "kill_major_threats", "kill_any_hostile", "kill_bandits"],
+        "fetch": ["fetch_materials_metal", "fetch_materials_ore", "fetch_materials_hide", "fetch_ingredients", "fetch_consumables", "fetch_trade_goods", "fetch_materials_rare", "fetch_historical", "fetch_simple"],
+        "deliver": ["deliver_messages", "deliver_cargo", "deliver_official", "deliver_local", "deliver_reports"]
+    },
+    # --- Debug mode for quest generation/tracking ---
+    "debug": True
+}
+
+# --- Core Time System Settings (Migrated from Plugin) ---
+TIME_REAL_SECONDS_PER_GAME_DAY = 1200  # 20 minutes
+TIME_DAYS_PER_WEEK = 7
+TIME_DAYS_PER_MONTH = 30
+TIME_MONTHS_PER_YEAR = 12
+TIME_DAY_NAMES = [
+    "Moonday", "Tideday", "Windday", "Thunderday",
+    "Fireday", "Starday", "Sunday"
+]
+TIME_MONTH_NAMES = [
+    "Deepwinter", "Icemelt", "Springbloom", "Rainshower",
+    "Meadowgrow", "Highsun", "Fireheat", "Goldenfield",
+    "Harvestide", "Leaffall", "Frostwind", "Darknight"
+]
+TIME_DAWN_HOUR = 6
+TIME_DAY_HOUR = 8
+TIME_DUSK_HOUR = 18
+TIME_NIGHT_HOUR = 20
+TIME_UPDATE_THRESHOLD = 0.001
+TIME_MAX_CATCHUP_SECONDS = 5.0
+
+NPC_HEALTH_DESC_THRESHOLDS = (0.25, 0.50, 0.75) # Corresponds to severely injured, wounded, minor injuries
+NPC_HEALER_HEAL_THRESHOLD = 0.75 # NEW: Priests will heal allies below this health %

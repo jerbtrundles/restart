@@ -4,7 +4,6 @@ import time
 from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 import uuid
 
-from npcs.npc_factory import NPCFactory
 from utils.text_formatter import get_level_diff_category, format_target_name
 from magic.spell import Spell
 from core.config import EFFECT_DEFAULT_TICK_INTERVAL, LEVEL_DIFF_COMBAT_MODIFIERS, MINIMUM_SPELL_EFFECT_VALUE, SPELL_DAMAGE_VARIATION_FACTOR, SPELL_DEFAULT_DAMAGE_TYPE
@@ -22,6 +21,7 @@ def apply_spell_effect(caster: CasterTargetType, target: CasterTargetType, spell
     Applies the spell's effect to the target and returns the value and message.
     Names are formatted relative to the viewer.
     """
+    from npcs.npc_factory import NPCFactory
     from player import Player
     value = 0
     message = ""

@@ -32,6 +32,60 @@
       "can_give_generic_quests": false
     }
   },
+  "wandering_mage": {
+    "name": "Wandering Mage",
+    "description": "A traveler clad in simple robes, humming a tune as they walk. Their eyes occasionally sparkle with arcane energy.",
+    "health": 40,
+    "mana": 40,
+    "level": 3,
+    "friendly": true,
+    "faction": "friendly",
+    "behavior_type": "wanderer",
+    "stats": {
+      "strength": 6, "dexterity": 9, "constitution": 8, "agility": 10,
+      "intelligence": 15, "wisdom": 12, "spell_power": 8, "magic_resist": 5
+    },
+    "dialog": { "greeting": "A pleasant day for a walk and a bit of study, isn't it?" },
+    "default_dialog": "The {name} seems lost in thought, muttering arcane phrases.",
+    "loot_table": {
+        "item_healing_potion_small": { "chance": 0.1 },
+        "scroll_raise_skeleton": { "chance": 0.05 }
+    },
+    "properties": {
+      "wander_chance": 0.7,
+      "move_cooldown": 6,
+      "spell_cast_chance": 0.80,
+      "random_spells": {
+        "pool": ["magic_missile", "fireball", "ice_shard"],
+        "count": [1, 2]
+      }
+    }
+  },
+  "wandering_priest": {
+    "name": "Wandering Priest",
+    "description": "A kindly person in simple clerical vestments, offering a warm smile to those they pass. They carry a satchel that smells faintly of herbs.",
+    "health": 40,
+    "mana": 40,
+    "level": 3,
+    "friendly": true,
+    "faction": "friendly",
+    "behavior_type": "healer",
+    "stats": {
+      "strength": 8, "dexterity": 8, "constitution": 11, "agility": 8,
+      "intelligence": 12, "wisdom": 15, "spell_power": 5, "magic_resist": 4
+    },
+    "dialog": { "greeting": "Blessings upon you, traveler." },
+    "default_dialog": "The {name} offers a quiet prayer as they walk.",
+    "loot_table": {
+        "item_healing_potion_small": { "chance": 0.25 }
+    },
+    "properties": {
+      "wander_chance": 0.6,
+      "move_cooldown": 8,
+      "spell_cast_chance": 0.9,
+      "required_spells": ["minor_heal"]
+    }
+  },
   "tavern_keeper": {
     "name": "Barlin the Tavern Keeper",
     "description": "A robust man with a thick beard and friendly eyes. He keeps his tavern in good order and knows all the local gossip.",

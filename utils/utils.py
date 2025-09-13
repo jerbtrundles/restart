@@ -5,7 +5,7 @@
 
 import random
 import re
-from core.config import DEBUG_SHOW_LEVEL, FORMAT_CATEGORY, FORMAT_FRIENDLY_NPC, FORMAT_RESET, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_XP_GAIN, XP_GAIN_HEALTH_DIVISOR, XP_GAIN_LEVEL_MULTIPLIER
+from core.config import DEBUG_SHOW_LEVEL, FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_FRIENDLY_NPC, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_YELLOW, LEVEL_DIFF_COMBAT_MODIFIERS, MIN_XP_GAIN, PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD, PLAYER_STATUS_HEALTH_LOW_THRESHOLD, XP_GAIN_HEALTH_DIVISOR, XP_GAIN_LEVEL_MULTIPLIER
 from items.item import Item
 from typing import Dict, Any, List, Optional, Union, TYPE_CHECKING, Tuple
 
@@ -116,7 +116,7 @@ def format_name_for_display(
     target: Optional[Union['Player', 'NPC', Item]],
     start_of_sentence: bool = False
 ) -> str:
-    """Formats an entity's name for display."""
+    """Formats an entity's name for display, now with mana in debug view."""
     from npcs.npc import NPC
 
     if not target or not hasattr(target, 'name') or not target.name:
@@ -130,10 +130,32 @@ def format_name_for_display(
     is_generic = not base_name[0].isupper() if base_name else True
 
     color_code = FORMAT_RESET
-
-    level_suffix = ""
+    
+    detail_suffix = ""
     if is_npc and target_level is not None and DEBUG_SHOW_LEVEL:
-        level_suffix = f" (Level {target_level})"
+        hp = int(getattr(target, 'health', 0))
+        max_hp = int(getattr(target, 'max_health', 1))
+        hp_percent = (hp / max_hp) * 100 if max_hp > 0 else 0
+
+        if hp_percent <= PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD:
+            hp_color = FORMAT_ERROR
+        elif hp_percent <= PLAYER_STATUS_HEALTH_LOW_THRESHOLD:
+            hp_color = FORMAT_YELLOW
+        else:
+            hp_color = FORMAT_SUCCESS
+        
+        hp_text = f"{hp_color}{hp}/{max_hp} HP{FORMAT_RESET}"
+        
+        # --- NEW: Add Mana Display ---
+        mp_text = ""
+        max_mp = int(getattr(target, 'max_mana', 0))
+        if max_mp > 0:
+            mp = int(getattr(target, 'mana', 0))
+            mp_color = FORMAT_BLUE
+            mp_text = f", {mp_color}{mp}/{max_mp} MP{FORMAT_RESET}"
+        # --- END NEW ---
+
+        detail_suffix = f" (Level {target_level}, {hp_text}{mp_text})"
 
     if is_npc:
         is_friendly = getattr(target, 'friendly', False)
@@ -148,8 +170,8 @@ def format_name_for_display(
     elif is_item:
         color_code = FORMAT_CATEGORY
 
-    name_with_level = f"{base_name}{level_suffix}"
-    formatted_name_part = f"{color_code}{name_with_level}{FORMAT_RESET}"
+    name_with_details = f"{base_name}{detail_suffix}"
+    formatted_name_part = f"{color_code}{name_with_details}{FORMAT_RESET}"
 
     result = ""
     if is_generic:
@@ -159,6 +181,7 @@ def format_name_for_display(
         result = formatted_name_part
 
     if start_of_sentence and result:
+        # This logic correctly capitalizes the first letter, skipping over format codes
         first_letter_index = -1; in_code = False
         for i, char in enumerate(result):
              if char == '[': in_code = True
@@ -291,3 +314,20 @@ def format_loot_drop_message(viewer: Optional[Union['Player', 'NPC']], target: U
         loot_str = f"{formatted_target_name_start} dropped {all_but_last}, and {last_item}."
 
     return loot_str
+
+def weighted_choice(choices: Dict[str, int]) -> Optional[str]:
+    """Make a weighted random choice from a dictionary of options and weights."""
+    if not choices: return None
+    
+    options = list(choices.keys())
+    weights = [max(0, w) for w in choices.values()]
+    total_weight = sum(weights)
+
+    if total_weight <= 0:
+        return random.choice(options) if options else None
+
+    try:
+        return random.choices(options, weights=weights, k=1)[0]
+    except Exception as e:
+        print(f"Error in weighted choice: {e}. Choices: {choices}")
+        return random.choice(options) if options else None

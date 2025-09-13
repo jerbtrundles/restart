@@ -2,6 +2,15 @@
     "region_id": "caves",
     "name": "Shadow Caves",
     "description": "A network of caves in the hills beyond the forest. Few villagers venture this far from town, and those who do tell tales of strange echoes and mysterious lights.",
+    "spawner": {
+        "monster_types": {
+            "giant_rat": 4,
+            "goblin": 3,
+            "skeleton": 2,
+            "troll": 1
+        },
+        "level_range": [2, 6]
+    },
     "rooms": {
       "cave_entrance": {
         "name": "Cave Entrance",

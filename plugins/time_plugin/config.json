@@ -1,7 +1,0 @@
-{
-    "real_seconds_per_game_day": 1200,
-    "dawn_hour": 5,
-    "day_hour": 7,
-    "dusk_hour": 19,
-    "night_hour": 21
-}

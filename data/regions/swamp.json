@@ -2,6 +2,15 @@
     "region_id": "swamp",
     "name": "Murkwater Swamp",
     "description": "A vast, humid swamp stretching south of the Silver River. Twisted trees draped in moss rise from stagnant water, and the air buzzes with insects.",
+    "spawner": {
+        "monster_types": {
+            "giant_rat": 4,
+            "goblin": 3,
+            "skeleton": 2,
+            "troll": 1
+        },
+        "level_range": [1, 3]
+    },
     "rooms": {
         "marsh_edge": {
             "name": "Marsh Edge",

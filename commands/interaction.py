@@ -149,6 +149,19 @@ def _handle_item_acquisition(args: List[str], context: Dict[str, Any], command_v
 
 # --- Command Handlers ---
 
+@command("read", category="interaction", help_text="Read something, like a book, scroll, or sign.\nUsage: read <object>")
+def read_handler(args, context):
+    """
+    Handles the 'read' command by delegating to the 'look' command.
+    This allows 'read board', 'read scroll', etc., to work as expected.
+    """
+    if not args:
+        return f"{FORMAT_ERROR}What do you want to read?{FORMAT_RESET}"
+    
+    # The look_handler already contains all the logic for examining items,
+    # the board, etc., so we can just reuse it.
+    return look_handler(args, context)
+
 @command("look", ["l"], "interaction", "Look around or examine something.\nUsage: look [target]")
 def look_handler(args, context):
     world = context["world"]
@@ -156,20 +169,20 @@ def look_handler(args, context):
     if not player: return f"{FORMAT_ERROR}You must start or load a game first.{FORMAT_RESET}"
 
     target_name = " ".join(args).lower() if args else None
-    quest_plugin = world.game.plugin_manager.get_plugin("quest_system_plugin") if world.game and world.game.plugin_manager else None
 
     if target_name in QUEST_BOARD_ALIASES:
-        if quest_plugin:
-            board_loc_str = quest_plugin.config.get("quest_board_location", "town:town_square")
-            board_region, board_room = board_loc_str.split(":")
-            if player.current_region_id == board_region and player.current_room_id == board_room:
-                board_look_command = registered_commands.get("look board")
-                if board_look_command and 'handler' in board_look_command: return board_look_command['handler']([], context)
-                else: return f"{FORMAT_ERROR}Quest board command not registered correctly.{FORMAT_RESET}"
-            else: return "You don't see a quest board here."
-        else: return f"{FORMAT_ERROR}Quest system seems unavailable.{FORMAT_RESET}"
+        quest_manager = world.quest_manager
+        if quest_manager:
+            # Let the "look board" command handle the location check itself.
+            board_look_command = registered_commands.get("look board")
+            if board_look_command and 'handler' in board_look_command:
+                return board_look_command['handler']([], context)
+            else:
+                return f"{FORMAT_ERROR}Quest board command not registered correctly.{FORMAT_RESET}"
+        else:
+            return f"{FORMAT_ERROR}The quest system seems to be unavailable.{FORMAT_RESET}"
 
-    if not args: return world.get_room_description_for_display()
+    if not args: return world.look(minimal=True)
 
     target_input_lower = target_name
     found_npc = world.find_npc_in_room(target_input_lower)
@@ -398,18 +411,32 @@ def talk_handler(args, context):
                      can_complete = False; completion_error_msg = f"Error removing the {objective.get('item_to_deliver_name', 'package')} from your inventory."
         if can_complete:
             rewards = quest_data.get("rewards", {}); xp_reward = rewards.get("xp", 0); gold_reward = rewards.get("gold", 0)
+
+            leveled_up, level_up_message = False, ""
             reward_messages = []
+
             if xp_reward > 0:
-                 if player.gain_experience(xp_reward): reward_messages.append(f"{FORMAT_HIGHLIGHT}(Leveled up!){FORMAT_RESET}")
+                 leveled_up, level_up_message = player.gain_experience(xp_reward) # Capture both return values
                  reward_messages.append(f"{xp_reward} XP")
+
             if gold_reward > 0: player.gold += gold_reward; reward_messages.append(f"{gold_reward} Gold")
-            if quest_turn_in_id in player.quest_log: del player.quest_log[quest_turn_in_id]
-            quest_plugin = context["game"].plugin_manager.get_plugin("quest_system_plugin")
-            if quest_plugin: quest_plugin.replenish_board(quest_turn_in_id)
+            if quest_turn_in_id in player.quest_log:
+                # 1. 'pop' removes the quest from the active log and returns it.
+                completed_quest = player.quest_log.pop(quest_turn_in_id)
+                # 2. We immediately add the returned quest data to the completed log.
+                player.completed_quest_log[quest_turn_in_id] = completed_quest
+
+            quest_manager = context["world"].quest_manager
+            if quest_manager: quest_manager.replenish_board(quest_turn_in_id)
+
             completion_message = f"{FORMAT_SUCCESS}[Quest Complete] {quest_data.get('title', 'Task')}{FORMAT_RESET}\n"
             npc_response = target_npc.dialog.get(f"complete_{quest_turn_in_id}", target_npc.dialog.get("quest_complete", f"\"Ah, thank you for your help!\" says {target_npc.name}."))
             completion_message += f"{FORMAT_HIGHLIGHT}{npc_response}{FORMAT_RESET}\n"
             if reward_messages: completion_message += "You receive: " + ", ".join(reward_messages) + "."
+
+            if leveled_up and level_up_message:
+                completion_message += "\n\n" + level_up_message
+
             return completion_message
         else: return f"{FORMAT_ERROR}You haven't fully met the requirements for '{quest_data.get('title', 'this quest')}'. {completion_error_msg}{FORMAT_RESET}"
     else:
@@ -685,21 +712,31 @@ def give_handler(args, context):
                 return f"{FORMAT_ERROR}Something went wrong removing the package. Please report this bug.{FORMAT_RESET}"
             
             rewards = matching_quest_data.get("rewards", {}); xp_reward = rewards.get("xp", 0); gold_reward = rewards.get("gold", 0)
+
+
+            leveled_up, level_up_message = False, ""
             reward_messages = []
             if xp_reward > 0:
-                 if player.gain_experience(xp_reward): reward_messages.append(f"{FORMAT_HIGHLIGHT}(Leveled up!){FORMAT_RESET}")
-                 reward_messages.append(f"{xp_reward} XP")
+                leveled_up, level_up_message = player.gain_experience(xp_reward)
+                reward_messages.append(f"{xp_reward} XP")
+
             if gold_reward > 0: player.gold += gold_reward; reward_messages.append(f"{gold_reward} Gold")
             
-            if matching_quest_id in player.quest_log: del player.quest_log[matching_quest_id]
+            if matching_quest_id in player.quest_log:
+                completed_quest = player.quest_log.pop(matching_quest_id)
+                player.completed_quest_log[matching_quest_id] = completed_quest
             
-            quest_plugin = get_service_locator().get_service("plugin:quest_system_plugin")
-            if quest_plugin: quest_plugin.replenish_board(matching_quest_id)
+            quest_manager = context["world"].quest_manager
+            if quest_manager: quest_manager.replenish_board(matching_quest_id)
             
             completion_message = f"{FORMAT_SUCCESS}[Quest Complete] {matching_quest_data.get('title', 'Task')}{FORMAT_RESET}\n"
             npc_response = target_npc.dialog.get(f"complete_{matching_quest_id}", target_npc.dialog.get("quest_complete", f"\"Ah, thank you!\" says {target_npc.name}."))
             completion_message += f"{FORMAT_HIGHLIGHT}{npc_response}{FORMAT_RESET}\n"
             if reward_messages: completion_message += "You receive: " + ", ".join(reward_messages) + "."
+
+            if leveled_up and level_up_message:
+                completion_message += "\n\n" + level_up_message
+
             return completion_message
         else:
             correct_recipient_name = objective.get("recipient_name", "someone else")

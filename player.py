@@ -241,21 +241,40 @@ class Player(GameObject):
         if self.health <= 0: self.die()
         return int(old_health - self.health)
 
-    def die(self) -> None:
+    def die(self, world: Optional['World'] = None) -> None:
         if not self.is_alive: return
-        self.health = 0; self.is_alive = False; self.in_combat = False; self.combat_targets.clear()
+        self.health = 0
+        self.is_alive = False
+        self.in_combat = False
+
+        # # --- BUG FIX: Notify all NPCs that were targeting the player ---
+        # if world and hasattr(world, 'npcs'):
+        #     player_instance = self
+        #     for npc in world.npcs.values():
+        #         # Check if the NPC is in combat and targeting the player
+        #         if npc.in_combat and player_instance in npc.combat_targets:
+        #             # Force the NPC to disengage from the now-dead player
+        #             npc.exit_combat(player_instance)
+        # # --- END BUG FIX ---
+
+        self.combat_targets.clear()
         self.active_effects.clear()
+
+        # Despawn any active summons
         if self.world:
             all_summon_ids = [inst_id for ids in self.active_summons.values() for inst_id in ids]
             for instance_id in all_summon_ids:
                 summon = self.world.get_npc(instance_id)
-                if summon and hasattr(summon, 'despawn'): summon.despawn(self.world, silent=True)
+                if summon and hasattr(summon, 'despawn'):
+                    summon.despawn(self.world, silent=True)
         self.active_summons = {}
 
     def respawn(self) -> None:
         self.health = self.max_health; self.mana = self.max_mana
         self.is_alive = True; self.in_combat = False; self.combat_targets.clear()
         self.spell_cooldowns.clear(); self.active_summons = {}; self.active_effects = []
+        self.current_region_id = self.respawn_region_id
+        self.current_room_id = self.respawn_room_id
 
     def get_attack_power(self) -> int:
         attack = self.attack_power + self.stats.get("strength", 0) // PLAYER_ATTACK_POWER_STR_DIVISOR
@@ -389,12 +408,33 @@ class Player(GameObject):
             self._add_combat_message(death_message)
             result_message += "\n" + death_message
             self.exit_combat(target)
+
+            if world:
+                world.dispatch_event("npc_killed", {"player": self, "npc": target})
+
+            # --- Handle Gold and XP ---
+            gold_dropped = 0
+            if hasattr(target, 'loot_table'):
+                gold_data = target.loot_table.get("gold_value")
+                if gold_data and isinstance(gold_data, dict):
+                    if random.random() < gold_data.get("chance", 0.0):
+                        qty_range = gold_data.get("quantity", [1, 1])
+                        gold_dropped = random.randint(qty_range[0], qty_range[1])
+                        if gold_dropped > 0:
+                            self.gold += gold_dropped
+                            gold_message = f"{FORMAT_SUCCESS}You find {gold_dropped} gold.{FORMAT_RESET}"
+                            self._add_combat_message(gold_message)
+                            result_message += "\n" + gold_message
             
             final_xp_gained = calculate_xp_gain(self.level, target_level, getattr(target, 'max_health', 10))
-            leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
-            if leveled_up and level_up_msg:
-                self._add_combat_message(level_up_msg)
-                result_message += "\n" + level_up_msg
+            if final_xp_gained > 0:
+                xp_message = f"{FORMAT_SUCCESS}You gain {final_xp_gained} experience!{FORMAT_RESET}"
+                self._add_combat_message(xp_message)
+                result_message += "\n" + xp_message
+                leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
+                if leveled_up and level_up_msg:
+                    self._add_combat_message(level_up_msg)
+                    result_message += "\n" + level_up_msg
             
             loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
             if loot_str:
@@ -404,6 +444,58 @@ class Player(GameObject):
         self.last_attack_time = time.time()
         return {"message": result_message}
 
+    def cast_spell(self, spell: Spell, target, current_time: float, world: Optional['World'] = None) -> Dict[str, Any]:
+        can_cast, reason = self.can_cast_spell(spell, current_time)
+        if not can_cast: return {"success": False, "message": reason, "mana_cost": 0}
+        self.mana -= spell.mana_cost
+        self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
+        if spell.target_type == "enemy" and target != self:
+             self.enter_combat(target)
+        
+        value, effect_message = apply_spell_effect(self, target, spell, self)
+        full_message = f"{spell.format_cast_message(self)}\n{effect_message}"
+        if spell.target_type == "enemy" or target != self: self._add_combat_message(effect_message)
+        
+        result = {"success": True, "message": full_message, "value": value}
+        if not target.is_alive and spell.effect_type == "damage":
+            death_message = f"{format_name_for_display(self, target, True)} has been defeated!"
+            self._add_combat_message(death_message)
+            result["message"] += "\n" + death_message
+            self.exit_combat(target)
+            
+            if world:
+                world.dispatch_event("npc_killed", {"player": self, "npc": target})
+
+            # --- Handle Gold and XP ---
+            gold_dropped = 0
+            if hasattr(target, 'loot_table'):
+                gold_data = target.loot_table.get("gold_value")
+                if gold_data and isinstance(gold_data, dict):
+                    if random.random() < gold_data.get("chance", 0.0):
+                        qty_range = gold_data.get("quantity", [1, 1])
+                        gold_dropped = random.randint(qty_range[0], qty_range[1])
+                        if gold_dropped > 0:
+                            self.gold += gold_dropped
+                            gold_message = f"{FORMAT_SUCCESS}You find {gold_dropped} gold.{FORMAT_RESET}"
+                            self._add_combat_message(gold_message)
+                            result["message"] += "\n" + gold_message
+            
+            final_xp_gained = calculate_xp_gain(self.level, getattr(target, 'level', 1), getattr(target, 'max_health', 10))
+            if final_xp_gained > 0:
+                xp_message = f"{FORMAT_SUCCESS}You gain {final_xp_gained} experience!{FORMAT_RESET}"
+                self._add_combat_message(xp_message)
+                result["message"] += "\n" + xp_message
+                leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
+                if leveled_up and level_up_msg:
+                    self._add_combat_message(level_up_msg)
+                    result["message"] += "\n" + level_up_msg
+
+            loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
+            if loot_str:
+                self._add_combat_message(loot_str)
+                result["message"] += "\n" + loot_str
+        return result
+    
     def get_valid_slots(self, item: Item) -> List[str]:
         valid = []; item_type_name = item.__class__.__name__
         item_slots = item.get_property("equip_slot")
@@ -492,37 +584,6 @@ class Player(GameObject):
         cooldown_end_time = self.spell_cooldowns.get(spell.spell_id, 0)
         if current_time < cooldown_end_time: return False, f"{spell.name} is on cooldown for {max(0, cooldown_end_time - current_time):.1f}s."
         return True, ""
-
-    def cast_spell(self, spell: Spell, target, current_time: float, world: Optional['World'] = None) -> Dict[str, Any]:
-        can_cast, reason = self.can_cast_spell(spell, current_time)
-        if not can_cast: return {"success": False, "message": reason, "mana_cost": 0}
-        self.mana -= spell.mana_cost
-        self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
-        if spell.target_type == "enemy" and target != self:
-             self.enter_combat(target)
-        
-        value, effect_message = apply_spell_effect(self, target, spell, self)
-        full_message = f"{spell.format_cast_message(self)}\n{effect_message}"
-        if spell.target_type == "enemy" or target != self: self._add_combat_message(effect_message)
-        
-        result = {"success": True, "message": full_message, "value": value}
-        if not target.is_alive and spell.effect_type == "damage":
-            death_message = f"{format_name_for_display(self, target, True)} has been defeated!"
-            self._add_combat_message(death_message)
-            result["message"] += "\n" + death_message
-            self.exit_combat(target)
-            
-            final_xp_gained = calculate_xp_gain(self.level, getattr(target, 'level', 1), getattr(target, 'max_health', 10))
-            leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
-            if leveled_up and level_up_msg:
-                self._add_combat_message(level_up_msg)
-                result["message"] += "\n" + level_up_msg
-            
-            loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
-            if loot_str:
-                self._add_combat_message(loot_str)
-                result["message"] += "\n" + loot_str
-        return result
 
     def to_dict(self, world: 'World') -> Dict[str, Any]:
         """Converts the player object to a dictionary for saving."""

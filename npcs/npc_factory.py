@@ -11,10 +11,10 @@ import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
 from core.config import (
     FORMAT_ERROR, FORMAT_RESET,
-    NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE, VILLAGER_LAST_NAMES
+    NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MAX_MANA, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_MANA_LEVEL_UP_INT_DIVISOR, NPC_MANA_LEVEL_UP_MULTIPLIER, NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE, VILLAGER_LAST_NAMES
 )
 from items.item_factory import ItemFactory
-from npcs.npc import NPC
+from .npc import NPC
 from items.inventory import Inventory
 
 if TYPE_CHECKING:
@@ -57,14 +57,21 @@ class NPCFactory:
 
             final_npc_name = overrides.get("name")
             if not final_npc_name:
-                if template_id == "wandering_villager":
+                # --- MODIFIED: Expanded naming logic ---
+                if template_id in ["wandering_villager", "wandering_mage", "wandering_priest"]:
+                    # Select a random first name
                     first_names = VILLAGER_FIRST_NAMES_MALE + VILLAGER_FIRST_NAMES_FEMALE
-                    if first_names and VILLAGER_LAST_NAMES:
-                        final_npc_name = f"{random.choice(first_names)} {random.choice(VILLAGER_LAST_NAMES)}"
-                    else:
-                        final_npc_name = template.get("name", "Villager")
+                    random_first_name = random.choice(first_names) if first_names else "Wanderer"
+                    
+                    # Determine the title from the template's base name
+                    # e.g., "Wandering Villager" -> "Villager"
+                    base_title = template.get("name", "Villager").split(" ")[-1]
+                    
+                    final_npc_name = f"{random_first_name} the {base_title}"
                 else:
+                    # Fallback for all other NPCs (like monsters, quest givers, etc.)
                     final_npc_name = template.get("name", "Unknown NPC")
+                # --- END MODIFICATION ---
 
             init_args = {
                 "obj_id": npc_instance_id,
@@ -83,15 +90,20 @@ class NPCFactory:
 
             npc.level = init_args["level"]
             final_con = npc.stats.get('constitution', 8)
+            final_int = npc.stats.get('intelligence', 5)
+
+            # Health Calculation (unchanged)
+            # TODO: standardize either stat-based or explicit values for health, mana
             base_hp = NPC_BASE_HEALTH + int(final_con * NPC_CON_HEALTH_MULTIPLIER)
             level_hp_bonus = (npc.level - 1) * (NPC_LEVEL_HEALTH_BASE_INCREASE + int(final_con * NPC_LEVEL_CON_HEALTH_MULTIPLIER))
             npc.max_health = base_hp + level_hp_bonus
 
-            # --- FIX: Set health correctly for new vs. loaded NPCs ---
-            # Prioritize health from saved data (overrides). If not present (a new spawn), default to max_health.
+            # Set health and mana correctly for new vs. loaded NPCs
             npc.health = overrides.get("health", npc.max_health)
-            npc.health = max(0, min(npc.health, npc.max_health)) # Clamp value to be safe
-            # --- END FIX ---
+            npc.health = max(1, min(npc.health, npc.max_health))
+            # common hostiles start with default max mana
+            npc.mana = template.get("mana", NPC_DEFAULT_MAX_MANA)
+            npc.max_mana = npc.mana
 
             npc.experience = overrides.get("experience", 0)
             npc.experience_to_level = overrides.get("experience_to_level", int(NPC_BASE_XP_TO_LEVEL * (NPC_XP_TO_LEVEL_MULTIPLIER**(npc.level - 1))))
@@ -110,8 +122,28 @@ class NPCFactory:
             npc.default_dialog = creation_args.get("default_dialog", npc.default_dialog)
 
             npc.loot_table = creation_args.get("loot_table", {}).copy()
-            npc.usable_spells = creation_args.get("usable_spells", [])[:]
+            npc.usable_spells = []
             npc.schedule = creation_args.get("schedule", {}).copy()
+
+            template_props = template.get("properties", {})
+            
+            if "required_spells" in template_props:
+                for spell_id in template_props["required_spells"]:
+                    if spell_id not in npc.usable_spells:
+                        npc.usable_spells.append(spell_id)
+            
+            if "random_spells" in template_props:
+                spell_config = template_props["random_spells"]
+                pool = spell_config.get("pool", [])
+                count_range = spell_config.get("count", [1, 1])
+                num_to_learn = random.randint(count_range[0], count_range[1])
+                
+                available_to_learn = [s for s in pool if s not in npc.usable_spells]
+                
+                if available_to_learn and num_to_learn > 0:
+                    spells_learned = random.sample(available_to_learn, min(num_to_learn, len(available_to_learn)))
+                    npc.usable_spells.extend(spells_learned)
+
             npc.patrol_index = creation_args.get("patrol_index", 0)
             npc.patrol_points = creation_args.get("patrol_points", [])[:]
 
