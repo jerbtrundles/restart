@@ -1,7 +1,7 @@
 # items/consumable.py
 import time
 from typing import Optional
-from core.config import FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS
+from config import FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS
 from items.item import Item
 
 class Consumable(Item):

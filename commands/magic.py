@@ -5,7 +5,7 @@ Contains all commands related to casting spells and managing magical abilities.
 import time
 from typing import Any, Dict, List, Optional
 from commands.command_system import command
-from core.config import (
+from config import (
     CAST_COMMAND_PREPOSITION, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT,
     FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, TARGET_SELF_ALIASES
 )

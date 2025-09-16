@@ -1,23 +1,18 @@
 # npcs/npc.py
-# --- THIS IS THE REFACTORED CORE NPC MODULE ---
-# It now imports combat and behavior logic from separate files to keep this class focused.
 
 from typing import TYPE_CHECKING, Dict, List, Optional, Any, Tuple
 import time
+from config import (
+    NPC_BASE_HEALTH, NPC_BASE_MANA_REGEN_RATE, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_BEHAVIOR,
+    NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_STATS, NPC_DEFAULT_WANDER_CHANCE, NPC_HEALTH_DESC_THRESHOLDS,
+    NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_UP_HEALTH_HEAL_PERCENT, NPC_LEVEL_UP_STAT_INCREASE,
+    NPC_MANA_REGEN_WISDOM_DIVISOR, NPC_MAX_COMBAT_MESSAGES, NPC_XP_TO_LEVEL_MULTIPLIER, PLAYER_REGEN_TICK_INTERVAL, WORLD_UPDATE_INTERVAL
+)
 from game_object import GameObject
 from items.inventory import Inventory
 from items.item import Item
 from items.item_factory import ItemFactory
 from utils.utils import format_loot_drop_message, format_name_for_display, calculate_xp_gain
-from core.config import (
-    NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL,
-    NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_BEHAVIOR, NPC_DEFAULT_STATS,
-    NPC_DEFAULT_WANDER_CHANCE, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN,
-    NPC_HEALTH_DESC_THRESHOLDS, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER,
-    NPC_LEVEL_UP_HEALTH_HEAL_PERCENT, NPC_LEVEL_UP_STAT_INCREASE, NPC_MANA_REGEN_WISDOM_DIVISOR,
-    NPC_BASE_MANA_REGEN_RATE, NPC_MAX_COMBAT_MESSAGES, NPC_XP_TO_LEVEL_MULTIPLIER,
-    PLAYER_REGEN_TICK_INTERVAL, WORLD_UPDATE_INTERVAL, NAMED_NPC_RESPAWN_COOLDOWN
-)
 
 # Import the new modules for delegation
 from . import behaviors as npc_behaviors
@@ -32,7 +27,6 @@ class NPC(GameObject):
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown NPC",
                  description: str = "No description", health: int = 100,
                  friendly: bool = True, level: int = 1):
-        # ... (the __init__ method remains largely the same as before) ...
         self.template_id: Optional[str] = None
         super().__init__(obj_id=obj_id, name=name, description=description)
         self.stats = NPC_DEFAULT_STATS.copy()

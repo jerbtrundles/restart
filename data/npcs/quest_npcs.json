@@ -1,0 +1,21 @@
+{
+  "relieved_homeowner": {
+    "name": "Relieved Homeowner",
+    "description": "A person who looks immensely grateful, no longer pale with worry.",
+    "level": 1, "friendly": true, "faction": "friendly",
+    "behavior_type": "stationary",
+    "dialog": {
+      "greeting": "Oh, thank you, thank you! Did you get them all?",
+      "quest_complete": "You're a hero! Please, take this for your trouble. I can finally sleep soundly."
+    }
+  },
+  "worried_homeowner": {
+    "name": "Worried Homeowner",
+    "description": "A person wringing their hands, looking anxiously at the door to their house.",
+    "level": 1, "friendly": true, "faction": "friendly",
+    "behavior_type": "stationary",
+    "dialog": {
+      "greeting": "Oh, hello there! I see you've taken my notice from the board. Thank goodness! Please, get rid of those awful rats. I'll wait right here for your return."
+    }
+  }
+}

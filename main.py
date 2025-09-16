@@ -1,7 +1,8 @@
+# main.py
 import argparse
 import os
+from config import DATA_DIR, DEFAULT_SAVE_FILE, SAVE_GAME_DIR
 from core.game_manager import GameManager
-from core.config import DATA_DIR, DEFAULT_SAVE_FILE, SAVE_GAME_DIR
 import commands
 
 def main():

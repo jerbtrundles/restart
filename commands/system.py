@@ -4,7 +4,7 @@ Contains all core system and meta-game commands.
 """
 import os
 from commands.command_system import command
-from core.config import SAVE_GAME_DIR, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS
+from config import SAVE_GAME_DIR, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS
 
 @command("help", ["h", "?"], "system", "Show help.\nUsage: help [command]")
 def help_handler(args, context):

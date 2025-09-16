@@ -1,17 +1,16 @@
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - Fixed a bug where newly spawned NPCs had their current health set to the template's base value
-#   instead of their calculated maximum health.
-# - The logic now correctly sets `npc.health = npc.max_health` for new spawns,
-#   while still respecting the saved health value when loading a game.
+# npcs/npc_factory.py
 
 import inspect
 import random
 import time
 import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
-from core.config import (
-    FORMAT_ERROR, FORMAT_RESET,
-    NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION, NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MAX_MANA, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_MANA_LEVEL_UP_INT_DIVISOR, NPC_MANA_LEVEL_UP_MULTIPLIER, NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE, VILLAGER_LAST_NAMES
+
+from config import (
+    FORMAT_ERROR, FORMAT_RESET, NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION,
+    NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MAX_MANA, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN,
+    NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_LEVEL_HEALTH_BASE_INCREASE,
+    NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE
 )
 from items.item_factory import ItemFactory
 from .npc import NPC
@@ -57,7 +56,6 @@ class NPCFactory:
 
             final_npc_name = overrides.get("name")
             if not final_npc_name:
-                # --- MODIFIED: Expanded naming logic ---
                 if template_id in ["wandering_villager", "wandering_mage", "wandering_priest"]:
                     # Select a random first name
                     first_names = VILLAGER_FIRST_NAMES_MALE + VILLAGER_FIRST_NAMES_FEMALE
@@ -71,7 +69,6 @@ class NPCFactory:
                 else:
                     # Fallback for all other NPCs (like monsters, quest givers, etc.)
                     final_npc_name = template.get("name", "Unknown NPC")
-                # --- END MODIFICATION ---
 
             init_args = {
                 "obj_id": npc_instance_id,
@@ -166,16 +163,38 @@ class NPCFactory:
             if saved_inv_data and isinstance(saved_inv_data, dict):
                 npc.inventory = Inventory.from_dict(saved_inv_data, world)
             else:
+                # --- REPLACE THIS ENTIRE BLOCK ---
                 npc.inventory = Inventory(max_slots=10, max_weight=50.0)
                 template_inventory = template.get("initial_inventory", [])
-                for item_ref in template_inventory:
-                    item_id = item_ref.get("item_id")
-                    quantity = item_ref.get("quantity", 1)
-                    if item_id:
-                        item = ItemFactory.create_item_from_template(item_id, world)
-                        if item: npc.inventory.add_item(item, quantity)
+                
+                # NEW: Add safety checks
+                if isinstance(template_inventory, list):
+                    for item_ref in template_inventory:
+                        # Check that the item reference itself is a dictionary
+                        if not isinstance(item_ref, dict):
+                            print(f"Warning: Invalid item reference in initial_inventory for NPC '{template.get('name')}': not a dictionary. Skipping.")
+                            continue
+
+                        item_id = item_ref.get("item_id")
+                        quantity = item_ref.get("quantity", 1)
+
+                        # Check that item_id is a valid, non-empty string
+                        if item_id and isinstance(item_id, str):
+                            item = ItemFactory.create_item_from_template(item_id, world)
+                            if item:
+                                npc.inventory.add_item(item, quantity)
+                        else:
+                            # This debug message will pinpoint the exact problem
+                            print(f"Warning: Skipping invalid item reference in initial_inventory for NPC '{template.get('name')}': {item_ref}")
+                else:
+                    print(f"Warning: 'initial_inventory' for NPC '{template.get('name')}' is not a list. Skipping inventory creation.")
+                # --- END REPLACEMENT BLOCK ---
 
             npc.world = world
+
+            print("[NPCFactory create_npc_from_template()]")
+            print(f"Spawning {npc.name} - {npc.health}/{npc.max_health}hp {npc.current_region_id} - {npc.current_room_id}")
+
             return npc
 
         except Exception as e:

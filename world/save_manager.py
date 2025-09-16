@@ -7,7 +7,7 @@ import os
 import time
 from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 
-from core.config import *
+from config import *
 from items.item_factory import ItemFactory
 from npcs.npc_factory import NPCFactory
 from npcs.npc_schedules import initialize_npc_schedules

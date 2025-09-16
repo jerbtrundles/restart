@@ -3,7 +3,7 @@
 Contains all commands related to player movement.
 """
 from commands.command_system import command, registered_commands
-from core.config import FORMAT_ERROR, FORMAT_RESET
+from config import FORMAT_ERROR, FORMAT_RESET
 
 DIRECTIONS = [
     {"name": "north", "aliases": ["n"], "description": "Move north."},

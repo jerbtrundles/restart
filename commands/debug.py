@@ -2,8 +2,8 @@
 """
 Contains all core debug and administrative commands for the game.
 """
-from commands.command_system import command
-from core.config import (FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS,
+from commands.command_system import command, registered_commands, command_groups
+from config import (FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS,
                          FORMAT_TITLE, FORMAT_HIGHLIGHT, FORMAT_CATEGORY)
 from items.item_factory import ItemFactory
 from npcs.npc_factory import NPCFactory
@@ -244,3 +244,36 @@ def debuggear_command_handler(args, context):
             messages.append("- No debug gear found to remove.")
         
         return "\n".join(messages)
+
+@command("debug_commands", ["dbgcmd"], "debug", "Show all registered commands and their state.")
+def debug_commands_handler(args, context):
+    """
+    A debug command to inspect the state of the command registration system.
+    """
+    total_commands = len(registered_commands)
+    unique_commands = len(set(cmd['handler'] for cmd in registered_commands.values()))
+    
+    response = f"{FORMAT_TITLE}===== Command Registry State ====={FORMAT_RESET}\n"
+    response += f"Total Registered Names/Aliases: {FORMAT_HIGHLIGHT}{total_commands}{FORMAT_RESET}\n"
+    response += f"Unique Command Functions: {FORMAT_HIGHLIGHT}{unique_commands}{FORMAT_RESET}\n\n"
+
+    if not registered_commands:
+        response += f"{FORMAT_ERROR}No commands are registered! Check the console for import errors during startup.{FORMAT_RESET}\n"
+        return response
+
+    response += f"{FORMAT_TITLE}Commands by Category:{FORMAT_RESET}\n"
+    for category, commands_list in sorted(command_groups.items()):
+        if not commands_list:
+            continue
+        
+        # Get unique commands for this category
+        unique_cmds_in_cat = sorted(list({cmd['name'] for cmd in commands_list}))
+        
+        response += f"  - {FORMAT_CATEGORY}{category.capitalize()}{FORMAT_RESET} ({len(unique_cmds_in_cat)} unique):\n"
+        for cmd_name in unique_cmds_in_cat:
+            response += f"    - {cmd_name}\n"
+    
+    response += f"\n{FORMAT_TITLE}All Registered Names:{FORMAT_RESET}\n"
+    response += ", ".join(sorted(registered_commands.keys()))
+    
+    return response

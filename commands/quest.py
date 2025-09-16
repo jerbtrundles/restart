@@ -1,8 +1,10 @@
 # commands/quest.py
+import uuid
 from commands.command_system import command, registered_commands
-from core.config import FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET, FORMAT_HIGHLIGHT, FORMAT_CATEGORY, FORMAT_TITLE, QUEST_BOARD_ALIASES
+from config import FORMAT_SUCCESS, FORMAT_ERROR, FORMAT_RESET, FORMAT_HIGHLIGHT, FORMAT_CATEGORY, FORMAT_TITLE, QUEST_BOARD_ALIASES
 from items.item_factory import ItemFactory
 from player import Player
+from world import world
 
 def _is_player_at_quest_board(player: Player, quest_manager) -> bool:
     """Checks if the player's current location is one of the valid quest board locations."""
@@ -19,28 +21,33 @@ def look_board_handler(args, context):
     if not _is_player_at_quest_board(player, quest_manager):
         return f"{FORMAT_ERROR}You don't see a quest board here.{FORMAT_RESET}"
 
+    # <<< FIX #1: Define 'available_quests' by getting it from the world object.
     available_quests = world.quest_board
+
     if not available_quests:
         return "The quest board is currently empty."
 
     response = f"{FORMAT_TITLE}Quest Board{FORMAT_RESET}\n" + "-"*20 + "\nAvailable Tasks:\n\n"
     for i, quest_data in enumerate(available_quests):
-        giver = world.get_npc(quest_data.get("giver_instance_id"))
+        giver_instance_id = quest_data.get("giver_instance_id")
         rewards = quest_data.get("rewards", {})
         
-        # <<< ADD THIS BLOCK TO GET THE QUEST QUANTITY >>>
-        objective = quest_data.get("objective", {})
+        giver_name = "Quest Board Notice"
+        if giver_instance_id != "quest_board":
+            # <<< FIX #2: Call get_npc() directly on the 'world' instance.
+            giver_npc = world.get_npc(giver_instance_id) 
+            giver_name = giver_npc.name if giver_npc else "Unknown"
+
+        objective = quest_data.get("objective", {});
         quest_type = quest_data.get("type")
         quantity_summary = ""
         if quest_type in ["kill", "fetch"]:
             quantity = objective.get("required_quantity")
             if quantity:
                 quantity_summary = f" ({quantity})"
-        # <<< END BLOCK >>>
-
-        # <<< MODIFY THIS LINE TO INCLUDE THE SUMMARY >>>
+        
         response += (f"{FORMAT_CATEGORY}[{i + 1}]{FORMAT_RESET} {quest_data.get('title', 'Unnamed Quest')}{FORMAT_HIGHLIGHT}{quantity_summary}{FORMAT_RESET}\n"
-                    f"   Giver: {giver.name if giver else 'Unknown'}\n"
+                    f"   Giver: {giver_name}\n"
                     f"   Reward: {rewards.get('xp', 0)} XP, {rewards.get('gold', 0)} Gold\n\n")
         
     response += f"Type '{FORMAT_HIGHLIGHT}accept quest <#>{FORMAT_RESET}' to take a task."
@@ -57,24 +64,18 @@ def accept_quest_handler(args, context):
     if not args:
         return f"{FORMAT_ERROR}Which quest number do you want to accept?{FORMAT_RESET}"
 
-    # --- FIX: Robust argument parsing ---
     quest_num_str = ""
-    # Handles "accept quest 3"
     if len(args) > 1 and args[0].lower() == "quest" and args[1].isdigit():
         quest_num_str = args[1]
-    # Handles "accept 3"
     elif len(args) == 1 and args[0].isdigit():
         quest_num_str = args[0]
-    # Handles errors
     else:
         potential_num_arg = args[1] if len(args) > 1 and args[0].lower() == "quest" else args[0]
         return f"{FORMAT_ERROR}'{potential_num_arg}' is not a valid quest number.{FORMAT_RESET}"
-    # --- END FIX ---
 
     try:
         quest_index = int(quest_num_str) - 1
     except ValueError:
-        # This is a fallback, but the logic above should prevent this.
         return f"{FORMAT_ERROR}'{quest_num_str}' is not a valid quest number.{FORMAT_RESET}"
 
     if quest_index < 0 or quest_index >= len(world.quest_board):
@@ -82,6 +83,42 @@ def accept_quest_handler(args, context):
 
     quest_to_accept = world.quest_board.pop(quest_index)
     quest_to_accept["state"] = "active"
+    
+    # --- START OF FIX ---
+    # The original quest_to_accept dictionary *already has* a unique instance_id
+    # assigned by the QuestManager when it was placed on the board.
+    # We will now use that ID instead of creating a new one.
+    
+    # REMOVED: quest_instance_id = f"quest_{uuid.uuid4().hex[:6]}"
+    # REMOVED: quest_to_accept["instance_id"] = quest_instance_id
+    
+    # We get the pre-existing ID directly from the quest data.
+    quest_instance_id = quest_to_accept.get("instance_id")
+    if not quest_instance_id:
+        # This is a safety fallback in case a quest somehow gets on the board without an ID
+        quest_instance_id = f"quest_fallback_{uuid.uuid4().hex[:6]}"
+        quest_to_accept["instance_id"] = quest_instance_id
+    # --- END OF FIX ---
+
+
+    # --- UPDATED LOGIC FOR INSTANCE QUESTS ---
+    if quest_to_accept.get("type") == "instance":
+        success, message, giver_npc_id = world.instantiate_quest_region(quest_to_accept)
+        if not success:
+            world.quest_board.insert(quest_index, quest_to_accept)
+            return f"{FORMAT_ERROR}Could not start quest: {message}{FORMAT_RESET}"
+        
+        quest_to_accept["giver_instance_id"] = giver_npc_id if giver_npc_id else "quest_board"
+
+        acceptance_message = f"{FORMAT_SUCCESS}[Quest Accepted] {quest_to_accept.get('title')}{FORMAT_RESET}"
+        acceptance_message += f"\n{FORMAT_HIGHLIGHT}{message}{FORMAT_RESET}"
+        acceptance_message += "\n(Check your 'journal' for details)"
+
+        player.quest_log[quest_instance_id] = quest_to_accept
+        quest_manager.replenish_board(None)
+        return acceptance_message
+    # --- END UPDATED LOGIC ---
+
     if quest_to_accept.get("type") == "kill":
         quest_to_accept["objective"]["current_quantity"] = 0
 
@@ -100,7 +137,7 @@ def accept_quest_handler(args, context):
             return f"{FORMAT_ERROR}Cannot accept delivery, your inventory is too full! ({msg}){FORMAT_RESET}"
         player.inventory.add_item(package)
 
-    player.quest_log[quest_to_accept["instance_id"]] = quest_to_accept
+    player.quest_log[quest_instance_id] = quest_to_accept
     quest_manager.replenish_board(None)
     return f"{FORMAT_SUCCESS}[Quest Accepted] {quest_to_accept.get('title')}{FORMAT_RESET}\n(Check your 'journal' for details)"
 
@@ -110,33 +147,37 @@ def journal_handler(args, context):
     player = context["world"].player
     if not hasattr(player, 'quest_log'): player.quest_log = {}
     if not hasattr(player, 'completed_quest_log'): player.completed_quest_log = {}
+    
+    # --- START OF MODIFICATION ---
+    # Ensure the archived log exists for the check
+    if not hasattr(player, 'archived_quest_log'): player.archived_quest_log = {}
 
-    # <<< ADD LOGIC TO HANDLE "completed" ARGUMENT >>>
     if args and args[0].lower() == "completed":
-        if not player.completed_quest_log:
+        # Combine both completed and archived quests for display
+        all_completed_quests = {**player.completed_quest_log, **player.archived_quest_log}
+
+        if not all_completed_quests:
             return "You have not completed any quests yet."
         
-        response = f"{FORMAT_TITLE}Completed Quests ({len(player.completed_quest_log)}){FORMAT_RESET}\n{'-'*20}\n\n"
+        response = f"{FORMAT_TITLE}Completed Quests ({len(all_completed_quests)}){FORMAT_RESET}\n{'-'*20}\n\n"
         # Sort by title for consistent display
-        sorted_completed = sorted(player.completed_quest_log.values(), key=lambda q: q.get("title", ""))
+        sorted_completed = sorted(all_completed_quests.values(), key=lambda q: q.get("title", ""))
         
         for quest_data in sorted_completed:
             response += f"- {quest_data.get('title', 'Unnamed Quest')}\n"
         return response.strip()
-    # <<< END ADDITION >>>
+    # --- END OF MODIFICATION ---
 
-    # --- Existing logic for active quests ---
+    # --- Active quest logic (unchanged) ---
     if not player.quest_log: return "Your quest journal is empty."
 
     response = f"{FORMAT_TITLE}Active Quests{FORMAT_RESET}\n{'-'*20}\n\n"
     found_active = False
-    # Sort active quests by title
     sorted_active = sorted(player.quest_log.values(), key=lambda q: q.get("title", ""))
     
     for quest_data in sorted_active:
          if quest_data.get("state") in ["active", "ready_to_complete"]:
              found_active = True
-             # ... (rest of the existing display logic for active quests is unchanged) ...
              objective = quest_data.get("objective", {}); q_type = quest_data.get("type", "unknown")
              title = quest_data.get("title", "Unnamed Quest")
              giver_npc = context["world"].get_npc(quest_data.get("giver_instance_id")); giver_name = giver_npc.name if giver_npc else "Unknown"

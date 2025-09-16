@@ -5,7 +5,7 @@ Manages the respawning of NPCs after they have been defeated.
 import time
 from typing import TYPE_CHECKING, List, Dict, Any
 
-from core.config import FORMAT_HIGHLIGHT, FORMAT_RESET, NAMED_NPC_RESPAWN_COOLDOWN
+from config import FORMAT_HIGHLIGHT, FORMAT_RESET, NAMED_NPC_RESPAWN_COOLDOWN
 from npcs.npc import NPC
 from npcs.npc_factory import NPCFactory
 

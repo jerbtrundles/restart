@@ -1,13 +1,22 @@
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - The `level_up` method now returns a detailed, formatted string summarizing all gains.
-# - `gain_experience` is updated to capture and return this detailed message.
-# - `attack` and `cast_spell` methods now display the full level-up summary upon defeating an enemy.
+# player.py
 
 from typing import List, Dict, Optional, Any, Tuple, Set, TYPE_CHECKING
 import time
 import random
 
-from core.config import *
+from config import (
+    HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_ATTACK_COOLDOWN, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN,
+    FORMAT_BLUE, FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_YELLOW,
+    DEFAULT_INVENTORY_MAX_SLOTS, DEFAULT_INVENTORY_MAX_WEIGHT, EQUIPMENT_SLOTS, EQUIPMENT_VALID_SLOTS_BY_TYPE, ITEM_DURABILITY_LOSS_ON_HIT,
+    ITEM_DURABILITY_LOW_THRESHOLD, PLAYER_ATTACK_DAMAGE_VARIATION_RANGE, PLAYER_ATTACK_POWER_STR_DIVISOR, PLAYER_BASE_ATTACK_COOLDOWN,
+    PLAYER_BASE_ATTACK_POWER, PLAYER_BASE_DEFENSE, PLAYER_BASE_HEALTH, PLAYER_BASE_HEALTH_REGEN_RATE, PLAYER_BASE_HIT_CHANCE,
+    PLAYER_BASE_MANA_REGEN_RATE, PLAYER_BASE_XP_TO_LEVEL, PLAYER_CON_HEALTH_MULTIPLIER, PLAYER_DEFAULT_KNOWN_SPELLS, PLAYER_DEFAULT_MAX_MANA,
+    PLAYER_DEFAULT_MAX_TOTAL_SUMMONS, PLAYER_DEFAULT_NAME, PLAYER_DEFAULT_RESPAWN_REGION, PLAYER_DEFAULT_RESPAWN_ROOM, PLAYER_DEFAULT_STATS,
+    PLAYER_DEFENSE_DEX_DIVISOR, PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR, PLAYER_LEVEL_CON_HEALTH_MULTIPLIER, PLAYER_LEVEL_HEALTH_BASE_INCREASE,
+    PLAYER_LEVEL_UP_STAT_INCREASE, PLAYER_MANA_LEVEL_UP_INT_DIVISOR, PLAYER_MANA_LEVEL_UP_MULTIPLIER, PLAYER_MANA_REGEN_WISDOM_DIVISOR,
+    PLAYER_MAX_COMBAT_MESSAGES, PLAYER_REGEN_TICK_INTERVAL, PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD, PLAYER_STATUS_HEALTH_LOW_THRESHOLD,
+    PLAYER_XP_TO_LEVEL_MULTIPLIER
+)
 from game_object import GameObject
 from items.inventory import Inventory
 from items.weapon import Weapon
@@ -38,6 +47,8 @@ class Player(GameObject):
         self.experience_to_level = PLAYER_BASE_XP_TO_LEVEL
         self.skills: Dict[str, int] = {}
         self.quest_log: Dict[str, Any] = {}
+        self.completed_quest_log: Dict[str, Any] = {}
+        self.archived_quest_log: Dict[str, Any] = {}
         self.equipment: Dict[str, Optional[Item]] = {slot: None for slot in EQUIPMENT_SLOTS}
         self.valid_slots_for_type = EQUIPMENT_VALID_SLOTS_BY_TYPE.copy()
         self.attack_power = PLAYER_BASE_ATTACK_POWER
@@ -592,7 +603,12 @@ class Player(GameObject):
             "gold": self.gold, "health": self.health, "max_health": self.max_health,
             "mana": self.mana, "max_mana": self.max_mana, "stats": self.stats,
             "level": self.level, "experience": self.experience, "experience_to_level": self.experience_to_level,
-            "skills": self.skills, "effects": self.active_effects, "quest_log": self.quest_log,
+            "skills": self.skills, "effects": self.active_effects, 
+            "quest_log": self.quest_log,
+            # --- START OF MODIFICATION ---
+            "completed_quest_log": self.completed_quest_log,
+            "archived_quest_log": self.archived_quest_log,
+            # --- END OF MODIFICATION ---
             "is_alive": self.is_alive,
             "current_location": {"region_id": self.current_region_id, "room_id": self.current_room_id},
             "respawn_region_id": self.respawn_region_id, "respawn_room_id": self.respawn_room_id,
@@ -618,6 +634,10 @@ class Player(GameObject):
         player.stats = PLAYER_DEFAULT_STATS.copy(); player.stats.update(data.get("stats", {}))
         player.skills = data.get("skills", {})
         player.quest_log = data.get("quest_log", {})
+        # --- START OF MODIFICATION ---
+        player.completed_quest_log = data.get("completed_quest_log", {})
+        player.archived_quest_log = data.get("archived_quest_log", {})
+        # --- END OF MODIFICATION ---
         player.active_effects = data.get("effects", [])
         player.spell_cooldowns = data.get("spell_cooldowns", {})
         

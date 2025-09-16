@@ -21,8 +21,6 @@
           "instance_id": "elder_thorne_townsquare"
         }
       ],
-      "items": [],
-      "visited": true,
       "properties": {}
     },
     "tavern": {
@@ -40,10 +38,9 @@
           "instance_id": "tavernkeeper_barlin_tavern"
         }
       ],
-      "items": [],
-      "visited": false,
       "properties": {
-        "noisy": true
+        "noisy": true,
+        "outdoors": false
       }
     },
     "tavern_kitchen": {
@@ -52,24 +49,8 @@
       "exits": {
         "west": "tavern"
       },
-      "initial_npcs": [],
-      "items": [
-         {
-          "type": "Consumable",
-          "obj_id": "item_hunk_bread",
-          "name": "Hunk of Bread",
-          "description": "A thick slice of fresh, crusty bread.",
-          "weight": 0.3,
-          "value": 1,
-          "stackable": true,
-          "properties": {
-            "uses": 1, "max_uses": 1, "effect_value": 3, "effect_type": "heal"
-          }
-        }
-      ],
-      "visited": false,
       "properties": {
-        "noisy": true, "smell": "cooking food"
+        "noisy": true, "smell": "cooking food", "outdoors": false
       }
     },
     "tavern_rooms": {
@@ -80,54 +61,23 @@
         "north": "guest_room_1",
         "south": "guest_room_2"
       },
-      "initial_npcs": [],
-      "items": [
-        {
-          "type": "Item",
-          "obj_id": "item_traveler_journal",
-          "name": "Traveler's Journal",
-          "description": "A leather-bound journal with entries from a merchant who passed through the village. The last entry mentions strange noises in the forest at night and missing supplies.",
-          "weight": 0.5,
-          "value": 5,
-          "stackable": false,
-          "properties": {}
-        }
-      ],
-      "visited": false,
-      "properties": {}
+      "properties": { "outdoors": false }
     },
     "guest_room_1": {
         "name": "Guest Room (North)",
         "description": "A simple but clean guest room containing a bed, a small table, and a washbasin. The window looks out over the tavern's back alley.",
         "exits": {
-            "south": "tavern_rooms"
+          "south": "tavern_rooms"
         },
-        "initial_npcs": [],
-        "items": [],
-        "visited": false,
-        "properties": {}
+        "properties": { "outdoors": false }
     },
     "guest_room_2": {
         "name": "Guest Room (South)",
         "description": "This guest room is slightly larger, with a sturdy chest at the foot of the bed. A faded tapestry hangs on one wall.",
         "exits": {
-            "north": "tavern_rooms"
+          "north": "tavern_rooms"
         },
-        "initial_npcs": [],
-        "items": [
-             {
-                "type": "Treasure",
-                "obj_id": "item_lost_earring",
-                "name": "Lost Earring",
-                "description": "A small silver earring, likely forgotten by a previous guest.",
-                "weight": 0.1,
-                "value": 10,
-                "stackable": false,
-                "properties": {"treasure_type": "jewelry"}
-             }
-        ],
-        "visited": false,
-        "properties": {}
+        "properties": { "outdoors": false }
     },
     "tavern_cellar": {
       "name": "Tavern Cellar",
@@ -135,20 +85,6 @@
       "exits": {
         "up": "tavern"
       },
-      "initial_npcs": [],
-      "items": [
-        {
-          "type": "Item",
-          "obj_id": "item_barrel_ale",
-          "name": "Barrel of Ale",
-          "description": "A large wooden barrel, full of the Drunken Dragon's signature ale.",
-          "weight": 50.0,
-          "value": 100,
-          "stackable": false,
-          "properties": {}
-        }
-      ],
-      "visited": false,
       "properties": {
         "dark": true,
         "locked_by": "item_tavern_cellar_key",
@@ -163,14 +99,6 @@
         "north": "general_store",
         "east": "east_lane"
       },
-      "initial_npcs": [
-        {
-          "template_id": "merchant",
-          "instance_id": "merchant_talia_market"
-        }
-      ],
-      "items": [],
-      "visited": false,
       "properties": {}
     },
     "general_store": {
@@ -180,10 +108,7 @@
         "south": "market",
         "east": "storage_room"
       },
-      "initial_npcs": [],
-      "items": [],
-      "visited": false,
-      "properties": {}
+      "properties": { "outdoors": false }
     },
     "storage_room": {
       "name": "Store Storage Room",
@@ -191,21 +116,7 @@
       "exits": {
         "west": "general_store"
       },
-      "initial_npcs": [],
-      "items": [
-        {
-          "type": "Junk",
-          "obj_id": "item_empty_crate",
-          "name": "Empty Crate",
-          "description": "A sturdy wooden crate, currently empty.",
-          "weight": 5.0,
-          "value": 1,
-          "stackable": false,
-          "properties": {}
-        }
-      ],
-      "visited": false,
-      "properties": {"dark": true}
+      "properties": { "dark": true, "outdoors": false }
     },
     "blacksmith": {
       "name": "Blacksmith's Forge",
@@ -220,26 +131,10 @@
           "instance_id": "blacksmith_grenda_forge"
         }
       ],
-      "items": [
-        {
-          "type": "Weapon",
-          "obj_id": "item_iron_sword",
-          "name": "Iron Sword",
-          "description": "A well-crafted iron sword with a leather-wrapped hilt. The blade is sharp and balanced.",
-          "weight": 3.0,
-          "value": 50,
-          "stackable": false,
-          "properties": {
-            "damage": 8,
-            "durability": 50,
-            "max_durability": 50
-          }
-        }
-      ],
-      "visited": false,
       "properties": {
         "noisy": true,
-        "smell": "smoky"
+        "smell": "smoky",
+        "outdoors": false
       }
     },
     "east_lane": {
@@ -249,20 +144,6 @@
         "west": "market",
         "southwest": "town_square"
       },
-      "initial_npcs": [],
-      "items": [
-        {
-          "type": "Junk",
-          "obj_id": "item_bent_coin",
-          "name": "Bent Coin",
-          "description": "A copper coin, bent almost in half. Worthless now.",
-          "weight": 0.1,
-          "value": 0,
-          "stackable": false,
-          "properties": {}
-        }
-      ],
-      "visited": false,
       "properties": {}
     },
     "west_lane": {
@@ -273,9 +154,6 @@
         "northeast": "town_square",
         "south": "small_house"
       },
-      "initial_npcs": [],
-      "items": [],
-      "visited": false,
       "properties": {}
     },
     "small_house": {
@@ -284,9 +162,6 @@
         "exits": {
             "north": "west_lane"
         },
-        "initial_npcs": [],
-        "items": [],
-        "visited": false,
         "properties": {}
     },
     "river_road": {
@@ -299,9 +174,6 @@
         "downstream": "swamp:marsh_edge",
         "west": "old_mill_path"
       },
-      "initial_npcs": [],
-      "items": [],
-      "visited": false,
       "properties": {}
     },
     "old_mill_path": {
@@ -311,9 +183,6 @@
         "east": "river_road",
         "west": "old_mill"
       },
-      "initial_npcs": [],
-      "items": [],
-      "visited": false,
       "properties": {}
     },
     "old_mill": {
@@ -322,9 +191,6 @@
       "exits": {
         "east": "old_mill_path"
       },
-      "initial_npcs": [],
-      "items": [],
-      "visited": false,
       "properties": {"smell": "damp wood"}
     },
     "riverside": {
@@ -335,25 +201,6 @@
         "east": "farmland:farm_bridge",
         "south": "fishing_hut"
       },
-      "initial_npcs": [],
-      "items": [
-        {
-          "type": "Consumable",
-          "obj_id": "item_fresh_fish",
-          "name": "Fresh Fish",
-          "description": "A recently caught fish, still fresh and glistening. It would make a good meal.",
-          "weight": 1.0,
-          "value": 3,
-          "stackable": true,
-          "properties": {
-            "uses": 1,
-            "max_uses": 1,
-            "effect_value": 5,
-            "effect_type": "heal"
-          }
-        }
-      ],
-      "visited": false,
       "properties": {
         "smell": "fishy"
       }
@@ -364,20 +211,6 @@
         "exits": {
             "north": "riverside"
         },
-        "initial_npcs": [],
-        "items": [
-             {
-                "type": "Item",
-                "obj_id": "item_fishing_net",
-                "name": "Fishing Net",
-                "description": "A sturdy net used for catching fish.",
-                "weight": 2.0,
-                "value": 15,
-                "stackable": false,
-                "properties": {}
-             }
-        ],
-        "visited": false,
         "properties": {"smell": "fishy"}
     }
   }

@@ -1,5 +1,6 @@
+
+# utils/text_formatter.py
 """
-utils/text_formatter.py
 Fixed text formatter with simpler rendering approach.
 """
 import textwrap
@@ -7,12 +8,7 @@ from typing import TYPE_CHECKING, Dict, Tuple, List, Optional, Any
 import pygame
 import math
 
-from core.config import (
-    DEFAULT_COLORS, COLOR_DEFAULT, FORMAT_GRAY, FORMAT_PURPLE, # Import base colors if needed
-    FORMAT_RED, FORMAT_ORANGE, FORMAT_YELLOW, FORMAT_GREEN, FORMAT_BLUE, FORMAT_DARK_BLUE,
-    FORMAT_CYAN, FORMAT_WHITE, FORMAT_RESET,
-    SEMANTIC_FORMAT # Import the semantic mapping too
-)
+from config import DEFAULT_COLORS, FORMAT_CYAN, FORMAT_GRAY, FORMAT_GREEN, FORMAT_ORANGE, FORMAT_PURPLE, FORMAT_RED, FORMAT_RESET, FORMAT_YELLOW
 
 if TYPE_CHECKING:
     from player import Player

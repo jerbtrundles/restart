@@ -6,7 +6,7 @@ import random
 import time
 from typing import TYPE_CHECKING
 
-from core.config import (SPAWN_CHANCE_PER_TICK, SPAWN_DEBUG,
+from config import (SPAWN_CHANCE_PER_TICK, SPAWN_DEBUG,
                          SPAWN_INTERVAL_SECONDS, SPAWN_MAX_MONSTERS_PER_REGION_CAP,
                          SPAWN_MIN_MONSTERS_PER_REGION,
                          SPAWN_NO_SPAWN_ROOM_KEYWORDS, SPAWN_ROOMS_PER_MONSTER)

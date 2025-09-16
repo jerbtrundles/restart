@@ -1,15 +1,8 @@
 # items/key.py
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - Removed the top-level import of Container to break the circular dependency.
-# - Moved the `from items.container import Container` import inside the `use` method,
-#   where it's actually needed for the runtime `isinstance` check.
 
 from typing import Optional
 
 from items.item import Item
-# --- FIX: Removed circular import from the top of the file ---
-# from items.container import Container
-
 
 class Key(Item):
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Key",

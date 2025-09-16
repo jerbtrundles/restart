@@ -1,14 +1,10 @@
 # items/container.py
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - Removed the top-level import of Key to break the circular dependency.
-# - Moved the `from items.key import Key` import inside the `toggle_lock` method,
-#   where it's actually needed for the runtime `isinstance` check.
 
 from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple
+from config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS
 from items.item import Item
 # --- FIX: Removed circular import from the top of the file ---
 # from items.key import Key
-from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_HIGHLIGHT
 from utils.utils import _serialize_item_reference
 
 if TYPE_CHECKING:

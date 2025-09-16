@@ -4,7 +4,7 @@ Defines the structure for spells in the game.
 """
 from typing import Optional, Dict, Any
 
-from core.config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_POISON_DAMAGE_TYPE
+from config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_POISON_DAMAGE_TYPE
 
 class Spell:
     def __init__(self,

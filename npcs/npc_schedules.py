@@ -1,7 +1,4 @@
-# --- THIS IS A NEW FILE ---
-# - This module contains the logic for generating dynamic schedules for NPCs.
-# - It was refactored from the old `npc_schedule_plugin/schedule_templates.py`.
-# - The main function `initialize_npc_schedules` is called by the World to give schedules to all non-hostile NPCs.
+# npcs/npc_schedules.py
 
 import random
 from typing import TYPE_CHECKING

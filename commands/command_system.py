@@ -1,14 +1,10 @@
 # commands/command_system.py
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - Corrected type hints in the @command decorator for 'aliases' and 'plugin_id'.
-# - Added a # type: ignore comment to resolve the Pylance error on wrapper._command_info.
-# - Removed the obsolete and unnecessary register_command_module function.
 
 from typing import Callable, List, Dict, Any, Optional, Set
 from functools import wraps
 import inspect
 
-from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, HELP_MAX_COMMANDS_PER_CATEGORY
+from config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, HELP_MAX_COMMANDS_PER_CATEGORY
 
 # Dictionary to store all registered commands
 registered_commands: Dict[str, Dict[str, Any]] = {}

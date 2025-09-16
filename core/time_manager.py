@@ -5,7 +5,7 @@ Core system for managing in-game time, date, and seasons.
 import time
 from typing import Dict, Any, Optional, Tuple
 
-from core.config import (TIME_DAWN_HOUR, TIME_DAY_HOUR, TIME_DAY_NAMES,
+from config import (TIME_DAWN_HOUR, TIME_DAY_HOUR, TIME_DAY_NAMES,
                          TIME_DAYS_PER_MONTH, TIME_DUSK_HOUR,
                          TIME_MAX_CATCHUP_SECONDS, TIME_MONTH_NAMES,
                          TIME_MONTHS_PER_YEAR, TIME_NIGHT_HOUR,

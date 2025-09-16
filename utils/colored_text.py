@@ -1,4 +1,5 @@
-"""utils/colored_text.py"""
+# utils/colored_text.py
+
 import pygame
 from typing import List, Tuple, Dict, Optional
 

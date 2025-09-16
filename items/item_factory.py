@@ -4,7 +4,7 @@ import json
 import os
 from typing import TYPE_CHECKING, Any, Dict, Optional, Type
 
-from core.config import FORMAT_ERROR, FORMAT_RESET
+from config import FORMAT_ERROR, FORMAT_RESET
 from items.item import Item
 from items.weapon import Weapon
 from items.armor import Armor

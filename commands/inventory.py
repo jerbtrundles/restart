@@ -3,7 +3,7 @@
 Contains all commands related to the player's inventory and equipment.
 """
 from commands.command_system import command
-from core.config import EQUIP_COMMAND_SLOT_PREPOSITION, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_RESET
+from config import EQUIP_COMMAND_SLOT_PREPOSITION, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_SUCCESS, FORMAT_TITLE, FORMAT_RESET
 from items.item import Item
 from items.weapon import Weapon
 from items.consumable import Consumable

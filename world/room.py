@@ -1,11 +1,8 @@
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - The `get_full_description` method no longer generates its own title.
-# - The responsibility for creating the room title has been moved to the `World` class
-#   to allow for the inclusion of the region name.
+# world/room.py
 
 from typing import Dict, List, Optional, Any
 import uuid
-from core.config import FORMAT_CATEGORY, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE
+from config import FORMAT_CATEGORY, FORMAT_RESET
 from game_object import GameObject
 from items.item import Item
 
@@ -28,17 +25,17 @@ class Room(GameObject):
         self.update_property("time_descriptions", self.time_descriptions)
         self.update_property("env_properties", self.env_properties)
 
-    def get_full_description(self, time_period: str = "day", weather: str = "clear") -> str:
+    def get_full_description(self, time_period: str = "day", weather: str = "clear", is_outdoors: bool = True) -> str:
         """Get a full formatted description of the room's state, WITHOUT the title."""
         desc = self.description
         time_desc = self.time_descriptions.get(time_period)
         if time_desc: desc += f"\n\n{time_desc}"
-        if weather and self.env_properties.get("outdoors", False): desc += f"\n\nThe weather is {weather}."
-        if self.env_properties.get("dark", False): desc += "\n\nIt is very dark here."
-        if self.env_properties.get("noisy", False): desc += "\n\nThe area is filled with noise."
-        smell = self.env_properties.get("smell")
+        if weather and is_outdoors: desc += f"\n\nThe weather is {weather}."
+        if self.properties.get("dark", False): desc += "\n\nIt is very dark here."
+        if self.properties.get("noisy", False): desc += "\n\nThe area is filled with noise."
+        smell = self.properties.get("smell")
         if smell: desc += f"\n\nYou detect a {smell} smell."
-        temp = self.env_properties.get("temperature", "normal")
+        temp = self.properties.get("temperature", "normal")
         if temp == "cold": desc += "\n\nIt's noticeably cold in here."
         elif temp == "hot": desc += "\n\nThe air is stiflingly hot."
         exits_list = sorted(list(self.exits.keys()))

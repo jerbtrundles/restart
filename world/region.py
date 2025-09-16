@@ -1,3 +1,4 @@
+# world/region.py
 from typing import Dict, List, Optional, Any
 from world.room import Room
 from game_object import GameObject
@@ -8,6 +9,7 @@ class Region(GameObject):
         super().__init__(obj_id=region_obj_id, name=name, description=description)
         self.rooms: Dict[str, Room] = {}
         self.spawner_config: Dict[str, Any] = {} # <<< ADDED: To hold spawn data
+        self.properties.setdefault("indoors", False)
 
     def add_room(self, room_id: str, room: Room):
         self.rooms[room_id] = room

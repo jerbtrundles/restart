@@ -7,7 +7,7 @@ import pygame
 from typing import TYPE_CHECKING, Optional, Any
 import math
 
-from core.config import *
+from config import *
 from items.item import Item
 from magic.spell_registry import get_spell
 from utils.text_formatter import format_target_name
@@ -40,15 +40,58 @@ def draw_left_status_panel(renderer: 'Renderer', player: 'Player'):
     panel_rect = pygame.Rect(panel_layout["x"], panel_layout["y"], panel_layout["width"], panel_layout["height"])
     pygame.draw.rect(renderer.screen, (20, 20, 20), panel_rect)
     pygame.draw.rect(renderer.screen, (80, 80, 80), panel_rect, 1)
-    padding = STATUS_PANEL_PADDING; line_height = renderer.text_formatter.line_height_with_text
-    current_y = panel_rect.y + padding; max_y = panel_rect.bottom - padding
+
+    padding = STATUS_PANEL_PADDING
+    line_height = renderer.text_formatter.line_height_with_text
+    current_y = panel_rect.y + padding
+    max_y = panel_rect.bottom - padding
+
+    # --- 1. PLAYER INFO ---
+    current_y = renderer.text_formatter.render(renderer.screen, f"{FORMAT_TITLE}{player.name}{FORMAT_RESET}", (panel_rect.x + padding, current_y), max_height=(max_y - current_y))
+    if current_y < max_y: renderer.screen.blit(renderer.font.render(f"Level: {player.level}", True, TEXT_COLOR), (panel_rect.x + padding, current_y)); current_y += line_height
+    if current_y < max_y: current_y = renderer.text_formatter.render(renderer.screen, f"Gold: {FORMAT_YELLOW}{player.gold}{FORMAT_RESET}", (panel_rect.x + padding, current_y), max_height=(max_y - current_y))
+    current_y += line_height // 2
+
+    # --- 2. HP/MP/XP BARS ---
+    bar_height = 10; bar_x = panel_rect.x + padding
+    bar_label_width = renderer.font.size("HP: 9999/9999")[0] + 5 # Add padding
+    max_bar_width = max(20, panel_layout["width"] - (padding * 2) - bar_label_width)
+    
+    # HP Bar
+    if current_y + bar_height <= max_y:
+        hp_text = f"HP: {int(player.health)}/{int(player.max_health)}"; hp_percent = player.health / player.max_health if player.max_health > 0 else 0
+        hp_color = DEFAULT_COLORS[FORMAT_SUCCESS]
+        if hp_percent <= PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD / 100: hp_color = DEFAULT_COLORS[FORMAT_ERROR]
+        elif hp_percent <= PLAYER_STATUS_HEALTH_LOW_THRESHOLD / 100: hp_color = DEFAULT_COLORS[FORMAT_YELLOW]
+        pygame.draw.rect(renderer.screen, (80, 0, 0), (bar_x, current_y, max_bar_width, bar_height))
+        pygame.draw.rect(renderer.screen, hp_color, (bar_x, current_y, int(max_bar_width * hp_percent), bar_height))
+        hp_surface = renderer.font.render(hp_text, True, hp_color)
+        renderer.screen.blit(hp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (hp_surface.get_height() // 2))); current_y += bar_height + 3
+    
+    # MP Bar
+    if current_y + bar_height <= max_y:
+        mp_text = f"MP: {int(player.mana)}/{int(player.max_mana)}"; mp_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
+        mp_color = DEFAULT_COLORS[FORMAT_CYAN]
+        pygame.draw.rect(renderer.screen, (0, 0, 80), (bar_x, current_y, max_bar_width, bar_height))
+        pygame.draw.rect(renderer.screen, mp_color, (bar_x, current_y, int(max_bar_width * mp_percent), bar_height))
+        mp_surface = renderer.font.render(mp_text, True, mp_color)
+        renderer.screen.blit(mp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (mp_surface.get_height() // 2))); current_y += bar_height + 3
+
+    # XP Bar
+    if current_y + bar_height <= max_y:
+        xp_text = f"XP: {int(player.experience)}/{int(player.experience_to_level)}"; xp_percent = player.experience / player.experience_to_level if player.experience_to_level > 0 else 0
+        xp_color = DEFAULT_COLORS[FORMAT_ORANGE]
+        pygame.draw.rect(renderer.screen, (80, 50, 0), (bar_x, current_y, max_bar_width, bar_height))
+        pygame.draw.rect(renderer.screen, xp_color, (bar_x, current_y, int(max_bar_width * xp_percent), bar_height))
+        xp_surface = renderer.font.render(xp_text, True, xp_color)
+        renderer.screen.blit(xp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (xp_surface.get_height() // 2))); current_y += bar_height + padding
+    
+    # --- 3. STATS ---
     text_color = DEFAULT_COLORS.get(FORMAT_RESET, TEXT_COLOR)
     title_color = DEFAULT_COLORS.get(FORMAT_TITLE, (255, 255, 0))
     gray_color = DEFAULT_COLORS.get(FORMAT_GRAY, (128, 128, 128))
     error_color = DEFAULT_COLORS.get(FORMAT_ERROR, (255,0,0))
-
-    if current_y + line_height <= max_y:
-        renderer.screen.blit(renderer.font.render("STATS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
+    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("STATS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
     stats_to_show = {"strength": "STR", "dexterity": "DEX", "constitution": "CON", "agility": "AGI", "intelligence": "INT", "wisdom": "WIS", "spell_power": "SP", "magic_resist": "MR"}
     stats_per_col = math.ceil(len(stats_to_show) / 2)
     col1_x = panel_rect.x + padding + 5; col2_x = col1_x + (panel_rect.width - padding*2 - 20) // 2
@@ -61,80 +104,9 @@ def draw_left_status_panel(renderer: 'Renderer', player: 'Player'):
         else:
             if col2_y + line_height <= max_y: renderer.screen.blit(stat_surface, (col2_x, col2_y)); col2_y += line_height
     current_y = max(col1_y, col2_y) + line_height // 2
-    
-    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("SKILLS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
-    if player.skills:
-        for skill_name, level in sorted(player.skills.items()):
-            if current_y + line_height > max_y: break
-            renderer.screen.blit(renderer.font.render(f"- {skill_name.capitalize()}: {level}", True, text_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
-    else:
-        if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("(None known)", True, gray_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
-    current_y += line_height // 2
-    
-    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("SPELLS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
-    if player.known_spells:
-        current_time = time.time()
-        for spell_id in sorted(list(player.known_spells), key=lambda sid: getattr(get_spell(sid), 'name', sid)):
-            if current_y + line_height > max_y: break
-            spell = get_spell(spell_id)
-            if spell:
-                cooldown_end = player.spell_cooldowns.get(spell_id, 0)
-                cd_status = f" (CD {max(0, cooldown_end - current_time):.1f}s)" if current_time < cooldown_end else ""
-                spell_text = f"- {spell.name} ({spell.mana_cost} MP)"
-                renderer.screen.blit(renderer.font.render(spell_text, True, text_color), (panel_rect.x + padding + 5, current_y))
-                if cd_status:
-                     renderer.screen.blit(renderer.font.render(cd_status, True, error_color), (panel_rect.x + padding + 5 + renderer.font.size(spell_text)[0], current_y))
-                current_y += line_height
-    else:
-        if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("(None known)", True, gray_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
 
-def draw_right_status_panel(renderer: 'Renderer', player: 'Player', world: 'World'):
-    panel_layout = renderer.layout.get("right_status_panel")
-    if not panel_layout: return
-    panel_rect = pygame.Rect(panel_layout["x"], panel_layout["y"], panel_layout["width"], panel_layout["height"])
-    pygame.draw.rect(renderer.screen, (20, 20, 20), panel_rect); pygame.draw.rect(renderer.screen, (80, 80, 80), panel_rect, 1)
-    
-    padding = 5; line_height = renderer.text_formatter.line_height_with_text
-    current_y = panel_rect.y + padding; max_y = panel_rect.bottom - padding
-    bar_height = 10; bar_x = panel_rect.x + padding
-    bar_label_width = renderer.font.size("HP: 9999/9999")[0]
-    max_bar_width = max(20, panel_layout["width"] - (padding * 3) - bar_label_width)
-    gray_color = DEFAULT_COLORS.get(FORMAT_GRAY, (128, 128, 128))
-
-    # HP BAR
-    hp_text = f"HP: {int(player.health)}/{int(player.max_health)}"; hp_percent = player.health / player.max_health if player.max_health > 0 else 0
-    hp_color = DEFAULT_COLORS[FORMAT_SUCCESS]
-    if hp_percent <= PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD / 100: hp_color = DEFAULT_COLORS[FORMAT_ERROR]
-    elif hp_percent <= PLAYER_STATUS_HEALTH_LOW_THRESHOLD / 100: hp_color = DEFAULT_COLORS[FORMAT_YELLOW]
-    pygame.draw.rect(renderer.screen, (80, 0, 0), (bar_x, current_y, max_bar_width, bar_height))
-    pygame.draw.rect(renderer.screen, hp_color, (bar_x, current_y, int(max_bar_width * hp_percent), bar_height))
-    hp_surface = renderer.font.render(hp_text, True, hp_color)
-    renderer.screen.blit(hp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (hp_surface.get_height() // 2))); current_y += bar_height + 3
-
-    # MP BAR
-    mp_text = f"MP: {int(player.mana)}/{int(player.max_mana)}"; mp_percent = player.mana / player.max_mana if player.max_mana > 0 else 0
-    mp_color = DEFAULT_COLORS[FORMAT_CYAN]
-    pygame.draw.rect(renderer.screen, (0, 0, 80), (bar_x, current_y, max_bar_width, bar_height))
-    pygame.draw.rect(renderer.screen, mp_color, (bar_x, current_y, int(max_bar_width * mp_percent), bar_height))
-    mp_surface = renderer.font.render(mp_text, True, mp_color)
-    renderer.screen.blit(mp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (mp_surface.get_height() // 2))); current_y += bar_height + 3
-
-    # XP BAR
-    xp_text = f"XP: {int(player.experience)}/{int(player.experience_to_level)}"; xp_percent = player.experience / player.experience_to_level if player.experience_to_level > 0 else 0
-    xp_color = DEFAULT_COLORS[FORMAT_ORANGE]
-    pygame.draw.rect(renderer.screen, (80, 50, 0), (bar_x, current_y, max_bar_width, bar_height))
-    pygame.draw.rect(renderer.screen, xp_color, (bar_x, current_y, int(max_bar_width * xp_percent), bar_height))
-    xp_surface = renderer.font.render(xp_text, True, xp_color)
-    renderer.screen.blit(xp_surface, (bar_x + max_bar_width + padding, current_y + (bar_height // 2) - (xp_surface.get_height() // 2))); current_y += bar_height + padding
-    
-    # PLAYER INFO
-    current_y = renderer.text_formatter.render(renderer.screen, f"{FORMAT_TITLE}{player.name}{FORMAT_RESET}", (panel_rect.x + padding, current_y), max_height=(max_y - current_y))
-    if current_y < max_y: renderer.screen.blit(renderer.font.render(f"Level: {player.level}", True, TEXT_COLOR), (panel_rect.x + padding, current_y)); current_y += line_height
-    if current_y < max_y: current_y = renderer.text_formatter.render(renderer.screen, f"Gold: {FORMAT_YELLOW}{player.gold}{FORMAT_RESET}", (panel_rect.x + padding, current_y), max_height=(max_y - current_y))
-    current_y += line_height
-
-    # EQUIPMENT
-    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("EQUIPPED", True, DEFAULT_COLORS[FORMAT_TITLE]), (panel_rect.x + padding, current_y)); current_y += line_height
+    # --- 4. EQUIPMENT ---
+    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("EQUIPPED", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
     def format_equip_slot(slot_abbr: str, item: Optional[Item]) -> str:
         if not item: return f"{slot_abbr}: {FORMAT_GRAY}(Empty){FORMAT_RESET}"
         durability_str = ""
@@ -151,8 +123,37 @@ def draw_right_status_panel(renderer: 'Renderer', player: 'Player', world: 'Worl
         current_y = renderer.text_formatter.render(renderer.screen, f"- {format_equip_slot(slot_abbrs[slot_key], player.equipment.get(slot_key))}", (panel_rect.x + padding + 5, current_y), max_height=(max_y - current_y))
     current_y += line_height // 2
 
-    # ACTIVE EFFECTS
-    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("EFFECTS", True, DEFAULT_COLORS[FORMAT_TITLE]), (panel_rect.x + padding, current_y)); current_y += line_height
+    # --- 5. SPELLS ---
+    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("SPELLS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
+    if player.known_spells:
+        current_time = time.time()
+        for spell_id in sorted(list(player.known_spells), key=lambda sid: getattr(get_spell(sid), 'name', sid)):
+            if current_y + line_height > max_y: break
+            spell = get_spell(spell_id)
+            if spell:
+                cooldown_end = player.spell_cooldowns.get(spell_id, 0)
+                cd_status = f" (CD {max(0, cooldown_end - current_time):.1f}s)" if current_time < cooldown_end else ""
+                spell_text = f"- {spell.name} ({spell.mana_cost} MP)"
+                renderer.screen.blit(renderer.font.render(spell_text, True, text_color), (panel_rect.x + padding + 5, current_y))
+                if cd_status:
+                     renderer.screen.blit(renderer.font.render(cd_status, True, error_color), (panel_rect.x + padding + 5 + renderer.font.size(spell_text)[0], current_y))
+                current_y += line_height
+    else:
+        if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("(None known)", True, gray_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
+    current_y += line_height // 2
+
+    # --- 6. SKILLS ---
+    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("SKILLS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
+    if player.skills:
+        for skill_name, level in sorted(player.skills.items()):
+            if current_y + line_height > max_y: break
+            renderer.screen.blit(renderer.font.render(f"- {skill_name.capitalize()}: {level}", True, text_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
+    else:
+        if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("(None known)", True, gray_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
+    current_y += line_height // 2
+    
+    # --- 7. ACTIVE EFFECTS ---
+    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("EFFECTS", True, title_color), (panel_rect.x + padding, current_y)); current_y += line_height
     if player.active_effects:
         for effect in sorted(player.active_effects, key=lambda e: e.get("name", "zzz")):
             if current_y >= max_y: break
@@ -167,11 +168,45 @@ def draw_right_status_panel(renderer: 'Renderer', player: 'Player', world: 'Worl
     else:
         if current_y + line_height <= max_y:
             renderer.screen.blit(renderer.font.render("- (None)", True, gray_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
-    current_y += line_height // 2
+
+def draw_right_status_panel(renderer: 'Renderer', player: 'Player', world: 'World'):
+    panel_layout = renderer.layout.get("right_status_panel")
+    if not panel_layout: return
+    panel_rect = pygame.Rect(panel_layout["x"], panel_layout["y"], panel_layout["width"], panel_layout["height"])
+    pygame.draw.rect(renderer.screen, (20, 20, 20), panel_rect)
+    pygame.draw.rect(renderer.screen, (80, 80, 80), panel_rect, 1)
     
-    # HOSTILES
-    if current_y + line_height <= max_y: renderer.screen.blit(renderer.font.render("HOSTILES", True, DEFAULT_COLORS[FORMAT_TITLE]), (panel_rect.x + padding, current_y)); current_y += line_height
+    padding = STATUS_PANEL_PADDING
+    line_height = renderer.text_formatter.line_height_with_text
+    current_y = panel_rect.y + padding
+    max_y = panel_rect.bottom - padding
+    title_color = DEFAULT_COLORS.get(FORMAT_TITLE, (255, 255, 0))
+    gray_color = DEFAULT_COLORS.get(FORMAT_GRAY, (128, 128, 128))
+
     all_npcs_in_room = world.get_current_room_npcs()
+
+    # --- PEOPLE (Friendlies/Neutrals) ---
+    if current_y + line_height <= max_y:
+        renderer.screen.blit(renderer.font.render("PEOPLE", True, title_color), (panel_rect.x + padding, current_y))
+        current_y += line_height
+    
+    friendly_targets = [npc for npc in all_npcs_in_room if npc.is_alive and npc.faction in ["friendly", "neutral"]]
+    if friendly_targets:
+        for target in friendly_targets:
+            if current_y >= max_y: break
+            formatted_target_name = format_target_name(player, target) # This will just show the name with level-based color
+            current_y = renderer.text_formatter.render(renderer.screen, f"- {formatted_target_name}", (panel_rect.x + padding + 5, current_y), max_height=(max_y - current_y))
+    else:
+        if current_y + line_height <= max_y:
+            renderer.screen.blit(renderer.font.render("- (None)", True, gray_color), (panel_rect.x + padding + 5, current_y))
+            current_y += line_height
+    current_y += line_height // 2
+
+    # --- HOSTILES ---
+    if current_y + line_height <= max_y:
+        renderer.screen.blit(renderer.font.render("HOSTILES", True, title_color), (panel_rect.x + padding, current_y))
+        current_y += line_height
+    
     hostile_targets = [npc for npc in all_npcs_in_room if npc.is_alive and npc.faction == "hostile"]
     if hostile_targets:
         for target in hostile_targets:
@@ -180,7 +215,8 @@ def draw_right_status_panel(renderer: 'Renderer', player: 'Player', world: 'Worl
              current_y = renderer.text_formatter.render(renderer.screen, f"- {formatted_target_name}", (panel_rect.x + padding + 5, current_y), max_height=(max_y - current_y))
     else:
         if current_y + line_height <= max_y:
-            renderer.screen.blit(renderer.font.render("- (None)", True, gray_color), (panel_rect.x + padding + 5, current_y)); current_y += line_height
+            renderer.screen.blit(renderer.font.render("- (None)", True, gray_color), (panel_rect.x + padding + 5, current_y))
+            current_y += line_height
 
 def draw_room_info_panel(renderer: 'Renderer', world: 'World'):
     panel_layout = renderer.layout.get("room_info_panel");

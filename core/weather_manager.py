@@ -5,7 +5,7 @@ Core system for managing dynamic in-game weather.
 import random
 from typing import Any, Dict
 
-from core.config import (WEATHER_INTENSITY_WEIGHTS, WEATHER_PERSISTENCE_CHANCE,
+from config import (WEATHER_INTENSITY_WEIGHTS, WEATHER_PERSISTENCE_CHANCE,
                          WEATHER_TRANSITION_CHANGE_CHANCE)
 
 

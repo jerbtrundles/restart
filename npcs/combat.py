@@ -1,20 +1,16 @@
 # npcs/combat.py
-# --- MODIFIED WITH SMARTER SPELL SELECTION AND FAILSAFES ---
 
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 import random
 import time
+from config import (
+    HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, FORMAT_RESET,
+    FORMAT_SUCCESS, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_HIT_CHANCE, NPC_LOW_MANA_RETREAT_THRESHOLD, FACTION_RELATIONSHIP_MATRIX
+)
 from magic.effects import apply_spell_effect
 from magic.spell_registry import get_spell
 from utils.text_formatter import format_target_name, get_level_diff_category
 from utils.utils import calculate_xp_gain, format_loot_drop_message, format_name_for_display
-from core.config import (
-    FACTION_RELATIONSHIP_MATRIX,
-    FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, HIT_CHANCE_AGILITY_FACTOR,
-    LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE,
-    MINIMUM_DAMAGE_TAKEN, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_HIT_CHANCE,
-    NPC_LOW_MANA_RETREAT_THRESHOLD
-)
 
 if TYPE_CHECKING:
     from .npc import NPC
@@ -91,8 +87,6 @@ def cast_spell(npc: 'NPC', spell, target, current_time: float) -> Dict[str, Any]
     
     return {"message": full_message, "target_defeated": not getattr(target, 'is_alive', True)}
 
-
-# --- MODIFIED: This function now correctly filters spells ---
 def try_attack(npc: 'NPC', world, current_time: float) -> Optional[str]:
     from . import behaviors as npc_behaviors 
     player = getattr(world, 'player', None)
@@ -108,7 +102,14 @@ def try_attack(npc: 'NPC', world, current_time: float) -> Optional[str]:
     chosen_spell = None
     if npc.max_mana > 0 and npc.usable_spells and random.random() < npc.spell_cast_chance:
         if npc.mana / npc.max_mana < NPC_LOW_MANA_RETREAT_THRESHOLD:
-            return npc_behaviors.start_retreat(npc, world, current_time, player)
+            # --- START OF MODIFICATION ---
+            # Attempt to retreat, but don't exit immediately if it fails.
+            retreat_message = npc_behaviors.start_retreat(npc, world, current_time, player)
+            if retreat_message:
+                return retreat_message # Retreat was successful, return the message.
+            # If retreat_message is None, it means no safe room was found.
+            # The function will now continue to the physical attack logic below.
+            # --- END OF MODIFICATION ---
         
         available_spells = [s for s_id in npc.usable_spells if (s := get_spell(s_id)) 
                             and current_time >= npc.spell_cooldowns.get(s_id, 0) 

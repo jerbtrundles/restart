@@ -10,7 +10,10 @@ import time
 from typing import List, Optional
 
 from commands.command_system import CommandProcessor
-from core.config import *
+from config import (
+    FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_TITLE, SCREEN_HEIGHT, SCREEN_WIDTH, TARGET_FPS,
+    DEBUG_IGNORE_PLAYER_COMBAT, DEFAULT_SAVE_FILE, SAVE_GAME_DIR
+)
 from core.time_manager import TimeManager
 from core.weather_manager import WeatherManager
 from core.input_handler import InputHandler

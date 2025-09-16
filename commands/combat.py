@@ -4,7 +4,7 @@ Contains all commands related to player combat actions.
 """
 import time
 from commands.command_system import command
-from core.config import FORMAT_ERROR, FORMAT_RESET
+from config import FORMAT_ERROR, FORMAT_RESET
 
 @command("attack", ["kill", "fight", "hit"], "combat", "Attack a target.\nUsage: attack <target_name>")
 def attack_handler(args, context):

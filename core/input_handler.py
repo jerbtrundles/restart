@@ -6,7 +6,7 @@ import pygame
 from typing import TYPE_CHECKING, List
 
 from commands.command_system import CommandProcessor
-from core.config import COMMAND_HISTORY_SIZE, SCROLL_SPEED
+from config import COMMAND_HISTORY_SIZE, SCROLL_SPEED
 
 if TYPE_CHECKING:
     from core.game_manager import GameManager

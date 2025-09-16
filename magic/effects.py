@@ -6,7 +6,7 @@ import uuid
 
 from utils.text_formatter import get_level_diff_category, format_target_name
 from magic.spell import Spell
-from core.config import EFFECT_DEFAULT_TICK_INTERVAL, LEVEL_DIFF_COMBAT_MODIFIERS, MINIMUM_SPELL_EFFECT_VALUE, SPELL_DAMAGE_VARIATION_FACTOR, SPELL_DEFAULT_DAMAGE_TYPE
+from config import EFFECT_DEFAULT_TICK_INTERVAL, LEVEL_DIFF_COMBAT_MODIFIERS, MINIMUM_SPELL_EFFECT_VALUE, SPELL_DAMAGE_VARIATION_FACTOR, SPELL_DEFAULT_DAMAGE_TYPE
 from utils.utils import format_name_for_display, get_article # Import modifiers
 
 if TYPE_CHECKING:

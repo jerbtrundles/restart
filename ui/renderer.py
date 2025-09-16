@@ -5,7 +5,7 @@ Handles all rendering for the game, including UI panels, text, and game states.
 import pygame
 from typing import TYPE_CHECKING, List, Dict, Any
 
-from core.config import *
+from config import *
 from ui import panels
 from utils.text_formatter import TextFormatter
 

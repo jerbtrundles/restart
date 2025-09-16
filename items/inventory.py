@@ -4,7 +4,7 @@ Enhanced inventory system for the MUD game with improved text formatting.
 Handles storage and management of items.
 """
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Any
-from core.config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
+from config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET
 from items.item import Item
 from items.item_factory import ItemFactory
 from utils.utils import _serialize_item_reference # If defined in utils/utils.py

@@ -6,7 +6,7 @@
 import random
 from typing import Dict, Any, List, Optional, Tuple
 import uuid
-from core.config import EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, NPC_DOT_FLAVOR_MESSAGES
+from config import EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, NPC_DOT_FLAVOR_MESSAGES
 
 class GameObject:
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown",

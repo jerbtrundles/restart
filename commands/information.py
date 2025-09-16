@@ -1,6 +1,6 @@
 # commands/information.py
 from commands.command_system import command
-from core.config import (
+from config import (
     FORMAT_TITLE, FORMAT_RESET, TIME_DAY_NAMES, TIME_MONTHS_PER_YEAR,
     TIME_DAYS_PER_WEEK, TIME_DAYS_PER_MONTH, TIME_MONTH_NAMES
 )

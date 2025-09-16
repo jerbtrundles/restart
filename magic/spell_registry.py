@@ -3,7 +3,7 @@
 Registry of all available spells in the game.
 """
 from typing import Dict, Optional
-from core.config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_FIRE_DAMAGE_TYPE, EFFECT_POISON_DAMAGE_TYPE
+from config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_FIRE_DAMAGE_TYPE, EFFECT_POISON_DAMAGE_TYPE
 from magic.spell import Spell
 
 SPELL_REGISTRY: Dict[str, Spell] = {}

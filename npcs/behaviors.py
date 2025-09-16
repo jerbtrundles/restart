@@ -3,9 +3,9 @@
 from typing import TYPE_CHECKING, Optional
 import random
 import time
+from config import NPC_HEALER_HEAL_THRESHOLD
 from magic.spell_registry import get_spell
 from utils.utils import format_npc_arrival_message, format_npc_departure_message, format_name_for_display
-from core.config import NPC_HEALER_HEAL_THRESHOLD
 
 if TYPE_CHECKING:
     from .npc import NPC
@@ -140,19 +140,37 @@ def _wander_behavior(npc: 'NPC', world, player: 'Player') -> Optional[str]:
     room = world.get_region(npc.current_region_id).get_room(npc.current_room_id)
     if not room or not room.exits: return None
     
-    # Hostile NPCs should not wander into safe zones
     valid_exits = {}
-    if npc.faction == 'hostile':
-        for direction, dest_id in room.exits.items():
-            r_id, room_id = (dest_id.split(':') if ':' in dest_id else (npc.current_region_id, dest_id))
-            if not world.is_location_safe(r_id, room_id):
-                valid_exits[direction] = dest_id
-        if not valid_exits: return None # No safe place to wander
-    else:
-        valid_exits = room.exits
+    is_in_instance = npc.current_region_id and npc.current_region_id.startswith("instance_")
 
-    direction = random.choice(list(valid_exits.keys()))
-    return _move_npc(npc, world, player, direction)
+    for direction, dest_id in room.exits.items():
+        dest_region_id, dest_room_id = (dest_id.split(':') if ':' in dest_id else (npc.current_region_id, dest_id))
+
+        if not dest_region_id: continue
+
+        # no npcs should enter instances
+        if not is_in_instance and dest_region_id.startswith("instance_"):
+            continue
+
+        # all npcs can move within the same region
+        # no npcs can leave instances
+        if is_in_instance:
+            if dest_region_id == npc.current_region_id:
+                valid_exits[direction] = dest_id
+            continue
+
+        # hostiles shouldn't wander into safe zones
+        if npc.faction == 'hostile':
+            if not world.is_location_safe(dest_region_id, dest_room_id):
+                valid_exits[direction] = dest_id
+        else:
+            # friendly npcs can enter safe zones
+            valid_exits[direction] = dest_id
+
+    if not valid_exits: return None
+    
+    direction_to_go = random.choice(list(valid_exits.keys()))
+    return _move_npc(npc, world, player, direction_to_go)
 
 def _patrol_behavior(npc: 'NPC', world, player: 'Player') -> Optional[str]:
     if not npc.patrol_points: return None
@@ -316,21 +334,48 @@ def _healer_behavior(npc: 'NPC', world, current_time, player: 'Player') -> Optio
     return None
 
 def start_retreat(npc: 'NPC', world, current_time: float, player: 'Player') -> Optional[str]:
+    # No changes to this part - it finds the destination coordinates
     if not npc.retreat_destination and npc.current_region_id and npc.current_room_id:
         npc.retreat_destination = world.find_nearest_safe_room(npc.current_region_id, npc.current_room_id)
         
     if npc.retreat_destination:
         if world.game and world.game.debug_mode:
-            print(f"[AI DEBUG] NPC '{npc.name}' ({npc.obj_id}) retreating to {npc.retreat_destination}")
-            
-        npc.original_behavior = npc.behavior_type
-        npc.behavior_type = "retreating_for_mana"
-        from . import combat as npc_combat
-        npc_combat.exit_combat(npc)
-        npc.current_path = [] # Clear any old path
+            print(f"[AI DEBUG] NPC '{npc.name}' ({npc.obj_id}) starting retreat to {npc.retreat_destination}")
         
-        if player and player.current_room_id == npc.current_room_id:
-            return f"{format_name_for_display(player, npc, True)} looks exhausted and retreats from battle!"
+        # --- START OF MODIFICATION ---
+        # Find the full path to the destination
+        path = world.find_path(
+            npc.current_region_id, 
+            npc.current_room_id, 
+            npc.retreat_destination[0], 
+            npc.retreat_destination[1]
+        )
+        
+        # If a path exists, we can announce the first step
+        if path:
+            first_direction = path[0]
+            # Store the complete path for the retreat behavior to use
+            npc.current_path = path 
+            
+            # Set up the NPC state for retreating
+            npc.original_behavior = npc.behavior_type
+            npc.behavior_type = "retreating_for_mana"
+            from . import combat as npc_combat
+            npc_combat.exit_combat(npc)
+            
+            # Generate the improved message if the player can see the NPC
+            if player and player.current_room_id == npc.current_room_id:
+                return f"{format_name_for_display(player, npc, True)} looks exhausted and retreats from battle, heading {first_direction}!"
+        else:
+            # If no path is found, the retreat fails. Don't change state.
+            npc.retreat_destination = None # Clear destination
+            if world.game and world.game.debug_mode:
+                print(f"[AI DEBUG] NPC '{npc.name}' failed to find a retreat path.")
+            # Do not return a message, allowing the combat logic to fall back to a physical attack.
+            return None 
+        # --- END OF MODIFICATION ---
+
+    # This is reached if no retreat destination was found in the first place
     return None
 
 def _retreat_behavior(npc: 'NPC', world, current_time: float, player: 'Player') -> Optional[str]:
@@ -341,51 +386,66 @@ def _retreat_behavior(npc: 'NPC', world, current_time: float, player: 'Player') 
         npc.behavior_type = npc.original_behavior or "wanderer"
         npc.retreat_destination = None
         npc.current_path = []
-        return f"{npc.name} looks recovered."
+        if player and player.current_room_id == npc.current_room_id:
+            return f"{format_name_for_display(player, npc, True)} looks recovered."
+        return None
 
-    # 2. If at destination, do nothing (just wait and regen)
+    # 2. If at destination, do nothing (path should be empty)
     if npc.retreat_destination and (npc.current_region_id, npc.current_room_id) == npc.retreat_destination:
-        npc.current_path = [] # Clear path
+        npc.current_path = [] # Clear path on arrival
         return None 
 
-    # 3. If not at destination, move there
-    if npc.retreat_destination:
-        return _follower_behavior(npc, world, player, path_override=npc.current_path)
+    # --- START OF MODIFICATION ---
+    # 3. If we have a path, move along it.
+    if npc.current_path:
+        # The path was already calculated by start_retreat. We just follow it.
+        next_direction = npc.current_path.pop(0)
+        return _move_npc(npc, world, player, next_direction)
+    # --- END OF MODIFICATION ---
 
-    # 4. Fallback if something went wrong (e.g., no safe room found)
+    # 4. Fallback if something went wrong (e.g., path is empty but not at destination)
+    # This might happen if the world changes mid-retreat.
     npc.behavior_type = npc.original_behavior or "wanderer"
+    npc.retreat_destination = None
+    if player and player.current_room_id == npc.current_room_id:
+        return f"{format_name_for_display(player, npc, True)} seems to have lost their way and stops retreating."
     return None
 
 def _try_flee(npc: 'NPC', world, player: 'Player') -> Optional[str]:
-    room = world.get_region(npc.current_region_id).get_room(npc.current_room_id)
-    if not room or not room.exits: return None
-    
-    # Hostile NPCs try to flee to other non-safe rooms if possible
+    # Get the room the NPC is currently in, *before* moving.
+    room_before_flee = world.get_region(npc.current_region_id).get_room(npc.current_room_id)
+    if not room_before_flee or not room_before_flee.exits:
+        return None # Cannot flee if there are no exits.
+
+    # Determine if the player can see the NPC flee from its starting room.
+    player_can_see_flee = (player and player.is_alive and player.current_room_id == room_before_flee.obj_id)
+
+    # Logic to find a valid direction to flee to
     valid_exits = {}
     if npc.faction == 'hostile':
-        for direction, dest_id in room.exits.items():
+        for direction, dest_id in room_before_flee.exits.items():
             r_id, room_id = (dest_id.split(':') if ':' in dest_id else (npc.current_region_id, dest_id))
             if not world.is_location_safe(r_id, room_id):
                 valid_exits[direction] = dest_id
-        if not valid_exits: valid_exits = room.exits # If all exits are safe, just pick one
+        if not valid_exits: valid_exits = room_before_flee.exits # If all exits are safe, just pick one
     else:
-        valid_exits = room.exits
+        valid_exits = room_before_flee.exits
 
     direction = random.choice(list(valid_exits.keys()))
     
+    # Exit combat *before* moving.
     from . import combat as npc_combat
     npc_combat.exit_combat(npc)
     
-    move_msg = _move_npc(npc, world, player, direction)
+    # --- START OF MODIFICATION ---
+    # The NPC always moves, regardless of whether the player sees it.
+    # The _move_npc function correctly handles any arrival message if the player is in the destination room.
+    _move_npc(npc, world, player, direction)
     
-    flee_msg = f"{format_name_for_display(player, npc, True)} flees to the {direction}!"
-    
-    # Only return the message if the player saw either the departure or the arrival
-    if move_msg:
+    # Generate and return the specific "flee" message ONLY if the player was in the starting room.
+    if player_can_see_flee:
+        flee_msg = f"{format_name_for_display(player, npc, True)} flees to the {direction}!"
         return flee_msg
-    else:
-        # Player didn't see the move, but if they were in the room the NPC left, they see the flee message.
-        if player and player.current_room_id == room.obj_id:
-            return flee_msg
 
+    # If the player wasn't in the same room, they see nothing.
     return None

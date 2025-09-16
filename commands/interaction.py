@@ -1,17 +1,18 @@
 # commands/interaction.py
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - Fixed the 'give_handler' to safely handle quest turn-ins, resolving the
-#   Pylance reportOptionalMemberAccess error. The logic is now more robust.
 
 from typing import Any, Dict, List, Optional, Tuple
 from commands.command_system import command, registered_commands
-from core.config import *
+from config import (
+    FOLLOW_COMMAND_STOP_ALIASES, GET_COMMAND_PREPOSITION, GIVE_COMMAND_PREPOSITION, PUT_COMMAND_PREPOSITION, QUEST_BOARD_ALIASES,
+    USE_COMMAND_PREPOSITIONS, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE, VENDOR_LIST_ITEM_NAME_WIDTH,
+    VENDOR_LIST_PRICE_WIDTH, DEFAULT_VENDOR_BUY_MULTIPLIER, DEFAULT_VENDOR_SELL_MULTIPLIER, REPAIR_COST_PER_VALUE_POINT,
+    REPAIR_MINIMUM_COST, VENDOR_CAN_BUY_ALL_ITEMS, VENDOR_MIN_BUY_PRICE, VENDOR_MIN_SELL_PRICE
+)
 from items.consumable import Consumable
 from items.item_factory import ItemFactory
 from items.junk import Junk
 from items.key import Key
 from items.container import Container
-from plugins.service_locator import get_service_locator
 from utils.utils import simple_plural, get_article
 from player import Player
 from npcs.npc import NPC
@@ -420,11 +421,13 @@ def talk_handler(args, context):
                  reward_messages.append(f"{xp_reward} XP")
 
             if gold_reward > 0: player.gold += gold_reward; reward_messages.append(f"{gold_reward} Gold")
+            # --- START OF MODIFICATION ---
             if quest_turn_in_id in player.quest_log:
                 # 1. 'pop' removes the quest from the active log and returns it.
                 completed_quest = player.quest_log.pop(quest_turn_in_id)
                 # 2. We immediately add the returned quest data to the completed log.
                 player.completed_quest_log[quest_turn_in_id] = completed_quest
+            # --- END OF MODIFICATION ---
 
             quest_manager = context["world"].quest_manager
             if quest_manager: quest_manager.replenish_board(quest_turn_in_id)
@@ -433,6 +436,13 @@ def talk_handler(args, context):
             npc_response = target_npc.dialog.get(f"complete_{quest_turn_in_id}", target_npc.dialog.get("quest_complete", f"\"Ah, thank you for your help!\" says {target_npc.name}."))
             completion_message += f"{FORMAT_HIGHLIGHT}{npc_response}{FORMAT_RESET}\n"
             if reward_messages: completion_message += "You receive: " + ", ".join(reward_messages) + "."
+
+            if quest_type == "instance":
+                # Despawn the giver NPC after instance turn-in ---
+                giver_id = quest_data.get("giver_instance_id")
+                if giver_id and giver_id in world.npcs:
+                    del world.npcs[giver_id]
+                    completion_message += f"\nHaving given you your reward, {target_npc.name} heads back inside their home."
 
             if leveled_up and level_up_message:
                 completion_message += "\n\n" + level_up_message
@@ -722,9 +732,11 @@ def give_handler(args, context):
 
             if gold_reward > 0: player.gold += gold_reward; reward_messages.append(f"{gold_reward} Gold")
             
+            # --- START OF MODIFICATION ---
             if matching_quest_id in player.quest_log:
                 completed_quest = player.quest_log.pop(matching_quest_id)
                 player.completed_quest_log[matching_quest_id] = completed_quest
+            # --- END OF MODIFICATION ---
             
             quest_manager = context["world"].quest_manager
             if quest_manager: quest_manager.replenish_board(matching_quest_id)
