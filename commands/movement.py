@@ -17,7 +17,10 @@ DIRECTIONS = [
     {"name": "up", "aliases": ["u"], "description": "Move up."},
     {"name": "down", "aliases": ["d"], "description": "Move down."},
     {"name": "in", "aliases": ["enter", "inside"], "description": "Enter."},
-    {"name": "out", "aliases": ["exit", "outside", "o"], "description": "Exit."}
+    {"name": "out", "aliases": ["exit", "outside", "o"], "description": "Exit."},
+    # --- ADDED ---
+    {"name": "upstream", "aliases": ["upriver"], "description": "Move upstream."},
+    {"name": "downstream", "aliases": ["downriver"], "description": "Move downstream."}
 ]
 
 def register_movement_commands():

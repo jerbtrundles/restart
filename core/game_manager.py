@@ -21,6 +21,21 @@ from core.input_handler import InputHandler
 from ui.renderer import Renderer
 from world.world import World
 from utils.utils import format_name_for_display
+from ui.ui_manager import UIManager
+from ui.ui_element import UIPanel
+from ui.panel_content import (
+    render_stats_content, 
+    render_equipment_content, 
+    render_spells_content, 
+    render_hostiles_content, 
+    render_friendlies_content,
+    render_minimap_content,
+    render_skills_content,
+    render_quests_content,
+    render_effects_content,
+    render_inventory_content
+)
+
 
 
 class GameManager:
@@ -44,9 +59,13 @@ class GameManager:
         self.debug_mode = False
         self.debug_ignore_player = DEBUG_IGNORE_PLAYER_COMBAT
         
-        # --- NEW: UI Settings ---
+        # UI Settings
         self.show_minimap = True
-        self.show_inventory = False
+        self.inventory_mode = "hybrid"
+        
+        # --- UI System ---
+        self.ui_manager = UIManager()
+        self._init_default_panels()
 
         # State for menus
         self.title_options = ["New Game", "Load Game", "Quit"]
@@ -61,15 +80,40 @@ class GameManager:
         self.auto_travel_timer = 0
         self.AUTO_TRAVEL_STEP_DELAY = 1000 # ms between steps
 
+    def _init_default_panels(self):
+        """Create and register the draggable UI panels."""
+        
+        # --- Left Dock ---
+        p_inv = UIPanel(height=250, title="Inventory", content_renderer=render_inventory_content)
+        p_equip = UIPanel(height=160, title="Equipment", content_renderer=render_equipment_content)
+        p_stats = UIPanel(height=140, title="Stats", content_renderer=render_stats_content)
+        p_skills = UIPanel(height=100, title="Skills", content_renderer=render_skills_content)
+        p_spells = UIPanel(height=150, title="Grimoire", content_renderer=render_spells_content)
+
+        self.ui_manager.add_panel(p_inv, side="left") # Inventory on top left
+        self.ui_manager.add_panel(p_equip, side="left")
+        self.ui_manager.add_panel(p_stats, side="left")
+        self.ui_manager.add_panel(p_skills, side="left")
+        self.ui_manager.add_panel(p_spells, side="left")
+
+        # --- Right Dock ---
+        p_minimap = UIPanel(height=250, title="Map", content_renderer=render_minimap_content)
+        p_hostiles = UIPanel(height=120, title="Hostiles", content_renderer=render_hostiles_content)
+        p_people = UIPanel(height=120, title="People", content_renderer=render_friendlies_content)
+        p_quests = UIPanel(height=120, title="Quests", content_renderer=render_quests_content)
+        p_effects = UIPanel(height=100, title="Effects", content_renderer=render_effects_content)
+
+        self.ui_manager.add_panel(p_minimap, side="right")
+        self.ui_manager.add_panel(p_hostiles, side="right")
+        self.ui_manager.add_panel(p_people, side="right")
+        self.ui_manager.add_panel(p_quests, side="right")
+        self.ui_manager.add_panel(p_effects, side="right")
+
     def run(self):
         running = True
         while running:
             # 1. Calculate Delta Time (dt) in seconds
-            # clock.tick returns ms since last frame. /1000 for seconds.
             raw_dt = self.clock.tick(TARGET_FPS) / 1000.0
-            
-            # 2. Clamp dt to prevent "spiral of death" or massive simulation jumps
-            # If the game hangs for 5 seconds, we process at most 0.1s of logic per frame
             dt = min(raw_dt, 0.1)
 
             # Event Handling

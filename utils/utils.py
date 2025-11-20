@@ -28,7 +28,6 @@ if(TYPE_CHECKING):
     from player import Player
     from npcs.npc import NPC
 
-# ... (_serialize_item_reference, get_article, simple_plural remain unchanged) ...
 def _serialize_item_reference(item: 'Item', quantity: int, world: 'World') -> Optional[Dict[str, Any]]:
     """
     Creates a dictionary representing an item reference for saving.
@@ -162,9 +161,6 @@ def format_name_for_display(
 
     name_with_details = f"{base_name}{detail_suffix}"
     
-    # --- NEW: Wrap in Clickable Tag ---
-    # Use name for command (e.g., look goblin)
-    # Note: If name has spaces, look handles it.
     click_wrapper_start = f"[[CMD:look {base_name}]]"
     click_wrapper_end = "[[/CMD]]"
     
@@ -190,7 +186,6 @@ def format_name_for_display(
 
     return result
 
-# ... (Rest of file: _reverse_direction, get_departure_phrase, get_arrival_phrase, etc. remain unchanged) ...
 def _reverse_direction(direction: str) -> str:
     """Gets the opposite cardinal/relative direction."""
     opposites = {
@@ -203,7 +198,9 @@ def _reverse_direction(direction: str) -> str:
         "enter": "exit", "exit": "enter",
         "inside": "outside", "outside": "inside",
         "surface": "dive", "dive": "surface",
-        "climb": "descend", "descend": "climb"
+        "climb": "descend", "descend": "climb",
+        # --- ADDED MISSING PAIR ---
+        "upstream": "downstream", "downstream": "upstream"
     }
     return opposites.get(direction.lower(), "somewhere opposite")
 
@@ -222,6 +219,9 @@ def get_departure_phrase(direction: str) -> str:
         "outside": "outside",
         "dive": "diving down",
         "climb": "climbing up",
+        # --- ADDED MISSING PHRASES ---
+        "upstream": "upstream",
+        "downstream": "downstream"
     }
     if direction in ["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest"]:
         return f"to the {direction}"
@@ -244,6 +244,9 @@ def get_arrival_phrase(direction: str) -> str:
         "surface": "diving down",
         "climb": "climbing down",
         "descend": "climbing up",
+        # --- ADDED MISSING PHRASES ---
+        "upstream": "from upstream",
+        "downstream": "from downstream"
     }
     if direction in ["north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest"]:
         return f"from the {direction}"
@@ -290,7 +293,7 @@ def format_loot_drop_message(viewer: Optional[Union['Player', 'NPC']], target: U
     for item_id, data in loot_counts.items():
         name = data["name"]
         count = data["count"]
-        # Manual formatting to include click tags, since we have raw strings here
+        
         click_start = f"[[CMD:look {name}]]"
         click_end = "[[/CMD]]"
         

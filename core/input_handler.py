@@ -56,16 +56,7 @@ class InputHandler:
 
     def _handle_playing_input(self, event):
         if event.type == pygame.KEYDOWN:
-            # If inventory is open, ESC closes it
-            if self.game.show_inventory and event.key == pygame.K_ESCAPE:
-                self.game.show_inventory = False
-                return
-
-            if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
-                # If inventory is open, close it so we can type command
-                if self.game.show_inventory:
-                     self.game.show_inventory = False
-                
+            if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:                
                 if self.input_text:
                     self.game.process_command(self.input_text)
                     self.command_history.append(self.input_text)
@@ -98,19 +89,19 @@ class InputHandler:
             scroll_amount_pixels = SCROLL_SPEED * self.game.renderer.text_formatter.line_height_with_text * event.y
             self.game.renderer.scroll(scroll_amount_pixels)
 
-        # --- CLICK HANDLING ---
-        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1: # Left Click
-            # CHECK INVENTORY CLICKS FIRST
-            if self.game.show_inventory:
-                cmd = self.game.renderer.inventory_menu.handle_click(event.pos)
-                if cmd:
-                    self.game.process_command(cmd)
+        # --- MOUSE HANDLING ---
+        if event.type in [pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION]:
+            # 1. UI Panels Priority (Draggable windows)
+            # If the UI manager consumes the event (click on panel), stop processing.
+            if self.game.ui_manager.handle_event(event):
                 return
 
-            # Normal Text Links
-            clicked_command = self.game.renderer.get_command_at_pos(event.pos)
-            if clicked_command:
-                self.game.process_command(clicked_command)
+            # 2. Text Links (Only on Mouse Up)
+            if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+                clicked_command = self.game.renderer.get_command_at_pos(event.pos)
+                if clicked_command:
+                    self.game.process_command(clicked_command)
+
 
     def _handle_game_over_input(self, event):
         if event.type == pygame.KEYDOWN:

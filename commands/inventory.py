@@ -19,37 +19,21 @@ def inventory_handler(args, context):
     player = world.player
     if not player: return f"{FORMAT_ERROR}You must start or load a game first.{FORMAT_RESET}"
 
+    # Keep printing text to log as legacy/accessibility
     inventory_text = f"{FORMAT_TITLE}INVENTORY{FORMAT_RESET}\n\n"
     inventory_text += player.inventory.list_items()
-    equipped_text = f"\n{FORMAT_TITLE}EQUIPPED{FORMAT_RESET}\n"
-    equipped_items_found = False
-    for slot, item in player.equipment.items():
-        if item:
-            equipped_text += f"- {slot.replace('_', ' ').capitalize()}: {item.name}\n"
-            equipped_items_found = True
-    if not equipped_items_found:
-        equipped_text += "  (Nothing equipped)\n"
-    
-    # Add hint for visual mode
-    equipped_text += f"\n{FORMAT_HIGHLIGHT}(Type 'bag' or 'v' for Visual Inventory){FORMAT_RESET}"
-    return inventory_text + equipped_text
-
-@command("bag", ["v", "visualinv"], "inventory", "Toggle the visual inventory screen.")
-def visual_inventory_handler(args, context):
-    game = context["game"]
-    game.show_inventory = not game.show_inventory
-    # Return empty string so it doesn't spam chat history behind the window
-    return "" 
+    # ...
+    return inventory_text 
 
 @command("invmode", [], "inventory", "Change visual inventory display mode.\nUsage: invmode <text|icon|hybrid>")
 def invmode_handler(args, context):
     game = context["game"]
     if not args:
-        return f"Current mode: {game.renderer.inventory_menu.mode}. Usage: invmode <text|icon|hybrid>"
+        return f"Current mode: {game.inventory_mode}. Usage: invmode <text|icon|hybrid>"
     
     mode = args[0].lower()
     if mode in ["text", "icon", "hybrid"]:
-        game.renderer.inventory_menu.mode = mode
+        game.inventory_mode = mode
         return f"{FORMAT_SUCCESS}Visual Inventory mode set to {mode}.{FORMAT_RESET}"
     else:
         return f"{FORMAT_ERROR}Invalid mode. Options: text, icon, hybrid{FORMAT_RESET}"

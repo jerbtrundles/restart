@@ -18,6 +18,7 @@
             "description": "The firm ground of the riverbank gives way to soggy marshland. The air grows heavy and humid, filled with the croaking of frogs. A narrow, muddy path leads south deeper into the mire.",
             "exits": {
                 "north": "town:river_road",
+                "upstream": "town:river_road",
                 "west": "willow_grove",
                 "south": "stagnant_pool"
             },
