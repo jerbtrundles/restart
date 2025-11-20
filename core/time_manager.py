@@ -1,21 +1,22 @@
 # core/time_manager.py
 """
 Core system for managing in-game time, date, and seasons.
+Refactored to use Delta Time (dt) for stable simulation.
 """
 import time
 from typing import Dict, Any, Optional, Tuple
 
-from config import (TIME_DAWN_HOUR, TIME_DAY_HOUR, TIME_DAY_NAMES,
+from config import (TIME_DAWN_HOUR, TIME_DAY_NAMES,
                          TIME_DAYS_PER_MONTH, TIME_DUSK_HOUR,
-                         TIME_MAX_CATCHUP_SECONDS, TIME_MONTH_NAMES,
+                         TIME_MONTH_NAMES,
                          TIME_MONTHS_PER_YEAR, TIME_NIGHT_HOUR,
                          TIME_REAL_SECONDS_PER_GAME_DAY, TIME_UPDATE_THRESHOLD)
+from config.config_game import TIME_AFTERNOON_HOUR, TIME_MORNING_HOUR
 
 
 class TimeManager:
     def __init__(self):
         self.game_time: float = 0.0
-        self.last_real_time_update: float = 0.0
         self.hour: int = 12
         self.minute: int = 0
         self.day: int = 1
@@ -31,24 +32,25 @@ class TimeManager:
         self._recalculate_date_from_game_time()
         self._update_time_period()
         self._update_time_data_for_ui()
-        self.last_real_time_update = time.time()
 
-    def update(self, current_real_time: float) -> Optional[Tuple[str, str]]:
+    def update(self, dt: float) -> Optional[Tuple[str, str]]:
         """
-        Updates the game time based on real-world elapsed time.
+        Updates the game time based on the delta time (dt) from the game loop.
+        dt: Time in seconds since the last frame.
         Returns old and new time periods if a change occurred.
         """
-        elapsed_real_time = current_real_time - self.last_real_time_update
-        elapsed_real_time = min(elapsed_real_time, TIME_MAX_CATCHUP_SECONDS)
-        self.last_real_time_update = current_real_time
-
         seconds_per_day = TIME_REAL_SECONDS_PER_GAME_DAY
-        game_seconds_per_real_second = 86400 / seconds_per_day if seconds_per_day > 0 else 0
+        if seconds_per_day <= 0: return None
 
-        elapsed_game_time = elapsed_real_time * game_seconds_per_real_second
+        # Calculate how many game-seconds pass per real-second
+        game_seconds_per_real_second = 86400 / seconds_per_day
+
+        # Advance game time
+        elapsed_game_time = dt * game_seconds_per_real_second
         old_game_time = self.game_time
         self.game_time += elapsed_game_time
         
+        # Only recalculate calendar if enough time has passed (Optimization)
         if abs(self.game_time - old_game_time) > TIME_UPDATE_THRESHOLD:
             old_period = self.current_time_period
             self._recalculate_date_from_game_time()
@@ -70,10 +72,16 @@ class TimeManager:
         self.day = 1 + (days_this_year % TIME_DAYS_PER_MONTH)
 
     def _update_time_period(self):
-        if self.hour >= TIME_NIGHT_HOUR or self.hour < TIME_DAWN_HOUR: self.current_time_period = "night"
-        elif TIME_DAWN_HOUR <= self.hour < TIME_DAY_HOUR: self.current_time_period = "dawn"
-        elif TIME_DAY_HOUR <= self.hour < TIME_DUSK_HOUR: self.current_time_period = "day"
-        else: self.current_time_period = "dusk"
+        if self.hour >= TIME_NIGHT_HOUR or self.hour < TIME_DAWN_HOUR:
+            self.current_time_period = "night"
+        elif self.hour < TIME_MORNING_HOUR:
+            self.current_time_period = "dawn"
+        elif self.hour < TIME_AFTERNOON_HOUR:
+            self.current_time_period = "morning"
+        elif self.hour < TIME_DUSK_HOUR:
+            self.current_time_period = "afternoon"
+        else: # self.hour < TIME_NIGHT_HOUR
+            self.current_time_period = "dusk"
 
     def _update_time_data_for_ui(self):
         day_name = TIME_DAY_NAMES[(self.day - 1) % len(TIME_DAY_NAMES)]
@@ -89,10 +97,10 @@ class TimeManager:
 
     def get_time_transition_message(self, old_period: str, new_period: str) -> str:
         transitions = {
-            "night-dawn": "Dawn breaks.",
-            "dawn-day": "The sun rises.",
-            "day-dusk": "Dusk falls.",
-            "dusk-night": "Night descends."
+            "night-dawn": "Dawn breaks, casting long shadows.",
+            "dawn-morning": "The sun climbs higher into the morning sky.",
+            "afternoon-dusk": "The afternoon sun begins its descent, painting the sky in warm colors.",
+            "dusk-night": "The last light fades from the sky. Night has fallen."
         }
         return transitions.get(f"{old_period}-{new_period}", "")
 

@@ -15,8 +15,9 @@ from config import (
     PLAYER_DEFENSE_DEX_DIVISOR, PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR, PLAYER_LEVEL_CON_HEALTH_MULTIPLIER, PLAYER_LEVEL_HEALTH_BASE_INCREASE,
     PLAYER_LEVEL_UP_STAT_INCREASE, PLAYER_MANA_LEVEL_UP_INT_DIVISOR, PLAYER_MANA_LEVEL_UP_MULTIPLIER, PLAYER_MANA_REGEN_WISDOM_DIVISOR,
     PLAYER_MAX_COMBAT_MESSAGES, PLAYER_REGEN_TICK_INTERVAL, PLAYER_STATUS_HEALTH_CRITICAL_THRESHOLD, PLAYER_STATUS_HEALTH_LOW_THRESHOLD,
-    PLAYER_XP_TO_LEVEL_MULTIPLIER
+    PLAYER_XP_TO_LEVEL_MULTIPLIER, VALID_DAMAGE_TYPES
 )
+from core.combat_system import CombatSystem
 from game_object import GameObject
 from items.inventory import Inventory
 from items.weapon import Weapon
@@ -76,23 +77,42 @@ class Player(GameObject):
 
     def update(self, current_time: float, time_delta_effects: float) -> List[str]:
         if not self.is_alive: return []
+        if not self.current_region_id: return []
 
-        if current_time - self.last_mana_regen_time >= PLAYER_REGEN_TICK_INTERVAL:
-            base_mana_regen = self.mana_regen_rate * (1 + self.stats.get('wisdom', 10) / PLAYER_MANA_REGEN_WISDOM_DIVISOR)
-            base_health_regen = PLAYER_BASE_HEALTH_REGEN_RATE * (1 + self.stats.get('strength', 10) / PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR)
-            regen_boost = 0
-            for item in self.equipment.values():
-                 if isinstance(item, Item):
-                     regen_boost += item.get_property("regen_boost", 0)
-            
-            mana_regen_amount = int(PLAYER_REGEN_TICK_INTERVAL * (base_mana_regen + regen_boost))
-            health_regen_amount = int(PLAYER_REGEN_TICK_INTERVAL * (base_health_regen + regen_boost))
-            self.mana = min(self.max_mana, self.mana + mana_regen_amount)
-            self.health = min(self.max_health, self.health + health_regen_amount)
-            self.last_mana_regen_time = current_time 
+        is_in_safe_zone = self.world and self.world.is_location_safe(self.current_region_id, self.current_room_id)
+
+        if is_in_safe_zone and not self.in_combat:
+            if current_time - self.last_mana_regen_time >= PLAYER_REGEN_TICK_INTERVAL:                
+                effective_wisdom = self.get_effective_stat('wisdom')
+                effective_strength = self.get_effective_stat('strength')
+
+                base_mana_regen = self.mana_regen_rate * (1 + effective_wisdom / PLAYER_MANA_REGEN_WISDOM_DIVISOR)
+                base_health_regen = PLAYER_BASE_HEALTH_REGEN_RATE * (1 + effective_strength / PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR)
+                
+                mana_regen_amount = int(PLAYER_REGEN_TICK_INTERVAL * base_mana_regen)
+                health_regen_amount = int(PLAYER_REGEN_TICK_INTERVAL * base_health_regen)
+                
+                self.mana = min(self.max_mana, self.mana + mana_regen_amount)
+                self.health = min(self.max_health, self.health + health_regen_amount)
+                self.last_mana_regen_time = current_time 
         
         effect_messages = self.process_active_effects(current_time, time_delta_effects)
         return effect_messages
+
+    def get_resistance(self, damage_type: str) -> int:
+        """
+        Calculates total resistance for the player from innate stats, equipment, and effects.
+        """
+        # 1. Start with innate and temporary resistances from the base class
+        total_res = super().get_resistance(damage_type)
+
+        # 2. Add resistances from all equipped items
+        for item in self.equipment.values():
+            if item:
+                item_resistances = item.get_property("resistances", {})
+                total_res += item_resistances.get(damage_type, 0)
+        
+        return total_res
 
     def get_status(self) -> str:
         health_percent = (self.health / self.max_health) * 100 if self.max_health > 0 else 0
@@ -111,16 +131,32 @@ class Player(GameObject):
         stat_parts = []
         stats_to_show = ["strength", "dexterity", "constitution", "agility", "intelligence", "wisdom", "spell_power", "magic_resist"]
         for stat_name in stats_to_show:
-            stat_value = self.stats.get(stat_name, 0)
+            base_stat = self.stats.get(stat_name, 0)
+            effective_stat = self.get_effective_stat(stat_name)
+            
+            color = FORMAT_RESET
+            if effective_stat > base_stat:
+                color = FORMAT_SUCCESS  # Green for buffs
+            elif effective_stat < base_stat:
+                color = FORMAT_ERROR    # Red for debuffs
+            
             abbr = stat_name[:3].upper() if stat_name not in ["spell_power", "magic_resist"] else stat_name.upper()
-            stat_parts.append(f"{abbr} {stat_value}")
+            stat_parts.append(f"{abbr} {color}{effective_stat}{FORMAT_RESET}")
+        
         status += f"{FORMAT_CATEGORY}Stats:{FORMAT_RESET} {', '.join(stat_parts)}\n"
-        
         status += f"{FORMAT_CATEGORY}Gold:{FORMAT_RESET} {self.gold}\n"
-        
         effective_cd = self.get_effective_attack_cooldown()
         status += f"{FORMAT_CATEGORY}Attack:{FORMAT_RESET} {self.get_attack_power()} ({effective_cd:.1f}s CD), {FORMAT_CATEGORY}Defense:{FORMAT_RESET} {self.get_defense()}\n"
-        
+
+        resistance_parts = []
+        for dmg_type in VALID_DAMAGE_TYPES:
+            res_value = self.get_resistance(dmg_type)
+            if res_value != 0:
+                color = FORMAT_SUCCESS if res_value > 0 else FORMAT_ERROR
+                resistance_parts.append(f"{dmg_type.capitalize()} {color}{res_value:+}%{FORMAT_RESET}")
+        if resistance_parts:
+            status += f"{FORMAT_CATEGORY}Resistances:{FORMAT_RESET} {', '.join(resistance_parts)}\n"
+
         equipped_items_found = False; equip_lines = []
         for slot in EQUIPMENT_SLOTS:
             item = self.equipment.get(slot)
@@ -207,7 +243,10 @@ class Player(GameObject):
         message += f"  - Max Health: {old_max_health} -> {self.max_health} (+{self.max_health - old_max_health})\n"
         message += f"  - Max Mana:   {old_max_mana} -> {self.max_mana} (+{self.max_mana - old_max_mana})\n"
         message += f"{FORMAT_CATEGORY}Stats Increased:{FORMAT_RESET}\n"
+        
+        # Iterate over old stats, skipping resistances
         for stat_name, old_value in old_stats.items():
+            if stat_name == "resistances": continue
             new_value = self.stats[stat_name]
             if new_value > old_value:
                 message += f"  - {stat_name.capitalize()}: {old_value} -> {new_value} (+{new_value - old_value})\n"
@@ -232,25 +271,23 @@ class Player(GameObject):
         self.health = min(self.health + amount, self.max_health)
         return int(self.health - old_health)
 
-    def take_damage(self, amount: int, damage_type: str = "physical") -> int:
+    def restore_mana(self, amount: int) -> int:
         if not self.is_alive: return 0
-        immunity_chance = 0.0
-        for item in self.equipment.values():
-            if isinstance(item, Item):
-                immunity_chance = max(immunity_chance, item.get_property("damage_immunity_chance", 0.0))
-        if immunity_chance > 0 and random.random() < immunity_chance: return 0
-        final_reduction = 0
-        if damage_type == "physical": final_reduction = self.get_defense()
-        else:
-            final_reduction = self.stats.get("magic_resist", 0)
-            for item in self.equipment.values():
-                if isinstance(item, Item): final_reduction += item.get_property("magic_resist", 0)
-        reduced_damage = max(0, amount - final_reduction)
-        actual_damage = max(MINIMUM_DAMAGE_TAKEN, reduced_damage) if amount > 0 and reduced_damage > 0 else 0
-        old_health = self.health
-        self.health = max(0, self.health - actual_damage)
-        if self.health <= 0: self.die()
-        return int(old_health - self.health)
+        old_mana = self.mana
+        self.mana = min(self.mana + amount, self.max_mana)
+        return int(self.mana - old_mana)
+
+    def take_damage(self, amount: int, damage_type: str = "physical") -> int:
+        if not self.is_alive:
+            return 0
+
+        # Delegate the core calculation to the superclass
+        damage_taken = super().take_damage(amount, damage_type)
+
+        if self.health <= 0:
+            self.die()
+
+        return damage_taken
 
     def die(self, world: Optional['World'] = None) -> None:
         if not self.is_alive: return
@@ -258,15 +295,13 @@ class Player(GameObject):
         self.is_alive = False
         self.in_combat = False
 
-        # # --- BUG FIX: Notify all NPCs that were targeting the player ---
-        # if world and hasattr(world, 'npcs'):
-        #     player_instance = self
-        #     for npc in world.npcs.values():
-        #         # Check if the NPC is in combat and targeting the player
-        #         if npc.in_combat and player_instance in npc.combat_targets:
-        #             # Force the NPC to disengage from the now-dead player
-        #             npc.exit_combat(player_instance)
-        # # --- END BUG FIX ---
+        if world and hasattr(world, 'npcs'):
+            player_instance = self
+            for npc in world.npcs.values():
+                # Check if the NPC is in combat and targeting the player
+                if npc.in_combat and player_instance in npc.combat_targets:
+                    # Force the NPC to disengage from the now-dead player
+                    npc.exit_combat(player_instance)
 
         self.combat_targets.clear()
         self.active_effects.clear()
@@ -288,14 +323,14 @@ class Player(GameObject):
         self.current_room_id = self.respawn_room_id
 
     def get_attack_power(self) -> int:
-        attack = self.attack_power + self.stats.get("strength", 0) // PLAYER_ATTACK_POWER_STR_DIVISOR
+        attack = self.attack_power + self.get_effective_stat("strength") // PLAYER_ATTACK_POWER_STR_DIVISOR
         main_hand_weapon = self.equipment.get("main_hand")
         if isinstance(main_hand_weapon, Weapon) and main_hand_weapon.get_property("durability", 1) > 0:
             attack += main_hand_weapon.get_property("damage", 0)
         return attack
 
     def get_defense(self) -> int:
-        defense = self.defense + self.stats.get("dexterity", 10) // PLAYER_DEFENSE_DEX_DIVISOR
+        defense = self.defense + self.get_effective_stat("dexterity") // PLAYER_DEFENSE_DEX_DIVISOR
         for item in self.equipment.values():
             if isinstance(item, Item) and item.get_property("durability", 1) > 0:
                 defense += item.get_property("defense", 0)
@@ -303,12 +338,17 @@ class Player(GameObject):
     
     def get_effective_attack_cooldown(self) -> float:
         base_cooldown = self.attack_cooldown
-        haste_factor = 1.0
-        for item in self.equipment.values():
-            if isinstance(item, Item):
-                multiplier = item.get_property("haste_multiplier")
-                if multiplier and multiplier > 0: haste_factor *= multiplier
-        effective_cooldown = base_cooldown * haste_factor
+        effective_agility = self.get_effective_stat('agility')
+        
+        # Every point of Agility above the baseline of 10 increases attack speed by 1%.
+        # A negative modifier will decrease attack speed.
+        speed_modifier = (effective_agility - 10) * 0.01
+        
+        # The cooldown is divided by (1 + speed_modifier).
+        # e.g., +20% speed (speed_modifier=0.2) -> cooldown / 1.2
+        # e.g., -10% speed (speed_modifier=-0.1) -> cooldown / 0.9
+        effective_cooldown = base_cooldown / (1 + speed_modifier)
+        
         return max(MIN_ATTACK_COOLDOWN, effective_cooldown)
 
     def can_attack(self, current_time: float) -> bool:
@@ -372,58 +412,50 @@ class Player(GameObject):
 
     def attack(self, target, world: Optional['World'] = None) -> Dict[str, Any]:
         if not self.is_alive: return {"message": "You cannot attack while dead."}
+        if self.has_effect("Stun"):
+            return {"message": f"{FORMAT_ERROR}You are stunned and cannot attack!{FORMAT_RESET}"}
+        
         equipped_weapon = self.equipment.get("main_hand")
         always_hits = isinstance(equipped_weapon, Item) and equipped_weapon.get_property("always_hit", False)
-        target_level = getattr(target, 'level', 1)
-        category = get_level_diff_category(self.level, target_level)
-        final_hit_chance = 1.0
         
-        if not always_hits:
-            base_hit_chance = PLAYER_BASE_HIT_CHANCE
-            agi_modifier = (self.stats.get("agility", 10) - getattr(target, "stats", {}).get("agility", 8)) * HIT_CHANCE_AGILITY_FACTOR
-            hit_chance_mod, _, _ = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
-            final_hit_chance = max(MIN_HIT_CHANCE, min((base_hit_chance + agi_modifier) * hit_chance_mod, MAX_HIT_CHANCE))
-
-        if not always_hits and random.random() > final_hit_chance:
-            miss_message = f"You swing at {format_name_for_display(self, target, False)} but miss!"
-            self._add_combat_message(miss_message)
-            self.last_attack_time = time.time()
-            return {"message": miss_message, "missed": True}
+        weapon_name = equipped_weapon.name if isinstance(equipped_weapon, Item) else "bare hands"
+        attack_power = self.get_attack_power()
         
         self.enter_combat(target)
-        attack_power = self.get_attack_power()
-        damage_variation = random.randint(*PLAYER_ATTACK_DAMAGE_VARIATION_RANGE)
-        base_attack_damage = max(1, attack_power + damage_variation)
         
-        _, damage_dealt_mod, _ = LEVEL_DIFF_COMBAT_MODIFIERS.get(category, (1.0, 1.0, 1.0))
-        modified_attack_damage = max(MINIMUM_DAMAGE_TAKEN, int(base_attack_damage * damage_dealt_mod))
+        # --- DELEGATED TO CORE SYSTEM ---
+        # We pass 'self' as the viewer so the messages say "You attack..."
+        combat_result = CombatSystem.execute_attack(
+            attacker=self, 
+            defender=target, 
+            attack_power=attack_power, 
+            weapon_name=weapon_name, 
+            always_hit=always_hits,
+            viewer=self 
+        )
         
-        actual_damage = target.take_damage(modified_attack_damage, damage_type="physical")
-        
-        weapon_name = "bare hands"; weapon_broke = False
-        if isinstance(equipped_weapon, Weapon):
-            weapon_name = equipped_weapon.name
+        message = combat_result["message"]
+
+        # --- Handle Durability ---
+        if combat_result["is_hit"] and isinstance(equipped_weapon, Weapon):
             current_durability = equipped_weapon.get_property("durability", 0)
             if current_durability > 0:
                 equipped_weapon.update_property("durability", current_durability - ITEM_DURABILITY_LOSS_ON_HIT)
-                if current_durability - ITEM_DURABILITY_LOSS_ON_HIT <= 0: weapon_broke = True
+                if current_durability - ITEM_DURABILITY_LOSS_ON_HIT <= 0: 
+                    message += f"\n{FORMAT_ERROR}Your {weapon_name} breaks!{FORMAT_RESET}"
 
-        hit_message = f"You attack {format_name_for_display(self, target, False)} with your {weapon_name} for {int(actual_damage)} damage!"
-        if weapon_broke: hit_message += f"\n{FORMAT_ERROR}Your {weapon_name} breaks!{FORMAT_RESET}"
-        
-        self._add_combat_message(hit_message)
-        result_message = hit_message
+        self._add_combat_message(message)
+        result_message = message
 
-        if not target.is_alive:
-            death_message = f"{format_name_for_display(self, target, True)} has been defeated!"
-            self._add_combat_message(death_message)
-            result_message += "\n" + death_message
+        # --- Handle Defeat (Loot & XP) ---
+        if combat_result["target_defeated"]:
             self.exit_combat(target)
 
+            quest_update_message = None
             if world:
-                world.dispatch_event("npc_killed", {"player": self, "npc": target})
+                quest_update_message = world.dispatch_event("npc_killed", {"player": self, "npc": target})
 
-            # --- Handle Gold and XP ---
+            # Gold
             gold_dropped = 0
             if hasattr(target, 'loot_table'):
                 gold_data = target.loot_table.get("gold_value")
@@ -434,28 +466,35 @@ class Player(GameObject):
                         if gold_dropped > 0:
                             self.gold += gold_dropped
                             gold_message = f"{FORMAT_SUCCESS}You find {gold_dropped} gold.{FORMAT_RESET}"
-                            self._add_combat_message(gold_message)
                             result_message += "\n" + gold_message
             
+            # XP
+            target_level = getattr(target, 'level', 1)
             final_xp_gained = calculate_xp_gain(self.level, target_level, getattr(target, 'max_health', 10))
             if final_xp_gained > 0:
                 xp_message = f"{FORMAT_SUCCESS}You gain {final_xp_gained} experience!{FORMAT_RESET}"
-                self._add_combat_message(xp_message)
                 result_message += "\n" + xp_message
                 leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
                 if leveled_up and level_up_msg:
-                    self._add_combat_message(level_up_msg)
                     result_message += "\n" + level_up_msg
             
+            # Loot
             loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
             if loot_str:
-                self._add_combat_message(loot_str)
                 result_message += "\n" + loot_str
+            
+            if quest_update_message:
+                result_message += "\n" + quest_update_message
+            
+            self._add_combat_message(result_message.replace(message, "").strip())
 
         self.last_attack_time = time.time()
         return {"message": result_message}
 
     def cast_spell(self, spell: Spell, target, current_time: float, world: Optional['World'] = None) -> Dict[str, Any]:
+        if self.has_effect("Stun"):
+            return {"success": False, "message": f"{FORMAT_ERROR}You are stunned and cannot cast spells!{FORMAT_RESET}", "mana_cost": 0}
+
         can_cast, reason = self.can_cast_spell(spell, current_time)
         if not can_cast: return {"success": False, "message": reason, "mana_cost": 0}
         self.mana -= spell.mana_cost
@@ -470,12 +509,12 @@ class Player(GameObject):
         result = {"success": True, "message": full_message, "value": value}
         if not target.is_alive and spell.effect_type == "damage":
             death_message = f"{format_name_for_display(self, target, True)} has been defeated!"
-            self._add_combat_message(death_message)
             result["message"] += "\n" + death_message
             self.exit_combat(target)
-            
+
+            quest_update_message = None
             if world:
-                world.dispatch_event("npc_killed", {"player": self, "npc": target})
+                quest_update_message = world.dispatch_event("npc_killed", {"player": self, "npc": target})
 
             # --- Handle Gold and XP ---
             gold_dropped = 0
@@ -488,23 +527,24 @@ class Player(GameObject):
                         if gold_dropped > 0:
                             self.gold += gold_dropped
                             gold_message = f"{FORMAT_SUCCESS}You find {gold_dropped} gold.{FORMAT_RESET}"
-                            self._add_combat_message(gold_message)
                             result["message"] += "\n" + gold_message
             
             final_xp_gained = calculate_xp_gain(self.level, getattr(target, 'level', 1), getattr(target, 'max_health', 10))
             if final_xp_gained > 0:
                 xp_message = f"{FORMAT_SUCCESS}You gain {final_xp_gained} experience!{FORMAT_RESET}"
-                self._add_combat_message(xp_message)
                 result["message"] += "\n" + xp_message
                 leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
                 if leveled_up and level_up_msg:
-                    self._add_combat_message(level_up_msg)
                     result["message"] += "\n" + level_up_msg
 
             loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
             if loot_str:
-                self._add_combat_message(loot_str)
                 result["message"] += "\n" + loot_str
+            
+            if quest_update_message:
+                result["message"] += "\n" + quest_update_message
+            
+            self._add_combat_message(result["message"].replace(full_message, "").strip())
         return result
     
     def get_valid_slots(self, item: Item) -> List[str]:
@@ -605,10 +645,8 @@ class Player(GameObject):
             "level": self.level, "experience": self.experience, "experience_to_level": self.experience_to_level,
             "skills": self.skills, "effects": self.active_effects, 
             "quest_log": self.quest_log,
-            # --- START OF MODIFICATION ---
             "completed_quest_log": self.completed_quest_log,
             "archived_quest_log": self.archived_quest_log,
-            # --- END OF MODIFICATION ---
             "is_alive": self.is_alive,
             "current_location": {"region_id": self.current_region_id, "room_id": self.current_room_id},
             "respawn_region_id": self.respawn_region_id, "respawn_room_id": self.respawn_room_id,
@@ -634,10 +672,8 @@ class Player(GameObject):
         player.stats = PLAYER_DEFAULT_STATS.copy(); player.stats.update(data.get("stats", {}))
         player.skills = data.get("skills", {})
         player.quest_log = data.get("quest_log", {})
-        # --- START OF MODIFICATION ---
         player.completed_quest_log = data.get("completed_quest_log", {})
         player.archived_quest_log = data.get("archived_quest_log", {})
-        # --- END OF MODIFICATION ---
         player.active_effects = data.get("effects", [])
         player.spell_cooldowns = data.get("spell_cooldowns", {})
         

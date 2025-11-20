@@ -12,26 +12,24 @@ class Spell:
                  name: str,
                  description: str,
                  mana_cost: int = 10,
-                 cooldown: float = 5.0, # Cooldown in seconds
-                 effect_type: str = "damage", # e.g., damage, heal, buff, debuff
-                 effect_value: int = 10, # Amount of damage/healing, etc.
-                 target_type: str = "enemy", # e.g., self, enemy, friendly, area_enemy
+                 cooldown: float = 5.0,
+                 effect_type: str = "damage",
+                 effect_value: int = 10,
+                 target_type: str = "enemy",
                  cast_message: str = "You cast {spell_name}!",
                  hit_message: str = "{caster_name} hits {target_name} with {spell_name} for {value} points!",
                  heal_message: str = "{caster_name} heals {target_name} with {spell_name} for {value} points!",
                  self_heal_message="You heal yourself for {value} health!",
                  level_required: int = 1,
-                 damage_type: str = "nonelemental", # Added for damage type consistency
+                 damage_type: str = "nonelemental",
                  summon_template_id: Optional[str] = None,
                  summon_duration: float = 0.0,
                  max_summons: int = 0,
-                 # --- NEW: Add DoT parameters ---
-                 dot_name: Optional[str] = None,           # Name of the DoT effect (e.g., "Poison", "Burning")
-                 dot_duration: float = 0.0,                # Base duration of the DoT
-                 dot_damage_per_tick: int = 0,             # Damage applied each tick
-                 dot_tick_interval: float = EFFECT_DEFAULT_TICK_INTERVAL, # Time between ticks
-                 dot_damage_type: str = EFFECT_POISON_DAMAGE_TYPE       # Damage type of the DoT
-                 # --- END NEW ---
+                 dot_name: Optional[str] = None,
+                 dot_duration: float = 0.0,
+                 dot_damage_per_tick: int = 0,
+                 dot_tick_interval: float = EFFECT_DEFAULT_TICK_INTERVAL,
+                 dot_damage_type: str = EFFECT_POISON_DAMAGE_TYPE
     ):
         self.spell_id = spell_id
         self.name = name
@@ -40,27 +38,26 @@ class Spell:
         self.cooldown = cooldown
         self.effect_type = effect_type
         self.effect_value = effect_value
-        self.target_type = target_type # 'self', 'enemy', 'friendly'
+        self.target_type = target_type
         self.cast_message = cast_message
         self.hit_message = hit_message
         self.heal_message = heal_message
         self.self_heal_message = self_heal_message
         self.level_required = level_required
         self.damage_type = damage_type
-
-        # --- Store Summoning Attributes ---
         self.summon_template_id = summon_template_id
         self.summon_duration = summon_duration
         self.max_summons = max_summons
-
-        # --- NEW: Store DoT Attributes ---
         self.dot_name = dot_name
         self.dot_duration = dot_duration
         self.dot_damage_per_tick = dot_damage_per_tick
         self.dot_tick_interval = dot_tick_interval
         self.dot_damage_type = dot_damage_type
-        # --- END NEW ---
 
+    @classmethod
+    def from_dict(cls, spell_id: str, data: Dict[str, Any]) -> 'Spell':
+        """Creates a Spell instance from a dictionary of its properties."""
+        return cls(spell_id=spell_id, **data)
 
     def can_cast(self, caster) -> bool:
         """Check if the caster meets level requirements."""

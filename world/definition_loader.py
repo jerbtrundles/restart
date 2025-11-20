@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from config import FORMAT_ERROR, FORMAT_RESET, ITEM_TEMPLATE_DIR, NPC_TEMPLATE_DIR, REGION_DIR
 from items.item_factory import ItemFactory
+from magic.spell_registry import load_spells_from_json
 from npcs.npc_factory import NPCFactory
 from npcs.npc_schedules import initialize_npc_schedules
 from player import Player
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 def load_all_definitions(world: 'World'):
     """Populates the world's template dictionaries by loading from disk."""
     print("Loading definitions...")
+    load_spells_from_json()
     _load_item_templates(world)
     _load_npc_templates(world)
     world.quest_manager._load_npc_interests()

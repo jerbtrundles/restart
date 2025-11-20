@@ -1,16 +1,14 @@
 # items/container.py
 
+import random
 from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple
 from config import FORMAT_CATEGORY, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS
 from items.item import Item
-# --- FIX: Removed circular import from the top of the file ---
-# from items.key import Key
 from utils.utils import _serialize_item_reference
 
 if TYPE_CHECKING:
     from world.world import World
     from items.item_factory import ItemFactory
-    from items.key import Key # Keep for type checking only
 
 class Container(Item):
      """A container that can hold other items."""
@@ -18,13 +16,18 @@ class Container(Item):
                     description: str = "No description", weight: float = 2.0,
                     value: int = 20, capacity: float = 50.0, locked: bool = False,
                     key_id: Optional[str] = None, is_open: bool = False,
+                    contents: Optional[List[Item]] = None,
                     **kwargs):
+          
           super().__init__(obj_id, name, description, weight, value, stackable=False, **kwargs)
+          
           self.properties["capacity"] = capacity
-          self.properties.setdefault("contains", [])
           self.properties["locked"] = locked
           self.properties["key_id"] = key_id
           self.properties["is_open"] = is_open
+          
+          # Initialize contents. If provided via constructor, use them directly.
+          self.properties["contains"] = contents if contents is not None else []
 
      def get_current_weight(self) -> float:
           """Calculate the current weight of items inside."""
@@ -92,17 +95,16 @@ class Container(Item):
           self.properties["is_open"] = False
           return f"You close the {self.name}."
 
-     def toggle_lock(self, key_item: Optional['Key']) -> bool:
-          """Toggles the lock state if the correct key is provided."""
-          # --- FIX: Import Key locally, only when this method is called ---
-          from items.key import Key
-
-          if not key_item or not isinstance(key_item, Key):
+     def toggle_lock(self, key_item: Item) -> bool:
+          """
+          Toggles the lock state if the correct key is provided.
+          """
+          if not key_item:
                return False
 
           correct_key = False
           container_key_id = self.properties.get("key_id")
-          key_target_id = key_item.properties.get("target_id")
+          key_target_id = key_item.get_property("target_id")
 
           if container_key_id and container_key_id == key_item.obj_id:
                correct_key = True
@@ -112,12 +114,46 @@ class Container(Item):
                correct_key = True
 
           if correct_key:
+               # Toggle the boolean state
                self.properties["locked"] = not self.properties["locked"]
+               
+               # If we just locked it, force it closed visually/logically
                if self.properties["locked"]:
                     self.properties["is_open"] = False
                return True
           else:
                return False
+          
+     def pick_lock(self, user) -> Tuple[bool, str]:
+          """Attempt to pick the lock using a tool."""
+          if not self.properties["locked"]:
+               return False, f"The {self.name} is already unlocked."
+          
+          # Future: Add skill check here using user.get_skill_level("lockpicking")
+          # For now, flat 75% chance
+          if random.random() < 0.75:
+               self.properties["locked"] = False
+               return True, f"{FORMAT_SUCCESS}Click! You successfully pick the lock on the {self.name}.{FORMAT_RESET}"
+          else:
+               return False, f"{FORMAT_ERROR}You fumble with the lock but fail to open it.{FORMAT_RESET}"
+
+     def magic_interact(self, interaction_type: str) -> Tuple[bool, str]:
+          """Handle magical interactions (unlock/lock)."""
+          if interaction_type == "unlock":
+               if not self.properties["locked"]:
+                    return False, f"The {self.name} is not locked."
+               self.properties["locked"] = False
+               return True, f"{FORMAT_HIGHLIGHT}The mechanism clicks loudly as the spell forces the lock open.{FORMAT_RESET}"
+          
+          elif interaction_type == "lock":
+               if self.properties["locked"]:
+                    return False, f"The {self.name} is already locked."
+               
+               self.properties["locked"] = True
+               self.properties["is_open"] = False # Magic lock forces it shut
+               return True, f"{FORMAT_HIGHLIGHT}A magical seal forms, locking the {self.name}.{FORMAT_RESET}"
+          
+          return False, "The magic has no effect."
 
      def can_add(self, item: Item) -> Tuple[bool, str]:
           """Check if an item can be added."""

@@ -55,6 +55,4 @@ def combat_status_handler(args, context):
     world = context.get("world")
     player = getattr(world, "player", None)
     if not player: return f"{FORMAT_ERROR}You must start or load a game first.{FORMAT_RESET}"
-    if not player.in_combat: return "You are not in combat."
-    
     return player.get_combat_status()

@@ -1,6 +1,7 @@
 # core/input_handler.py
 """
 Handles all raw user input from Pygame and translates it into game actions.
+Updated to handle mouse clicks for clickable text.
 """
 import pygame
 from typing import TYPE_CHECKING, List
@@ -55,7 +56,16 @@ class InputHandler:
 
     def _handle_playing_input(self, event):
         if event.type == pygame.KEYDOWN:
+            # If inventory is open, ESC closes it
+            if self.game.show_inventory and event.key == pygame.K_ESCAPE:
+                self.game.show_inventory = False
+                return
+
             if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
+                # If inventory is open, close it so we can type command
+                if self.game.show_inventory:
+                     self.game.show_inventory = False
+                
                 if self.input_text:
                     self.game.process_command(self.input_text)
                     self.command_history.append(self.input_text)
@@ -83,9 +93,24 @@ class InputHandler:
                 if event.unicode.isprintable():
                     self.input_text += event.unicode
                     self.tab_completion_buffer = ""
+        
         elif event.type == pygame.MOUSEWHEEL:
             scroll_amount_pixels = SCROLL_SPEED * self.game.renderer.text_formatter.line_height_with_text * event.y
             self.game.renderer.scroll(scroll_amount_pixels)
+
+        # --- CLICK HANDLING ---
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1: # Left Click
+            # CHECK INVENTORY CLICKS FIRST
+            if self.game.show_inventory:
+                cmd = self.game.renderer.inventory_menu.handle_click(event.pos)
+                if cmd:
+                    self.game.process_command(cmd)
+                return
+
+            # Normal Text Links
+            clicked_command = self.game.renderer.get_command_at_pos(event.pos)
+            if clicked_command:
+                self.game.process_command(clicked_command)
 
     def _handle_game_over_input(self, event):
         if event.type == pygame.KEYDOWN:

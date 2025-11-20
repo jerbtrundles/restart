@@ -11,6 +11,37 @@ MIN_ATTACK_COOLDOWN = 0.5
 HIT_CHANCE_AGILITY_FACTOR = 0.02
 MINIMUM_DAMAGE_TAKEN = 1
 
+# --- Damage Types ---
+VALID_DAMAGE_TYPES = [
+    "physical", "magical", "fire", "cold", "poison", "disease", "curse"
+]
+
+# --- NEW: Flavor Text for Damage Interactions ---
+DAMAGE_TYPE_FLAVOR_TEXT = {
+    "fire": {
+        "weakness": "The flames roar to life, seeming to feed on {target_name}'s very essence!",
+        "resistance": "{target_name} seems to shrug off some of the heat.",
+        "strong_resistance": "The flames barely seem to singe {target_name}."
+    },
+    "cold": {
+        "weakness": "A deep frost instantly covers {target_name}, who shudders violently.",
+        "resistance": "{target_name} braces against the chill, seemingly unfazed.",
+        "strong_resistance": "The icy blast dissipates harmlessly against {target_name}."
+    },
+    "poison": {
+        "weakness": "The poison courses rapidly through {target_name}'s veins!",
+        "resistance": "{target_name}'s hardy constitution resists the worst of the toxin.",
+        "strong_resistance": "{target_name} seems immune to the poison."
+    },
+    # Default messages for damage types without specific flavor text
+    "default": {
+        "weakness": "{target_name} seems particularly vulnerable to the attack!",
+        "resistance": "{target_name} resists some of the effect.",
+        "strong_resistance": "{target_name} strongly resists the effect."
+    }
+}
+
+
 # --- Level Difference Modifiers ---
 LEVEL_DIFF_COMBAT_MODIFIERS = {
     # Tier:   (Hit Chance Multiplier, Damage Dealt Multiplier, XP Multiplier)

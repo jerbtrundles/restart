@@ -28,7 +28,8 @@ PLAYER_LEVEL_CON_HEALTH_MULTIPLIER = 0.5
 PLAYER_DEFAULT_STATS = {
     "strength": 10, "dexterity": 10, "intelligence": 10,
     "wisdom": 10, "constitution": 10, "agility": 10,
-    "spell_power": 5, "magic_resist": 2
+    "spell_power": 5, "magic_resist": 2,
+    "resistances": {} # NEW: Add default resistances dictionary
 }
 PLAYER_BASE_XP_TO_LEVEL = 100
 PLAYER_XP_TO_LEVEL_MULTIPLIER = 1.5

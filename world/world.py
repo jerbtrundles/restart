@@ -20,13 +20,13 @@ from world.definition_loader import load_all_definitions, initialize_new_world
 from world.respawn_manager import RespawnManager
 from utils.pathfinding import find_path
 from utils.utils import format_name_for_display, get_article, simple_plural
+import random
 
 if TYPE_CHECKING:
     from core.game_manager import GameManager
 
 class World:
     def __init__(self):
-        # State
         self.regions: Dict[str, Region] = {}
         self.item_templates: Dict[str, Dict[str, Any]] = {}
         self.npc_templates: Dict[str, Dict[str, Any]] = {}
@@ -36,7 +36,6 @@ class World:
         self.current_room_id: Optional[str] = None
         self.quest_board: List[Dict[str, Any]] = []
         
-        # Managers
         self.quest_manager = QuestManager(self)
         self.spawner = Spawner(self)
         self.save_manager = SaveManager(self)
@@ -49,19 +48,15 @@ class World:
         load_all_definitions(self)
 
     def initialize_new_world(self, start_region="town", start_room="town_square"):
-        """Delegates new world initialization."""
         initialize_new_world(self, start_region, start_room)
 
     def load_save_game(self, filename: str = DEFAULT_SAVE_FILE) -> Tuple[bool, Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
-        """Delegates loading to the SaveManager."""
         return self.save_manager.load(filename)
 
     def save_game(self, filename: str = DEFAULT_SAVE_FILE) -> bool:
-        """Delegates saving to the SaveManager."""
         return self.save_manager.save(filename)
 
     def update(self) -> List[str]:
-        """Main world update tick."""
         current_time_abs = time.time()
         messages = []
         if current_time_abs - self.last_update_time < WORLD_UPDATE_INTERVAL:
@@ -76,11 +71,8 @@ class World:
             npc_message = npc.update(self, current_time_abs)
             if npc_message: messages.append(npc_message)
 
-        # --- START OF MODIFICATION ---
-        # After NPC updates, check if any quest objectives have been met
         if self.player and self.quest_manager:
             self.quest_manager.check_quest_completion()
-        # --- END OF MODIFICATION ---
 
         npcs_to_remove = [npc_id for npc_id, npc in self.npcs.items() if not npc.is_alive]
         for npc_id in npcs_to_remove: self.npcs.pop(npc_id, None)
@@ -90,11 +82,9 @@ class World:
         return messages
 
     def find_path(self, source_region_id: str, source_room_id: str, target_region_id: str, target_room_id: str) -> Optional[List[str]]:
-        """Delegates pathfinding to the utility function."""
         return find_path(self, source_region_id, source_room_id, target_region_id, target_room_id)
 
     def add_to_respawn_queue(self, npc: NPC):
-        """Delegates adding to the respawn queue to its manager."""
         self.respawn_manager.add_to_queue(npc)
 
     def get_room_description_for_display(self, minimal: bool = False) -> str:
@@ -107,27 +97,20 @@ class World:
         
         time_period = self.game.time_manager.current_time_period
         weather = self.game.weather_manager.current_weather
-
-        if not self.current_region_id or not self.current_room_id:
-            return f"Error: get_room_description_for_display: no region id/room id."
+        if not self.current_region_id or not self.current_room_id: return f"LOLERROR"
         is_outdoors = self.is_location_outdoors(self.current_region_id, self.current_room_id)
         
         room_desc = current_room.get_full_description(time_period, weather, is_outdoors=is_outdoors)
 
-        # --- START OF MODIFICATION ---
-        # Check for active quests that modify this room's description
         for quest_id, quest_data in self.player.quest_log.items():
             entry_point = quest_data.get("entry_point")
             if (quest_data.get("state") == "active" and entry_point and 
                 entry_point.get("region_id") == self.current_region_id and 
                 entry_point.get("room_id") == self.current_room_id):
                 
-                # Check if the quest adds a special description
                 extra_desc = entry_point.get("description_when_visible")
                 if extra_desc:
-                    # Append the special description to the main room description
                     room_desc += f"\n\n{FORMAT_HIGHLIGHT}{extra_desc}{FORMAT_RESET}"
-        # --- END OF MODIFICATION ---
 
         all_npcs_in_room = self.get_current_room_npcs()
         friendly_npcs = [npc for npc in all_npcs_in_room if npc.faction != "hostile"]
@@ -142,6 +125,7 @@ class World:
             if friendly_npcs:
                 friendly_npc_list = []
                 for npc in friendly_npcs:
+                    # format_name_for_display adds the [[CMD:look...]] tags automatically
                     formatted_name = format_name_for_display(self.player, npc, start_of_sentence=False)
                     status_suffix = f" {FORMAT_ERROR}(Fighting!){FORMAT_RESET}" if npc.in_combat else ""
                     if hasattr(npc, "ai_state") and "current_activity" in npc.ai_state: status_suffix = f" ({npc.ai_state['current_activity']})"
@@ -163,12 +147,33 @@ class World:
             if items_in_room:
                 item_counts: Dict[str, Dict[str, Any]] = {}
                 for item in items_in_room:
-                    if item.obj_id not in item_counts: item_counts[item.obj_id] = {"name": item.name, "count": 0}
-                    item_counts[item.obj_id]["count"] += 1
+                    item_key = item.obj_id
+                    if item.get_property("is_procedural"):
+                        if item.get_property("procedural_type") == "random_spell_scroll":
+                            spell_id = item.get_property("spell_to_learn")
+                            if spell_id: item_key += f"_{spell_id}"
+                    
+                    if item_key not in item_counts:
+                        item_counts[item_key] = {"name": item.name, "count": 0}
+                    item_counts[item_key]["count"] += 1
+
                 item_message_parts = []
-                for data in item_counts.values():
-                    if data["count"] == 1: item_message_parts.append(f"{get_article(data['name'])} {FORMAT_CATEGORY}{data['name']}{FORMAT_RESET}")
-                    else: item_message_parts.append(f"{data['count']} {FORMAT_CATEGORY}{simple_plural(data['name'])}{FORMAT_RESET}")
+                for data in sorted(item_counts.values(), key=lambda x: x['name']):
+                    name = data['name']
+                    count = data['count']
+                    
+                    # --- NEW: Add Clickable Tags for Items ---
+                    click_start = f"[[CMD:look {name}]]"
+                    click_end = "[[/CMD]]"
+                    formatted_name = f"{click_start}{FORMAT_CATEGORY}{name}{FORMAT_RESET}{click_end}"
+                    
+                    if count == 1:
+                        item_message_parts.append(f"{get_article(name)} {formatted_name}")
+                    else:
+                        plural_name = simple_plural(name)
+                        formatted_plural = f"{click_start}{FORMAT_CATEGORY}{plural_name}{FORMAT_RESET}{click_end}"
+                        item_message_parts.append(f"{count} {formatted_plural}")
+                        
                 item_content_str = ", ".join(item_message_parts)
             full_description += f"\n{FORMAT_CATEGORY}Items:{FORMAT_RESET} {item_content_str}"
         
@@ -201,11 +206,18 @@ class World:
             target_room.visited = True
         self.player.current_region_id = new_region_id
         self.player.current_room_id = new_room_id
+
+        if new_region_id.startswith("instance_"):
+            # (Debug print removed for brevity, logic unchanged)
+            for quest in self.player.quest_log.values():
+                if quest.get("instance_region_id") == new_region_id:
+                    quest["completion_check_enabled"] = True
+                    break
+
         region_change_msg = f"{FORMAT_HIGHLIGHT}You have entered {target_region.name}.{FORMAT_RESET}\n\n" if new_region_id != old_region_id else ""
         return region_change_msg + self.look(minimal=True)
 
     def _load_room_items_from_save(self, room_items_data: Dict[str, Any]):
-        """Populates rooms with items from a save data dictionary."""
         for location_key, item_refs in room_items_data.items():
             try:
                 region_id, room_id = location_key.split(":")
@@ -263,8 +275,7 @@ class World:
         return region.get_property("safe_zone", False)
     def is_location_outdoors(self, region_id: str, room_id: str) -> bool:
         region = self.get_region(region_id)
-        if not region:
-            return True
+        if not region: return True
         room = region.get_room(room_id) if self.get_region(region_id) else None
         if room:
             room_setting = room.get_property("outdoors")
@@ -307,9 +318,10 @@ class World:
             return True
         except ValueError:
             return False
-    def dispatch_event(self, event_type: str, data: Dict[str, Any]):
+    def dispatch_event(self, event_type: str, data: Dict[str, Any]) -> Optional[str]:
         if event_type == "npc_killed":
-            self.quest_manager.handle_npc_killed(event_type, data)
+            return self.quest_manager.handle_npc_killed(event_type, data)
+        return None
     def find_nearest_safe_room(self, source_region_id: str, source_room_id: str) -> Optional[Tuple[str, str]]:
         if self.is_location_safe(source_region_id, source_room_id):
             return (source_region_id, source_room_id)
@@ -325,146 +337,119 @@ class World:
         return None
 
     def instantiate_quest_region(self, quest_data: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
-        """
-        Dynamically creates a temporary region for a quest and spawns the giver.
-        Returns: (success, message, giver_npc_instance_id)
-        """
         if not self.player:
             return False, "Cannot instantiate region without a player.", None
 
         try:
             entry_point = quest_data['entry_point']
-            instance_def = quest_data['instance_definition']
+            instance_region = quest_data['instance_region']
             quest_instance_id = quest_data['instance_id']
+            objective = quest_data.get("objective", {})
+            layout_config = quest_data.get("layout_generation_config", {})
 
-            # ... (Code for creating the region and rooms remains the same) ...
             unique_region_id = f"instance_{quest_instance_id}"
             quest_data['instance_region_id'] = unique_region_id
-            new_region = Region( obj_id=unique_region_id, name=instance_def['region_name'], description=instance_def['region_description'] )
-            new_region.properties = instance_def.get("properties", {})
+            
+            new_region = Region(
+                obj_id=unique_region_id,
+                name=instance_region['region_name'],
+                description=instance_region['region_description']
+            )
+            new_region.properties = instance_region.get("properties", {})
+            
             entry_room_id = ""
-            for room_id, room_data in instance_def['rooms'].items():
+            for room_id, room_data in instance_region['rooms'].items():
                 if not entry_room_id: entry_room_id = room_id
                 for direction, exit_dest in list(room_data.get('exits', {}).items()):
-                    if exit_dest == "dynamic_exit": room_data['exits'][direction] = f"{entry_point['region_id']}:{entry_point['room_id']}"
-                    elif ":" not in exit_dest: room_data['exits'][direction] = f"{unique_region_id}:{exit_dest}"
+                    if exit_dest == "dynamic_exit":
+                        room_data['exits'][direction] = f"{entry_point['region_id']}:{entry_point['room_id']}"
+                    elif ":" not in exit_dest:
+                        room_data['exits'][direction] = f"{unique_region_id}:{exit_dest}"
+                
                 new_room = Room.from_dict(room_data)
                 new_region.add_room(room_id, new_room)
 
-                # --- START OF FIX: VALIDATE NPC SPAWNING ---
-                if "spawner" in room_data and "initial_spawn" in room_data["spawner"]:
-                    for spawn_info in room_data["spawner"]["initial_spawn"]:
-                        template_id_to_spawn = spawn_info.get("template_id")
-                        if not template_id_to_spawn:
-                            self.cleanup_quest_region(quest_instance_id) # Clean up partial instance
-                            return False, f"Quest template '{quest_instance_id}' has invalid spawner config.", None
-
-                        for _ in range(spawn_info.get("count", 1)):
-                            npc = NPCFactory.create_npc_from_template(
-                                template_id_to_spawn,
-                                self,
-                                current_region_id=unique_region_id,
-                                current_room_id=room_id
-                            )
-                            # CRITICAL CHECK: If npc is None, creation failed. Abort.
-                            if not npc:
-                                self.cleanup_quest_region(quest_instance_id) # Clean up partial instance
-                                return False, f"Could not spawn required creature '{template_id_to_spawn}'. Check template ID.", None
-                            
-                            self.add_npc(npc)
-                # --- END OF FIX ---
-
             self.regions[unique_region_id] = new_region
+
+            target_template_id = objective.get("target_template_id")
+            target_count_range = layout_config.get("target_count", [2, 4])
+            num_to_spawn = random.randint(target_count_range[0], target_count_range[1])
+            spawnable_room_ids = [rid for rid in new_region.rooms.keys() if rid != entry_room_id]
+            
+            if not target_template_id: return False, f"Quest '{quest_instance_id}' has no target creature.", None
+            
+            for _ in range(num_to_spawn):
+                if not spawnable_room_ids: break 
+                chosen_room_id = random.choice(spawnable_room_ids)
+                npc = NPCFactory.create_npc_from_template(
+                    target_template_id, self,
+                    current_region_id=unique_region_id, current_room_id=chosen_room_id
+                )
+                if not npc:
+                    self.cleanup_quest_region(quest_instance_id) 
+                    return False, f"Could not spawn required creature '{target_template_id}'.", None
+                self.add_npc(npc)
+
             permanent_entry_region = self.get_region(entry_point['region_id'])
-            if not permanent_entry_region: return False, f"Could not get permanent entry region.", None
+            if not permanent_entry_region: return False, "Could not get permanent entry region.", None
             permanent_entry_room = permanent_entry_region.get_room(entry_point['room_id'])
             exit_command = entry_point['exit_command']
             if permanent_entry_room:
                 permanent_entry_room.exits[exit_command] = f"{unique_region_id}:{entry_room_id}"
-                if self.game and self.game.debug_mode:
-                    print(f"[World DEBUG] Adding temporary exit '{exit_command}' to room '{entry_point['region_id']}:{entry_point['room_id']}' -> leads to instance '{unique_region_id}:{entry_room_id}'")
 
             giver_npc_id = None
             spawn_message = "You decide to take on the task."
             giver_tid = quest_data.get("giver_npc_template_id")
-            
             if giver_tid:
                 giver_instance_id = f"giver_{quest_instance_id}"
-                # --- START OF MODIFICATION ---
-                # Spawn the giver NPC at the PLAYER'S location, not the remote entry point.
                 giver_npc = NPCFactory.create_npc_from_template(
                     giver_tid, self, giver_instance_id,
                     current_region_id=self.player.current_region_id,
                     current_room_id=self.player.current_room_id
                 )
-                # --- END OF MODIFICATION ---
                 if giver_npc:
                     self.add_npc(giver_npc)
                     giver_npc_id = giver_npc.obj_id
-                    # --- START OF MODIFICATION ---
-                    # Update the spawn message to reflect the new logic.
                     spawn_message = (f"{giver_npc.name} notices you taking their notice from the board and approaches you.\n"
                                      f"\"{giver_npc.dialog.get('greeting', 'Please help me!')}\"")
-                    # --- END OF MODIFICATION ---
                 else:
                     self.cleanup_quest_region(quest_instance_id) 
                     return False, f"Could not spawn giver NPC '{giver_tid}'.", None
 
             return True, spawn_message, giver_npc_id
 
-        except KeyError as e:
-            return False, f"Quest template is missing a required key: {e}", None
+        except KeyError as e: return False, f"Quest template is missing a required key: {e}", None
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return False, f"An unexpected error occurred creating the quest instance: {e}", None
+            import traceback; traceback.print_exc()
+            return False, f"An unexpected error occurred: {e}", None
 
     def cleanup_quest_region(self, quest_id: str):
-        """Removes a temporary quest region and its associated exit."""
-        if not self.player or quest_id not in self.player.completed_quest_log:
-            return
-
+        if not self.player or quest_id not in self.player.completed_quest_log: return
         quest_data = self.player.completed_quest_log[quest_id]
         instance_region_id = quest_data.get("instance_region_id")
         entry_point = quest_data.get("entry_point")
 
-        if not instance_region_id or not entry_point:
-            return # Not an instance quest or data is missing
+        if not instance_region_id or not entry_point: return
 
-        # 1. Remove the temporary exit from the permanent room
         perm_region = self.get_region(entry_point['region_id'])
         if perm_region:
             perm_room = perm_region.get_room(entry_point['room_id'])
             if perm_room and entry_point['exit_command'] in perm_room.exits:
                 del perm_room.exits[entry_point['exit_command']]
 
-        # 2. Remove all NPCs that are inside the instance region
         npcs_to_remove = [npc.obj_id for npc in self.npcs.values() if npc.current_region_id == instance_region_id]
-        for npc_id in npcs_to_remove:
-            del self.npcs[npc_id]
-
-        # 3. Remove the region itself from the world
-        if instance_region_id in self.regions:
-            del self.regions[instance_region_id]
+        for npc_id in npcs_to_remove: del self.npcs[npc_id]
+        if instance_region_id in self.regions: del self.regions[instance_region_id]
             
-        # 4. Move quest to a final "archived" log to prevent re-cleanup
         del self.player.completed_quest_log[quest_id]
-        if not hasattr(self.player, 'archived_quest_log'):
-            self.player.archived_quest_log = {}
+        if not hasattr(self.player, 'archived_quest_log'): self.player.archived_quest_log = {}
         self.player.archived_quest_log[quest_id] = quest_data
-        
-        print(f"[DEBUG] Cleaned up instance region: {instance_region_id}")
 
     def _check_and_cleanup_completed_instances(self):
-        """Called in the main update loop to handle instance cleanup."""
-        if not self.player or not hasattr(self.player, 'completed_quest_log'):
-            return
-
-        # Iterate over a copy of the keys to allow modification during the loop
+        if not self.player or not hasattr(self.player, 'completed_quest_log'): return
         for quest_id in list(self.player.completed_quest_log.keys()):
             quest_data = self.player.completed_quest_log[quest_id]
             if quest_data.get("type") == "instance":
                 instance_id = quest_data.get("instance_region_id")
-                # If the player is NOT in the instance region, it's safe to clean up.
                 if instance_id and self.player.current_region_id != instance_id:
                     self.cleanup_quest_region(quest_id)

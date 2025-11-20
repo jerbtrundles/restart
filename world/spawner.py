@@ -1,9 +1,9 @@
 # world/spawner.py
 """
 Handles the logic for dynamically spawning monsters in the game world.
+Optimized to only process the active region.
 """
 import random
-import time
 from typing import TYPE_CHECKING
 
 from config import (SPAWN_CHANCE_PER_TICK, SPAWN_DEBUG,
@@ -32,8 +32,11 @@ class Spawner:
         if random.random() > SPAWN_CHANCE_PER_TICK:
             return
 
-        for region in self.world.regions.values():
-            self._spawn_monsters_in_region(region)
+        # OPTIMIZATION: Only spawn in the region the player is currently in.
+        # Spawning monsters in distant regions uses CPU for no gameplay benefit.
+        current_region = self.world.get_current_region()
+        if current_region:
+            self._spawn_monsters_in_region(current_region)
 
     def _count_monsters_in_region(self, region_id: str) -> int:
         """Counts active hostile monsters currently in a region."""

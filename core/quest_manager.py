@@ -4,7 +4,7 @@ import os
 import time
 import random
 import uuid
-from typing import TYPE_CHECKING, Dict, Any, List, Optional
+from typing import TYPE_CHECKING, Dict, Any, List, Optional, Tuple
 
 from config import (
     FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, MAX_QUESTS_ON_BOARD, QUEST_SYSTEM_CONFIG, QUEST_TYPES_ALL, QUEST_TYPES_NO_INSTANCE
@@ -111,8 +111,6 @@ class QuestManager:
             else:
                 new_quest = self.generate_noninstance_quest(player.level, quest_type)
 
-            print(new_quest)
-
             if new_quest:
                 current_quests.append(new_quest)
                 generated_count += 1
@@ -131,10 +129,6 @@ class QuestManager:
         if completed_quest_instance_id:
             self.world.quest_board = [q for q in self.world.quest_board if q.get("instance_id") != completed_quest_instance_id]
 
-        # --- START OF MODIFICATION ---
-        # Instead of generating one simple quest, call the full "ensure" logic.
-        # This will check if an instance quest is missing and add one, then fill
-        # the remaining slots with basic quests.
         self.ensure_initial_quests()
         
         if self.config.get("debug"):
@@ -142,23 +136,16 @@ class QuestManager:
                 print(f"[QuestManager Debug] Replenished board after quest '{completed_quest_instance_id}' was completed.")
             else:
                 print(f"[QuestManager Debug] Replenished board.")
-        # --- END OF MODIFICATION ---
 
     def generate_noninstance_quest(self, player_level: int, quest_type: Optional[str] = None) -> Optional[Dict[str, Any]]:
         if not self.world: return None
         if quest_type is None: quest_type = random.choice(QUEST_TYPES_NO_INSTANCE)
         
-        print(f"Quest type: {quest_type}")
-        
         giver_instance_id = self._select_giver_npc(quest_type)
         if not giver_instance_id: return None
 
-        print(f"Giver instance id: {giver_instance_id}")
-
         giver_npc = self.world.get_npc(giver_instance_id)
         if not giver_npc: return None
-
-        print(f"Giver npc: {giver_npc}")
 
         objective_data = None
         if quest_type == "kill": objective_data = self._generate_kill_objective(player_level, giver_npc)
@@ -166,8 +153,6 @@ class QuestManager:
         elif quest_type == "deliver": objective_data = self._generate_deliver_objective(player_level, giver_npc)
 
         if not objective_data: return None
-
-        print(f"Objective: {objective_data}")
 
         quest_instance = {"instance_id": f"{quest_type}_{giver_npc.template_id}_{uuid.uuid4().hex[:6]}", "type": quest_type, "giver_instance_id": giver_instance_id, "objective": objective_data, "state": "available"}
         quest_instance["rewards"] = self._calculate_rewards(quest_instance)
@@ -179,30 +164,22 @@ class QuestManager:
         if not self.world: return None
         potential_givers = []
         
-        # This is the list of NPCs that have the "can_give_generic_quests" property.
         valid_npc_templates = self.npc_interests.keys()
         
         for npc_instance in self.world.npcs.values():
-            # Filter for NPCs that are alive, not hostile, and have the quest giver property.
             if (npc_instance and npc_instance.is_alive and npc_instance.faction != "hostile" and
                     npc_instance.properties.get("can_give_generic_quests")):
                 
                 template_id = getattr(npc_instance, 'template_id', None)
                 if not template_id: continue
 
-                # Get the interests for this NPC's template (e.g., ["kill", "fetch"])
                 npc_template_interests = self.npc_interests.get(template_id, [])
-
-                # <<< FIX: Check if the broad quest_type is in the NPC's interest list. >>>
-                # This correctly matches "kill" to the ["kill", "fetch", "deliver"] list.
                 if quest_type in npc_template_interests:
                     potential_givers.append(npc_instance.obj_id)
 
         if not potential_givers:
-            # <<< ADDED: Detailed logging for when no givers are found. >>>
             if self.config.get("debug"):
                 print(f"{FORMAT_ERROR}[QuestManager Debug] Could not find any valid quest givers for a '{quest_type}' quest.{FORMAT_RESET}")
-                print(f"  - Searched {len(self.world.npcs)} NPCs. Check if any are loaded, alive, and have 'can_give_generic_quests' set to true in their template.")
             return None
 
         return random.choice(potential_givers)
@@ -316,6 +293,10 @@ class QuestManager:
             "deliver": {
                 "title": "Delivery: {item_to_deliver_name} to {recipient_name}",
                 "description": "{giver_name} asks you to deliver a {item_to_deliver_name} to {recipient_name}, who can be found in {recipient_location_description}."
+            },
+            "instance": {
+                "title": "Bounty: Clear out the {target_name_plural}",
+                "description": "{giver_name} has posted a bounty to clear out an infestation of {target_name_plural} from a nearby location."
             }
         }
         
@@ -323,22 +304,26 @@ class QuestManager:
         objective = quest_instance.get("objective", {})
         template = templates.get(q_type, {}).get(text_type, "Quest")
 
-        # <<< FIX: Create a new 'details' dictionary that maps the objective data to the template's placeholder names >>>
+        if q_type == "instance" and "target_name_plural" not in objective:
+            target_tid = objective.get("target_template_id")
+            if target_tid and self.world:
+                target_template = self.world.npc_templates.get(target_tid)
+                if target_template:
+                    target_name = target_template.get("name", "creatures")
+                    objective["target_name_plural"] = simple_plural(target_name)
+
         details = {
             "giver_name": giver_npc.name,
-            # Mapping for kill/fetch quests
             "quantity": objective.get("required_quantity"),
             "target_name_plural": objective.get("target_name_plural"),
             "location_description": objective.get("location_hint"),
             "item_name_plural": objective.get("item_name_plural"),
             "source_enemy_name_plural": objective.get("source_enemy_name_plural"),
-            # Mapping for deliver quests
             "item_to_deliver_name": objective.get("item_to_deliver_name"),
             "recipient_name": objective.get("recipient_name"),
             "recipient_location_description": objective.get("recipient_location_description")
         }
 
-        # Filter out any keys that have a None value to prevent formatting errors
         valid_details = {k: v for k, v in details.items() if v is not None}
         
         try:
@@ -349,36 +334,46 @@ class QuestManager:
             print(f"  - Details provided: {valid_details}")
             return "Error: Could not generate quest text."
     
-    def handle_npc_killed(self, event_type: str, data: Dict[str, Any]):
+    def handle_npc_killed(self, event_type: str, data: Dict[str, Any]) -> Optional[str]:
         player = data.get("player")
         killed_npc = data.get("npc")
-        if not self.world or not player or not killed_npc or not hasattr(player, 'quest_log'): return
+        if not self.world or not player or not killed_npc or not hasattr(player, 'quest_log'): return None
         
         killed_template_id = getattr(killed_npc, 'template_id', None)
-        if not killed_template_id: return
+        if not killed_template_id: return None
         
+        # --- MODIFIED: Iterate over a copy of items to allow modification ---
         for quest_id, quest_data in list(player.quest_log.items()):
             if quest_data.get("type") == "kill" and quest_data.get("state") == "active":
                 objective = quest_data.get("objective", {})
                 if objective.get("target_template_id") == killed_template_id:
-                    objective["current_quantity"] = objective.get("current_quantity", 0) + 1
-                    required = objective.get("required_quantity", 1)
+                    # --- MODIFIED: Directly access and update the player's quest log ---
+                    # This ensures the state is saved correctly.
+                    current_quest_in_log = player.quest_log[quest_id]
+                    current_objective = current_quest_in_log.get("objective", {})
                     
-                    message = f"{FORMAT_HIGHLIGHT}[Quest Update]{FORMAT_RESET} {quest_data.get('title', 'Task')}: ({objective['current_quantity']}/{required} killed)."
+                    current_objective["current_quantity"] = current_objective.get("current_quantity", 0) + 1
+                    required = current_objective.get("required_quantity", 1)
                     
-                    if objective["current_quantity"] >= required:
-                        quest_data["state"] = "ready_to_complete"
+                    message = ""
+                    
+                    if current_objective["current_quantity"] >= required:
+                        # Update state in the player's log
+                        current_quest_in_log["state"] = "ready_to_complete"
                         giver = self.world.get_npc(quest_data.get("giver_instance_id"))
                         giver_name = giver.name if giver else "the quest giver"
                         message = f"{FORMAT_HIGHLIGHT}[Quest Update]{FORMAT_RESET} {quest_data.get('title', 'Task')}: Objective complete! Report back to {giver_name}."
+                    else:
+                        message = f"{FORMAT_HIGHLIGHT}[Quest Update]{FORMAT_RESET} {quest_data.get('title', 'Task')}: ({current_objective['current_quantity']}/{required} killed)."
+                    
+                    # Since we found and updated the relevant quest, we can stop.
+                    return message
+        return None
 
     def handle_item_obtained(self, event_type: str, data: Dict[str, Any]):
-        # This can be expanded later to automatically update fetch quests.
         pass
 
     def _generate_instance_quest(self, player_level: int) -> Optional[Dict[str, Any]]:
-        """Selects and formats a suitable instance quest from loaded templates."""
-
         if not self.instance_quest_templates: return None
         if not self.world or not self.world.regions: return None
 
@@ -390,41 +385,33 @@ class QuestManager:
 
         chosen_quest_id, chosen_template = random.choice(valid_quests)
         
-        if self.world.game: # and self.world.game.debug_mode:
-            print(f"[QuestManager DEBUG] Generating instance from template: '{chosen_quest_id}'")
-
         quest_instance = chosen_template.copy()
+        quest_instance['objective'] = chosen_template.get('objective', {}).copy()
+        
         quest_instance["instance_id"] = f"{chosen_quest_id}_{uuid.uuid4().hex[:6]}"
         quest_instance["state"] = "available"
         quest_instance["giver_instance_id"] = "quest_board"
 
-        # --- START OF DYNAMIC GENERATION ---
-        
-        # 1. Randomly select the creature for this instance
-        possible_creatures = chosen_template.get("objective", {}).get("possible_target_template_ids", [])
+        possible_creatures = quest_instance.get("objective", {}).get("possible_target_template_ids", [])
         if not possible_creatures:
             print(f"{FORMAT_ERROR}[QuestManager] Quest template '{chosen_quest_id}' has no possible creatures defined.{FORMAT_RESET}")
             return None
         chosen_creature_id = random.choice(possible_creatures)
         
-        # Store the chosen creature in the objective so the completion check knows what to look for
         quest_instance["objective"]["target_template_id"] = chosen_creature_id
 
-        # 2. Generate a dynamic title based on the chosen creature
         creature_template = self.world.npc_templates.get(chosen_creature_id)
         if creature_template:
             creature_name = creature_template.get("name", "Creatures")
             quest_instance["title"] = f"Bounty: {simple_plural(creature_name).title()} Infestation"
         
-        # 3. Generate a random house layout using the chosen creature
         layout_config = chosen_template.get("layout_generation_config", {})
-        instance_definition = self._generate_random_house_layout(quest_instance["instance_id"], layout_config, chosen_creature_id)
-        if not instance_definition:
+        instance_region = self._generate_random_house_layout(layout_config)
+        if not instance_region:
             print(f"{FORMAT_ERROR}[QuestManager] Failed to generate random layout for quest '{chosen_quest_id}'.{FORMAT_RESET}")
             return None
-        quest_instance["instance_definition"] = instance_definition
+        quest_instance["instance_region"] = instance_region
 
-        # --- (Rest of the function is unchanged, selecting a random entry point) ---
         possible_regions = chosen_template.get("possible_entry_regions", ["town"])
         valid_entry_points = []
         for region_id in possible_regions:
@@ -439,10 +426,6 @@ class QuestManager:
             return None
 
         chosen_entry = random.choice(valid_entry_points)
-
-        
-        if self.world.game: # and self.world.game.debug_mode:
-            print(f"[QuestManager DEBUG]   -> Selected entry point: {chosen_entry['region_id']}:{chosen_entry['room_id']}")
             
         entry_point_data = {
             **chosen_entry,
@@ -453,53 +436,127 @@ class QuestManager:
 
         return quest_instance
 
-    def _generate_random_house_layout(self, instance_id: str, config: Dict[str, Any], chosen_creature_id: str) -> Dict[str, Any]:
-        """Procedurally generates a simple, multi-room house layout."""
-        # determine a random number of creatures to spawn
-        count_range = config.get("target_count", [2, 4])
-        num_to_spawn = random.randint(count_range[0], count_range[1])
-        
-        num_rooms = random.randint(config.get("min_rooms", 2), config.get("max_rooms", 4))
-        room_names = random.sample(config.get("possible_room_names", ["Room", "Chamber"]), k=num_rooms)
-        
-        print(f"[QuestManager DEBUG]   -> Generating layout with {num_rooms} rooms...")
-        print(f"[QuestManager DEBUG]   -> Spawning {num_to_spawn} of '{chosen_creature_id}'")
+    def _generate_random_house_layout(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Generates a non-linear, branching, and GEOMETRICALLY CONSISTENT layout
+        for an instance region using a grid-based random walk algorithm.
+        """
+        num_rooms = random.randint(config.get("min_rooms", 3), config.get("max_rooms", 7))
+        possible_room_names = config.get("possible_room_names", ["Room", "Chamber", "Hallway"])
 
-        layout = { "region_name": config.get("region_name", "Mysterious House"), "region_description": config.get("region_description", "A strange, temporary place."), "properties": {"indoors": True}, "rooms": {} }
-        room_ids = [f"room_{i}" for i in range(num_rooms)]
-        for i, room_id in enumerate(room_ids):
-            layout["rooms"][room_id] = { "name": room_names[i], "description": f"A dusty and forgotten {room_names[i].lower()}. Cobwebs hang from the ceiling.", "exits": {} }
-        for i in range(num_rooms - 1):
-            dir1, dir2 = random.choice([("north", "south"), ("east", "west"), ("down", "up")])
-            layout["rooms"][room_ids[i]]["exits"][dir1] = room_ids[i+1]
-            layout["rooms"][room_ids[i+1]]["exits"][dir2] = room_ids[i]
-            
-        first_room_id = room_ids[0]
-        layout["rooms"][first_room_id]["exits"]["out"] = "dynamic_exit"
+        # Prepare room names
+        if len(possible_room_names) < num_rooms:
+            room_names = random.choices(possible_room_names, k=num_rooms)
+        else:
+            room_names = random.sample(possible_room_names, k=num_rooms)
         
-        last_room_id = room_ids[-1]
-        layout["rooms"][last_room_id]["spawner"] = {
-            "initial_spawn": [{"template_id": chosen_creature_id, "count": num_to_spawn}]
+        # Helper data structures for grid generation
+        direction_vectors = {"north": (0, -1), "south": (0, 1), "east": (1, 0), "west": (-1, 0)}
+        opposite_direction = {"north": "south", "south": "north", "east": "west", "west": "east"}
+        
+        # Grid state
+        coords_to_id: Dict[Tuple[int, int], str] = {}
+        id_to_coords: Dict[str, Tuple[int, int]] = {}
+        rooms_data: Dict[str, Any] = {}
+        
+        # 1. Place the first room (the entrance)
+        start_room_id = f"room_0"
+        coords_to_id[(0, 0)] = start_room_id
+        id_to_coords[start_room_id] = (0, 0)
+        rooms_data[start_room_id] = {
+            "name": room_names[0],
+            "description": f"The entrance. A dusty and forgotten {room_names[0].lower()}.",
+            "exits": {"out": "dynamic_exit"} # The way back to the main world
         }
         
-        if self.world.game and self.world.game.debug_mode:
-            print(f"[QuestManager DEBUG]   -> Layout complete. Spawner in '{last_room_id}'.")
+        # Frontier of rooms to expand from
+        frontier = [start_room_id]
+
+        # 2. Grow the dungeon until the desired number of rooms is placed
+        for i in range(1, num_rooms):
+            new_room_id = f"room_{i}"
+            connection_made = False
             
+            # Try to connect to a random frontier room to encourage branching
+            random.shuffle(frontier)
+            for current_room_id in frontier:
+                cx, cy = id_to_coords[current_room_id]
+                
+                # Find valid, empty adjacent grid cells
+                possible_directions = []
+                for direction, (dx, dy) in direction_vectors.items():
+                    if (cx + dx, cy + dy) not in coords_to_id:
+                        possible_directions.append(direction)
+                
+                if possible_directions:
+                    # Choose a random direction to build in
+                    chosen_direction = random.choice(possible_directions)
+                    nx, ny = cx + direction_vectors[chosen_direction][0], cy + direction_vectors[chosen_direction][1]
+                    
+                    # Place the new room
+                    coords_to_id[(nx, ny)] = new_room_id
+                    id_to_coords[new_room_id] = (nx, ny)
+                    rooms_data[new_room_id] = {
+                        "name": room_names[i],
+                        "description": f"A dusty and forgotten {room_names[i].lower()}.",
+                        "exits": {}
+                    }
+                    
+                    # Connect the two rooms
+                    rooms_data[current_room_id]["exits"][chosen_direction] = new_room_id
+                    rooms_data[new_room_id]["exits"][opposite_direction[chosen_direction]] = current_room_id
+                    
+                    # Add the new room to the frontier for further expansion
+                    frontier.append(new_room_id)
+                    connection_made = True
+                    break # Stop trying to connect this new room, move to the next
+            
+            if not connection_made:
+                # This can happen if the frontier gets boxed in. We'll just have fewer rooms.
+                if self.config.get("debug"):
+                    print(f"[QuestManager Debug] Could not place room {i + 1}/{num_rooms}. Dungeon is boxed in.")
+                break
+
+        # 3. Add extra connections to create loops and make the layout more interesting
+        num_extra_connections = random.randint(num_rooms // 3, num_rooms - 1)
+        for _ in range(num_extra_connections):
+            # Pick a random room that isn't a dead end (has at least one potential connection)
+            room_id = random.choice(list(id_to_coords.keys()))
+            cx, cy = id_to_coords[room_id]
+            
+            # Find neighbors that exist but are not yet connected
+            possible_connections = []
+            for direction, (dx, dy) in direction_vectors.items():
+                neighbor_coords = (cx + dx, cy + dy)
+                if neighbor_coords in coords_to_id and direction not in rooms_data[room_id]["exits"]:
+                    possible_connections.append(direction)
+            
+            if possible_connections:
+                chosen_direction = random.choice(possible_connections)
+                neighbor_id = coords_to_id[(cx + direction_vectors[chosen_direction][0], cy + direction_vectors[chosen_direction][1])]
+                
+                # Add the new connection
+                rooms_data[room_id]["exits"][chosen_direction] = neighbor_id
+                rooms_data[neighbor_id]["exits"][opposite_direction[chosen_direction]] = room_id
+
+        # Finalize the layout structure
+        layout = {
+            "region_name": config.get("region_name", "Mysterious Location"),
+            "region_description": config.get("region_description", "A strange, temporary place."),
+            "properties": {"outdoors": False},
+            "rooms": rooms_data,
+        }
+        
         return layout
 
     def check_quest_completion(self):
-        """
-        Iterates through active quests and updates their state if objectives are met.
-        This is called by the World's main update loop.
-        """
         if not self.world or not self.world.player or not self.world.player.quest_log:
             return
 
-        # Iterate over a copy of the items to allow for modification during the loop
         for quest_id, quest_data in list(self.world.player.quest_log.items()):
-            # --- Check for "clear_region" objective completion ---
-            if (quest_data.get("state") == "active" and 
-                quest_data.get("objective", {}).get("type") == "clear_region"):
+            if (quest_data.get("state") == "active" and
+                quest_data.get("objective", {}).get("type") == "clear_region" and
+                quest_data.get("completion_check_enabled", False)):
                 
                 objective = quest_data.get("objective", {})
                 instance_region_id = quest_data.get("instance_region_id")
@@ -508,7 +565,6 @@ class QuestManager:
                 if not instance_region_id or not target_template_id:
                     continue
 
-                # Count how many of the target NPCs are still alive in the instance
                 hostiles_remaining = sum(
                     1 for npc in self.world.npcs.values()
                     if npc.is_alive and 
@@ -516,16 +572,24 @@ class QuestManager:
                        npc.template_id == target_template_id
                 )
 
-                # --- If all hostiles are defeated, complete the objective ---
                 if hostiles_remaining == 0:
+                    if self.world.game and self.world.game.renderer:
+                        completion_npc_tid = objective.get("completion_npc_template_id")
+                        completion_npc_template = self.world.npc_templates.get(completion_npc_tid)
+                        completion_npc_name = completion_npc_template.get("name", "the quest giver") if completion_npc_template else "the quest giver"
+                        
+                        instance_region = quest_data.get("instance_region", {})
+                        instance_name = instance_region.get("region_name", "area")
+
+                        message = f"{FORMAT_HIGHLIGHT}[Quest Update] You have cleared the {instance_name}! Report back to {completion_npc_name} outside.{FORMAT_RESET}"
+                        self.world.game.renderer.add_message(message)
+
                     quest_data["state"] = "ready_to_complete"
                     
-                    # Despawn the original quest giver
                     original_giver_id = quest_data.get("giver_instance_id")
                     if original_giver_id and original_giver_id in self.world.npcs:
                         del self.world.npcs[original_giver_id]
 
-                    # Spawn the completion NPC in the same spot
                     completion_npc_tid = objective.get("completion_npc_template_id")
                     if completion_npc_tid:
                         entry_point = quest_data.get("entry_point", {})
@@ -540,8 +604,6 @@ class QuestManager:
                             )
                             if completion_npc:
                                 self.world.add_npc(completion_npc)
-                                
-                                # Announce the change if the player is there to see it
                                 if (self.world.game and self.world.player.current_region_id == spawn_region and
                                     self.world.player.current_room_id == spawn_room):
                                     self.world.game.renderer.add_message(

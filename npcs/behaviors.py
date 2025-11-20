@@ -15,6 +15,9 @@ if TYPE_CHECKING:
 
 def handle_ai(npc: 'NPC', world, current_time: float, player: 'Player') -> Optional[str]:
     """Main AI handler that delegates to specific behaviors."""
+    if npc.has_effect("Stun"):
+        return None # The NPC cannot perform any action
+
     # Local import of combat module to be used by AI functions
     from . import combat as npc_combat
 
@@ -342,7 +345,6 @@ def start_retreat(npc: 'NPC', world, current_time: float, player: 'Player') -> O
         if world.game and world.game.debug_mode:
             print(f"[AI DEBUG] NPC '{npc.name}' ({npc.obj_id}) starting retreat to {npc.retreat_destination}")
         
-        # --- START OF MODIFICATION ---
         # Find the full path to the destination
         path = world.find_path(
             npc.current_region_id, 
@@ -373,7 +375,6 @@ def start_retreat(npc: 'NPC', world, current_time: float, player: 'Player') -> O
                 print(f"[AI DEBUG] NPC '{npc.name}' failed to find a retreat path.")
             # Do not return a message, allowing the combat logic to fall back to a physical attack.
             return None 
-        # --- END OF MODIFICATION ---
 
     # This is reached if no retreat destination was found in the first place
     return None
@@ -395,13 +396,11 @@ def _retreat_behavior(npc: 'NPC', world, current_time: float, player: 'Player') 
         npc.current_path = [] # Clear path on arrival
         return None 
 
-    # --- START OF MODIFICATION ---
     # 3. If we have a path, move along it.
     if npc.current_path:
         # The path was already calculated by start_retreat. We just follow it.
         next_direction = npc.current_path.pop(0)
         return _move_npc(npc, world, player, next_direction)
-    # --- END OF MODIFICATION ---
 
     # 4. Fallback if something went wrong (e.g., path is empty but not at destination)
     # This might happen if the world changes mid-retreat.
@@ -437,7 +436,6 @@ def _try_flee(npc: 'NPC', world, player: 'Player') -> Optional[str]:
     from . import combat as npc_combat
     npc_combat.exit_combat(npc)
     
-    # --- START OF MODIFICATION ---
     # The NPC always moves, regardless of whether the player sees it.
     # The _move_npc function correctly handles any arrival message if the player is in the destination room.
     _move_npc(npc, world, player, direction)

@@ -48,7 +48,7 @@ def weather_handler(args, context):
 
     weather_manager = game.weather_manager
     current_room = world.get_current_room()
-    is_outdoors = current_room.properties.get("outdoors", False) if current_room else False
+    is_outdoors = current_room.properties.get("outdoors", True) if current_room else True
 
     if not is_outdoors:
         return f"You can't see the weather from inside, but you can hear sounds indicating {weather_manager.current_weather} conditions outside."

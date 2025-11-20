@@ -22,7 +22,7 @@ def create_initial_directories():
         os.makedirs(SAVE_GAME_DIR)
     if not os.path.exists(DATA_DIR):
          os.makedirs(DATA_DIR)
-         for sub in ["regions", "items", "npcs"]:
+         for sub in ["regions", "items", "npcs", "magic"]:
               os.makedirs(os.path.join(DATA_DIR, sub), exist_ok=True)
          print(f"Created data directory structure at '{DATA_DIR}'")
 

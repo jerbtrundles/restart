@@ -11,11 +11,18 @@ def help_handler(args, context):
     cp = context["command_processor"]
     return cp.get_command_help(args[0]) if args else cp.get_help_text()
 
+@command("stop", [], "system", "Stop a current automated action, like being guided.\nUsage: stop")
+def stop_handler(args, context):
+    game = context.get("game")
+    if game and game.is_auto_traveling:
+        game.stop_auto_travel("cancelled")
+        return "" # The stop_auto_travel function will print its own message
+    return "There is nothing to stop."
+
 @command("quit", ["q", "exit"], "system", "Return to the main title screen.")
 def quit_handler(args, context):
     game = context.get("game")
     if game:
-        # This method now correctly resets the game state without plugin logic
         game.quit_to_title()
         return f"{FORMAT_HIGHLIGHT}Returning to title screen...{FORMAT_RESET}"
     return f"{FORMAT_ERROR}Game context not found.{FORMAT_RESET}"
@@ -46,8 +53,6 @@ def load_handler(args, context):
     
     print(f"Attempting to load game state from {fname}...")
     
-    # --- REFACTORED LOGIC ---
-    # Load game now returns states for core managers
     load_success, loaded_time_data, loaded_weather_data = world.load_save_game(fname)
     
     if load_success:
@@ -69,3 +74,24 @@ def load_handler(args, context):
          return f"{FORMAT_SUCCESS}World state loaded from {fname}{FORMAT_RESET}\n\n{world.look()}"
     else:
          return f"{FORMAT_ERROR}Error loading world state from {fname}. Game state might be unstable.{FORMAT_RESET}"
+
+@command("minimap", ["map"], "system", "Toggle the visual minimap.\nUsage: minimap [on|off]")
+def toggle_minimap_handler(args, context):
+    game = context.get("game")
+    if not game: return f"{FORMAT_ERROR}System error: Game context missing.{FORMAT_RESET}"
+
+    if not args:
+        # Toggle if no arg
+        game.show_minimap = not game.show_minimap
+        status = "enabled" if game.show_minimap else "disabled"
+        return f"{FORMAT_SUCCESS}Minimap {status}.{FORMAT_RESET}"
+    
+    arg = args[0].lower()
+    if arg == "on":
+        game.show_minimap = True
+        return f"{FORMAT_SUCCESS}Minimap enabled.{FORMAT_RESET}"
+    elif arg == "off":
+        game.show_minimap = False
+        return f"{FORMAT_SUCCESS}Minimap disabled.{FORMAT_RESET}"
+    else:
+        return f"{FORMAT_ERROR}Usage: minimap [on|off]{FORMAT_RESET}"

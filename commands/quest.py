@@ -53,7 +53,7 @@ def look_board_handler(args, context):
     response += f"Type '{FORMAT_HIGHLIGHT}accept quest <#>{FORMAT_RESET}' to take a task."
     return response
 
-@command(name="accept", category="interaction", help_text="Accept a quest from the board.\nUsage: accept [quest] <number>")
+@command(name="accept quest", aliases=["accept"], category="interaction", help_text="Accept a quest from the board.\nUsage: accept quest <number>")
 def accept_quest_handler(args, context):
     world = context["world"]
     player = world.player
@@ -64,14 +64,9 @@ def accept_quest_handler(args, context):
     if not args:
         return f"{FORMAT_ERROR}Which quest number do you want to accept?{FORMAT_RESET}"
 
-    quest_num_str = ""
-    if len(args) > 1 and args[0].lower() == "quest" and args[1].isdigit():
-        quest_num_str = args[1]
-    elif len(args) == 1 and args[0].isdigit():
-        quest_num_str = args[0]
-    else:
-        potential_num_arg = args[1] if len(args) > 1 and args[0].lower() == "quest" else args[0]
-        return f"{FORMAT_ERROR}'{potential_num_arg}' is not a valid quest number.{FORMAT_RESET}"
+    quest_num_str = args[0]
+    if not quest_num_str.isdigit():
+        return f"{FORMAT_ERROR}'{quest_num_str}' is not a valid quest number.{FORMAT_RESET}"
 
     try:
         quest_index = int(quest_num_str) - 1
@@ -84,30 +79,30 @@ def accept_quest_handler(args, context):
     quest_to_accept = world.quest_board.pop(quest_index)
     quest_to_accept["state"] = "active"
     
-    # --- START OF FIX ---
-    # The original quest_to_accept dictionary *already has* a unique instance_id
-    # assigned by the QuestManager when it was placed on the board.
-    # We will now use that ID instead of creating a new one.
-    
-    # REMOVED: quest_instance_id = f"quest_{uuid.uuid4().hex[:6]}"
-    # REMOVED: quest_to_accept["instance_id"] = quest_instance_id
-    
-    # We get the pre-existing ID directly from the quest data.
     quest_instance_id = quest_to_accept.get("instance_id")
     if not quest_instance_id:
-        # This is a safety fallback in case a quest somehow gets on the board without an ID
+        # safety fallback in case a quest somehow gets on the board without an ID
         quest_instance_id = f"quest_fallback_{uuid.uuid4().hex[:6]}"
         quest_to_accept["instance_id"] = quest_instance_id
-    # --- END OF FIX ---
 
-
-    # --- UPDATED LOGIC FOR INSTANCE QUESTS ---
     if quest_to_accept.get("type") == "instance":
+        quest_to_accept["completion_check_enabled"] = False
         success, message, giver_npc_id = world.instantiate_quest_region(quest_to_accept)
         if not success:
             world.quest_board.insert(quest_index, quest_to_accept)
             return f"{FORMAT_ERROR}Could not start quest: {message}{FORMAT_RESET}"
         
+        giver_npc = world.get_npc(giver_npc_id)
+        if giver_npc:
+            entry_point = quest_to_accept.get("entry_point", {})
+            entry_region = world.get_region(entry_point.get("region_id"))
+            entry_room = entry_region.get_room(entry_point.get("room_id")) if entry_region else None
+            location_desc = entry_room.name if entry_room else "a nearby house"
+            
+            extended_greeting = giver_npc.dialog.get("greeting_extended", "").format(entry_location_desc=location_desc)
+            message += f" \"{extended_greeting}\""
+            message += f"\n(You can now ask {giver_npc.name} to '{FORMAT_HIGHLIGHT}guide{FORMAT_RESET}' you there.)"
+
         quest_to_accept["giver_instance_id"] = giver_npc_id if giver_npc_id else "quest_board"
 
         acceptance_message = f"{FORMAT_SUCCESS}[Quest Accepted] {quest_to_accept.get('title')}{FORMAT_RESET}"
@@ -117,7 +112,6 @@ def accept_quest_handler(args, context):
         player.quest_log[quest_instance_id] = quest_to_accept
         quest_manager.replenish_board(None)
         return acceptance_message
-    # --- END UPDATED LOGIC ---
 
     if quest_to_accept.get("type") == "kill":
         quest_to_accept["objective"]["current_quantity"] = 0
@@ -148,7 +142,6 @@ def journal_handler(args, context):
     if not hasattr(player, 'quest_log'): player.quest_log = {}
     if not hasattr(player, 'completed_quest_log'): player.completed_quest_log = {}
     
-    # --- START OF MODIFICATION ---
     # Ensure the archived log exists for the check
     if not hasattr(player, 'archived_quest_log'): player.archived_quest_log = {}
 
@@ -166,9 +159,8 @@ def journal_handler(args, context):
         for quest_data in sorted_completed:
             response += f"- {quest_data.get('title', 'Unnamed Quest')}\n"
         return response.strip()
-    # --- END OF MODIFICATION ---
 
-    # --- Active quest logic (unchanged) ---
+    # --- Active quest logic ---
     if not player.quest_log: return "Your quest journal is empty."
 
     response = f"{FORMAT_TITLE}Active Quests{FORMAT_RESET}\n{'-'*20}\n\n"

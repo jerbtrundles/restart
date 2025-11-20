@@ -6,7 +6,8 @@ Configuration for NPCs, including defaults, stats, combat, and behavior.
 # --- NPC Defaults & Base Values ---
 NPC_DEFAULT_BEHAVIOR = "stationary"
 NPC_DEFAULT_MAX_MANA = 0
-NPC_BASE_MANA_REGEN_RATE = 0.5
+NPC_BASE_HEALTH_REGEN_RATE = 1.0
+NPC_BASE_MANA_REGEN_RATE = 1.0
 NPC_DEFAULT_WANDER_CHANCE = 0.3
 NPC_DEFAULT_MOVE_COOLDOWN = 10
 NPC_DEFAULT_AGGRESSION = 0.0
@@ -30,7 +31,8 @@ NPC_MANA_REGEN_WISDOM_DIVISOR = 22
 NPC_DEFAULT_STATS = {
     "strength": 8, "dexterity": 8, "intelligence": 5,
     "wisdom": 5, "constitution": 8, "agility": 8,
-    "spell_power": 0, "magic_resist": 0
+    "spell_power": 0, "magic_resist": 0,
+    "resistances": {} # NEW: Add default resistances dictionary
 }
 NPC_BASE_XP_TO_LEVEL = 150
 NPC_XP_TO_LEVEL_MULTIPLIER = 1.6

@@ -12,6 +12,7 @@ from config import (
     NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_LEVEL_HEALTH_BASE_INCREASE,
     NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE
 )
+from config.config_npc import NPC_MANA_LEVEL_UP_INT_DIVISOR, NPC_MANA_LEVEL_UP_MULTIPLIER
 from items.item_factory import ItemFactory
 from .npc import NPC
 from items.inventory import Inventory
@@ -57,22 +58,15 @@ class NPCFactory:
             final_npc_name = overrides.get("name")
             if not final_npc_name:
                 if template_id in ["wandering_villager", "wandering_mage", "wandering_priest"]:
-                    # Select a random first name
                     first_names = VILLAGER_FIRST_NAMES_MALE + VILLAGER_FIRST_NAMES_FEMALE
                     random_first_name = random.choice(first_names) if first_names else "Wanderer"
-                    
-                    # Determine the title from the template's base name
-                    # e.g., "Wandering Villager" -> "Villager"
                     base_title = template.get("name", "Villager").split(" ")[-1]
-                    
                     final_npc_name = f"{random_first_name} the {base_title}"
                 else:
-                    # Fallback for all other NPCs (like monsters, quest givers, etc.)
                     final_npc_name = template.get("name", "Unknown NPC")
 
             init_args = {
-                "obj_id": npc_instance_id,
-                "name": final_npc_name,
+                "obj_id": npc_instance_id, "name": final_npc_name,
                 "description": creation_args.get("description", "No description"),
                 "level": overrides.get("level", template.get("level", 1)),
                 "friendly": creation_args.get("friendly", True),
@@ -89,18 +83,28 @@ class NPCFactory:
             final_con = npc.stats.get('constitution', 8)
             final_int = npc.stats.get('intelligence', 5)
 
-            # Health Calculation (unchanged)
-            # TODO: standardize either stat-based or explicit values for health, mana
+            # Health
             base_hp = NPC_BASE_HEALTH + int(final_con * NPC_CON_HEALTH_MULTIPLIER)
             level_hp_bonus = (npc.level - 1) * (NPC_LEVEL_HEALTH_BASE_INCREASE + int(final_con * NPC_LEVEL_CON_HEALTH_MULTIPLIER))
             npc.max_health = base_hp + level_hp_bonus
-
-            # Set health and mana correctly for new vs. loaded NPCs
             npc.health = overrides.get("health", npc.max_health)
             npc.health = max(1, min(npc.health, npc.max_health))
-            # common hostiles start with default max mana
-            npc.mana = template.get("mana", NPC_DEFAULT_MAX_MANA)
-            npc.max_mana = npc.mana
+            
+            # Mana
+            npc.max_mana = 0
+            
+            # Check if the template OPTS-IN to having mana.
+            base_mana_from_template = template.get("max_mana", 0)
+            
+            if base_mana_from_template > 0:
+                # If it does, calculate the full mana pool with bonuses.
+                int_bonus = (final_int - 5) * NPC_MANA_LEVEL_UP_INT_DIVISOR 
+                level_bonus = int((npc.level - 1) * (base_mana_from_template * (NPC_MANA_LEVEL_UP_MULTIPLIER - 1)))
+                npc.max_mana = base_mana_from_template + int_bonus + level_bonus
+            
+            # Set current mana: use saved value if loading, otherwise set to max.
+            npc.mana = overrides.get("mana", npc.max_mana)
+            npc.mana = max(0, min(npc.mana, npc.max_mana))
 
             npc.experience = overrides.get("experience", 0)
             npc.experience_to_level = overrides.get("experience_to_level", int(NPC_BASE_XP_TO_LEVEL * (NPC_XP_TO_LEVEL_MULTIPLIER**(npc.level - 1))))
@@ -163,14 +167,11 @@ class NPCFactory:
             if saved_inv_data and isinstance(saved_inv_data, dict):
                 npc.inventory = Inventory.from_dict(saved_inv_data, world)
             else:
-                # --- REPLACE THIS ENTIRE BLOCK ---
                 npc.inventory = Inventory(max_slots=10, max_weight=50.0)
                 template_inventory = template.get("initial_inventory", [])
                 
-                # NEW: Add safety checks
                 if isinstance(template_inventory, list):
                     for item_ref in template_inventory:
-                        # Check that the item reference itself is a dictionary
                         if not isinstance(item_ref, dict):
                             print(f"Warning: Invalid item reference in initial_inventory for NPC '{template.get('name')}': not a dictionary. Skipping.")
                             continue
@@ -184,16 +185,15 @@ class NPCFactory:
                             if item:
                                 npc.inventory.add_item(item, quantity)
                         else:
-                            # This debug message will pinpoint the exact problem
                             print(f"Warning: Skipping invalid item reference in initial_inventory for NPC '{template.get('name')}': {item_ref}")
                 else:
                     print(f"Warning: 'initial_inventory' for NPC '{template.get('name')}' is not a list. Skipping inventory creation.")
-                # --- END REPLACEMENT BLOCK ---
 
             npc.world = world
 
             print("[NPCFactory create_npc_from_template()]")
             print(f"Spawning {npc.name} - {npc.health}/{npc.max_health}hp {npc.current_region_id} - {npc.current_room_id}")
+            print(f"---------------------------------------------")
 
             return npc
 

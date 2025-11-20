@@ -1,12 +1,9 @@
 # game_object.py
-# --- THIS IS THE REFACTORED AND CORRECTED VERSION ---
-# - Added logic to `process_active_effects` to handle a new effect type: "hot" (Heal Over Time).
-# - This new logic mirrors the "dot" handler but calls `self.heal()` instead of `self.take_damage()`.
-
 import random
 from typing import Dict, Any, List, Optional, Tuple
 import uuid
-from config import EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, NPC_DOT_FLAVOR_MESSAGES
+import time
+from config import EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, NPC_DOT_FLAVOR_MESSAGES, MINIMUM_DAMAGE_TAKEN
 
 class GameObject:
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown",
@@ -17,6 +14,8 @@ class GameObject:
         self.properties: Dict[str, Any] = {}
         self.active_effects: List[Dict[str, Any]] = []
         self.is_alive: bool = True
+        self.stats: Dict[str, Any] = {} # MODIFIED: Allow Any for resistances dict
+        self.stat_modifiers: Dict[str, int] = {}
 
     def get_description(self) -> str:
         return f"{self.name}\n\n{self.description}"
@@ -48,8 +47,78 @@ class GameObject:
     def get_property(self, key: str, default: Any = None) -> Any:
         return self.properties.get(key, default)
 
+    def get_effective_stat(self, stat_name: str) -> int:
+        """Calculates a stat by combining the base value with active modifiers."""
+        # Handle resistance stats which start with 'resist_'
+        if stat_name.startswith("resist_"):
+            return self.get_resistance(stat_name.replace("resist_", ""))
+
+        base_stat = self.stats.get(stat_name, 0)
+        modifier = self.stat_modifiers.get(stat_name, 0)
+        return base_stat + modifier
+
+    def get_resistance(self, damage_type: str) -> int:
+        """
+        Calculates total resistance for a damage type from innate stats and effects.
+        Subclasses (Player) will override this to include equipment.
+        Value is a percentage, e.g., 25 means 25% resistance.
+        Negative values represent weakness.
+        """
+        # 1. Innate resistance from stats
+        innate_res = self.stats.get("resistances", {}).get(damage_type, 0)
+
+        # 2. Temporary resistance from stat modifiers (buffs/debuffs)
+        # Effects that modify resistance will have a stat modifier key like "resist_fire"
+        effect_res = self.stat_modifiers.get(f"resist_{damage_type}", 0)
+
+        return innate_res + effect_res
+
+    def has_effect(self, effect_name: str) -> bool:
+        """Checks if an effect with a given name is currently active."""
+        name_lower = effect_name.lower()
+        return any(eff.get("name", "").lower() == name_lower for eff in self.active_effects)
+
     def take_damage(self, amount: int, damage_type: str) -> int:
-        return 0
+        if not self.is_alive or amount <= 0:
+            return 0
+
+        # 1. Get base defense/resistance for the damage type
+        base_reduction = 0
+        if damage_type == "physical":
+            base_reduction = self.get_effective_stat("defense")
+        else:
+            # Use magic_resist for all non-physical damage as a base
+            base_reduction = self.get_effective_stat("magic_resist")
+
+        # 2. Apply the flat reduction
+        damage_after_flat_reduction = max(0, amount - base_reduction)
+        if damage_after_flat_reduction == 0:
+            return 0 # Damage was fully absorbed by defense/magic resist
+
+        # 3. Apply percentage-based resistance/weakness
+        resistance_percent = self.get_resistance(damage_type)
+        # Clamp resistance to prevent healing from damage or excessive weakness
+        resistance_percent = max(-100, min(100, resistance_percent))
+
+        resistance_multiplier = 1.0 - (resistance_percent / 100.0)
+        final_damage = int(damage_after_flat_reduction * resistance_multiplier)
+
+        # 4. Ensure at least minimum damage is dealt if the initial damage was positive
+        actual_damage_taken = max(MINIMUM_DAMAGE_TAKEN, final_damage) if final_damage > 0 else 0
+
+        # 5. Apply damage to health
+        old_health = getattr(self, 'health', 0)
+        new_health = max(0, old_health - actual_damage_taken)
+        setattr(self, 'health', new_health)
+
+        if new_health <= 0:
+            self.is_alive = False
+            # The die() method is called by the specific Player/NPC class
+
+        # CHANGED: Return the calculated damage (actual_damage_taken) 
+        # instead of the health lost (old_health - new_health).
+        # This ensures killshots display the full damage value (Overkill).
+        return int(actual_damage_taken)
 
     def heal(self, amount: int) -> int:
         return 0
@@ -57,47 +126,66 @@ class GameObject:
     def apply_effect(self, effect_data: Dict[str, Any], current_time: float) -> Tuple[bool, str]:
         if not self.is_alive: return False, f"{self.name} cannot be affected."
         effect_name = effect_data.get("name", "Unknown Effect")
-        # Overwrite existing effect of the same name to refresh it
-        self.active_effects = [eff for eff in self.active_effects if eff.get("name") != effect_name]
+        
+        # Before adding, remove any existing effect with the same name to refresh it
+        self.remove_effect(effect_name)
 
         new_effect_instance = effect_data.copy()
         new_effect_instance["id"] = f"effect_{uuid.uuid4().hex[:8]}"
         new_effect_instance["last_tick_time"] = current_time
 
-        # Effects from gear shouldn't have a duration; they last as long as the item is equipped
         if "base_duration" in new_effect_instance:
             new_effect_instance["duration_remaining"] = new_effect_instance.get("base_duration", 10.0)
+        
+        # If this is a stat modifier, apply the change immediately
+        if new_effect_instance.get("type") == "stat_mod":
+            for stat, value in new_effect_instance.get("modifiers", {}).items():
+                self.stat_modifiers[stat] = self.stat_modifiers.get(stat, 0) + value
 
         self.active_effects.append(new_effect_instance)
         return True, ""
 
     def remove_effect(self, effect_name: str) -> bool:
-        original_count = len(self.active_effects)
-        self.active_effects = [eff for eff in self.active_effects if eff.get("name") != effect_name]
-        return len(self.active_effects) < original_count
+        effect_to_remove = None
+        for eff in self.active_effects:
+            if eff.get("name", "").lower() == effect_name.lower():
+                effect_to_remove = eff
+                break
+        
+        if not effect_to_remove:
+            return False
+
+        # If it was a stat modifier, revert the changes
+        if effect_to_remove.get("type") == "stat_mod":
+            for stat, value in effect_to_remove.get("modifiers", {}).items():
+                self.stat_modifiers[stat] = self.stat_modifiers.get(stat, 0) - value
+                # Clean up the dict if the modifier becomes zero
+                if self.stat_modifiers.get(stat) == 0:
+                    del self.stat_modifiers[stat]
+        
+        self.active_effects.remove(effect_to_remove)
+        return True
 
     def process_active_effects(self, current_time: float, time_delta: float) -> List[str]:
-            # Local import to prevent circular dependency at module level
             from player import Player
-
             if not self.is_alive:
                 if self.active_effects: self.active_effects.clear()
                 return []
 
-            expired_effects = []
-            tick_messages = []
+            expired_effect_names: List[str] = []
+            tick_messages: List[str] = []
 
-            for effect in self.active_effects:
+            # Iterate over a copy as remove_effect will modify the list
+            for effect in list(self.active_effects):
                 # Handle duration-based effects
                 if "duration_remaining" in effect:
                     effect["duration_remaining"] -= time_delta
                     if effect["duration_remaining"] <= 0:
-                        expired_effects.append(effect)
-                        effect_name_fmt = f"{FORMAT_HIGHLIGHT}{effect.get('name', 'effect')}{FORMAT_RESET}"
-                        if isinstance(self, Player):
-                            tick_messages.append(f"The {effect_name_fmt} on you wears off.")
+                        effect_name = effect.get("name")
+                        if effect_name:
+                            expired_effect_names.append(effect_name)
                         else:
-                            tick_messages.append(f"The {effect_name_fmt} on {self.name} wears off.")
+                            print(f"process_active_effects() - error parsing effect_name from effect - {effect}.")
                         continue
 
                 # Handle Damage Over Time (DoT)
@@ -113,7 +201,6 @@ class GameObject:
                             if isinstance(self, Player):
                                 message = f"You take {FORMAT_ERROR}{damage_taken}{FORMAT_RESET} {dmg_type} damage from the {effect_name_fmt}."
                             else:
-                                # Use varied flavor text for NPCs
                                 message = random.choice(NPC_DOT_FLAVOR_MESSAGES).format(npc_name=self.name, effect_name=effect.get('name', 'effect'))
                             tick_messages.append(message)
 
@@ -137,10 +224,22 @@ class GameObject:
                         tick_messages.append(f"You succumb to the effects of {effect.get('name', 'the affliction')}!")
                     break
 
-            if expired_effects:
-                self.active_effects = [eff for eff in self.active_effects if eff not in expired_effects]
+            # Now, process expirations
+            if expired_effect_names:
+                for name in expired_effect_names:
+                    if name:
+                        # remove_effect also handles reverting stat mods
+                        was_removed = self.remove_effect(name)
+                        if was_removed:
+                            effect_name_fmt = f"{FORMAT_HIGHLIGHT}{name}{FORMAT_RESET}"
+                            if isinstance(self, Player):
+                                tick_messages.append(f"The {effect_name_fmt} on you wears off.")
+                            else:
+                                tick_messages.append(f"The {effect_name_fmt} on {self.name} wears off.")
 
             if not self.is_alive and self.active_effects:
+                # If the character died, clear all remaining effects without reverting stats
                 self.active_effects.clear()
+                self.stat_modifiers.clear()
 
             return tick_messages

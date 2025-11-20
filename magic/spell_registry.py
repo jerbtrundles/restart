@@ -1,12 +1,39 @@
 # magic/spell_registry.py
 """
-Registry of all available spells in the game.
+Registry of all available spells in the game, loaded from data files.
 """
+import json
+import os
 from typing import Dict, Optional
-from config import EFFECT_DEFAULT_TICK_INTERVAL, EFFECT_FIRE_DAMAGE_TYPE, EFFECT_POISON_DAMAGE_TYPE
+from config import DATA_DIR, FORMAT_ERROR, FORMAT_RESET
 from magic.spell import Spell
 
+# The registry is now populated at runtime by the loader.
 SPELL_REGISTRY: Dict[str, Spell] = {}
+
+def load_spells_from_json():
+    """
+    Scans the data/magic directory for all .json files, loads them,
+    creates Spell objects, and populates the SPELL_REGISTRY.
+    """
+    magic_dir = os.path.join(DATA_DIR, "magic")
+    if not os.path.isdir(magic_dir):
+        print(f"{FORMAT_ERROR}Error: Magic data directory not found at '{magic_dir}'.{FORMAT_RESET}")
+        return
+
+    for filename in os.listdir(magic_dir):
+        if filename.endswith(".json"):
+            file_path = os.path.join(magic_dir, filename)
+            try:
+                with open(file_path, 'r') as f:
+                    data = json.load(f)
+                    for spell_id, spell_data in data.items():
+                        spell_object = Spell.from_dict(spell_id, spell_data)
+                        register_spell(spell_object)
+            except json.JSONDecodeError:
+                print(f"{FORMAT_ERROR}Error: Could not decode JSON from '{file_path}'. Check for syntax errors.{FORMAT_RESET}")
+            except Exception as e:
+                print(f"{FORMAT_ERROR}An unexpected error occurred while loading spells from '{filename}': {e}{FORMAT_RESET}")
 
 def register_spell(spell: Spell):
     """Adds a spell to the registry."""
@@ -25,183 +52,3 @@ def get_spell_by_name(spell_name: str) -> Optional[Spell]:
         if spell.name.lower() == search_name:
             return spell
     return None
-
-# --- Define Initial Spells ---
-
-register_spell(Spell(
-    spell_id="magic_missile",
-    name="Magic Missile",
-    description="A bolt of pure arcane energy strikes your target.",
-    mana_cost=5,
-    cooldown=3.0,
-    effect_type="damage",
-    effect_value=8,
-    target_type="enemy",
-    cast_message="{caster_name} launches a shimmering bolt!",
-    hit_message="{caster_name}'s missile hits {target_name} for {value} arcane damage!",
-    level_required=1
-))
-
-register_spell(Spell(
-    spell_id="minor_heal",
-    name="Minor Heal",
-    description="Soothes minor wounds with gentle restorative magic.",
-    mana_cost=8,
-    cooldown=6.0,
-    effect_type="heal",
-    effect_value=15,
-    target_type="friendly", # Can target self or others
-    cast_message="{caster_name} channels soothing energy.",
-    heal_message="{caster_name} heals {target_name} for {value} health!",
-    self_heal_message="A soothing warmth spreads through you, restoring {value} health!", # <<< Example custom self-heal message
-    level_required=1
-))
-
-register_spell(Spell(
-    spell_id="fireball",
-    name="Fireball",
-    description="Hurls a ball of roaring flame at the target.",
-    mana_cost=15,
-    cooldown=8.0,
-    effect_type="damage",
-    effect_value=20,
-    target_type="enemy",
-    cast_message="{caster_name} summons a sphere of fire!",
-    hit_message="A fireball engulfs {target_name}, dealing {value} fire damage!",
-    level_required=3,
-    damage_type=EFFECT_FIRE_DAMAGE_TYPE
-))
-
-register_spell(Spell(
-    spell_id="zap", # Simple monster spell
-    name="Zap",
-    description="A weak jolt of electricity.",
-    mana_cost=0, # Monsters might not use mana
-    cooldown=5.0,
-    effect_type="damage",
-    effect_value=5,
-    target_type="enemy",
-    cast_message="{caster_name} crackles with energy!",
-    hit_message="{caster_name} zaps {target_name} for {value} damage!",
-    level_required=1
-))
-
-register_spell(Spell(
-    spell_id="raise_skeleton",
-    name="Raise Skeleton",
-    description="Animates inert bones into a temporary skeletal servant.",
-    mana_cost=1,       # Higher cost for summoning
-    cooldown=1.0,      # Longer cooldown
-    effect_type="summon", # *** NEW Effect Type ***
-    target_type="self", # Typically cast by the player on themselves/area
-    cast_message="{caster_name} chants words of necromancy...",
-    level_required=1,   # Example level requirement
-    # --- NEW Properties for Summoning ---
-    summon_template_id="skeleton_minion", # ID of the NPC template to summon
-    summon_duration=500.0,               # How long it lasts in seconds
-    max_summons=10                       # How many of *this specific* summon can be active
-))
-
-register_spell(Spell(
-    spell_id="bone_shard",
-    name="Bone Shard",
-    description="Launches a sharp fragment of bone at the target.",
-    mana_cost=0, # Minions don't use mana
-    cooldown=4, # Slightly faster than Zap?
-    effect_type="damage",
-    effect_value=6, # Slightly less than Magic Missile, more than Zap?
-    target_type="enemy",
-    cast_message="{caster_name} conjures a shard of bone!",
-    hit_message="A bone shard strikes {target_name} for {value} piercing damage!", # Added damage type flavor
-    level_required=1 # Low requirement for a basic minion spell
-))
-
-register_spell(Spell(
-    spell_id="raise_skeletal_mage",
-    name="Raise Skeletal Mage",
-    description="Summons a skeletal mage from ethereal bone fragments to serve you.",
-    mana_cost=1, # Maybe slightly higher mana cost than the warrior?
-    cooldown=1, # Same or slightly longer cooldown?
-    effect_type="summon",
-    target_type="self",
-    cast_message="{caster_name} draws arcane sigils in the air...",
-    level_required=1, # Slightly higher level requirement?
-    # --- Summoning Properties ---
-    summon_template_id="skeletal_mage_minion", # <<< Point to the new NPC template
-    summon_duration=60.0, # Same duration for now
-    max_summons=3 # Allow maybe fewer mages than warriors?
-))
-
-register_spell(Spell(
-    spell_id="poison_cloud",
-    name="Poison Cloud",
-    description="Conjures a noxious cloud that poisons the target.",
-    mana_cost=12,
-    cooldown=10.0,
-    effect_type="apply_dot", # <<< Use new effect type
-    target_type="enemy",
-    level_required=4,
-    cast_message="{caster_name} conjures a sickly green cloud!",
-    hit_message="{target_name} is enveloped by the poison cloud!", # Message when effect applied
-    # --- NEW DoT Properties ---
-    dot_name="Poison", # Display name for the effect
-    dot_duration=15.0, # Base duration in seconds
-    dot_damage_per_tick=4, # Base damage per tick
-    dot_tick_interval=EFFECT_DEFAULT_TICK_INTERVAL, # Use config default (e.g., 3.0)
-    dot_damage_type=EFFECT_POISON_DAMAGE_TYPE # Use config constant ("poison")
-    # No base effect_value needed if primary purpose is applying DoT
-))
-
-# Ice Equivalent of Fireball
-register_spell(Spell(
-    spell_id="ice_shard",
-    name="Ice Shard",
-    description="Launches a jagged shard of ice at the target.",
-    mana_cost=14, # Slightly different cost for flavor
-    cooldown=8.0,
-    effect_type="damage",
-    effect_value=18, # Slightly different damage for flavor
-    target_type="enemy",
-    cast_message="{caster_name} gathers chilling frost...",
-    hit_message="{caster_name}'s ice shard pierces {target_name}, dealing {value} cold damage!",
-    level_required=3, # Same level as Fireball
-    damage_type="cold" # Define damage type
-))
-
-# Lightning Equivalent of Fireball
-register_spell(Spell(
-    spell_id="chain_lightning", # Name allows for future multi-target expansion
-    name="Chain Lightning",
-    description="Calls down a crackling bolt of lightning upon the target.",
-    mana_cost=16, # Slightly higher cost?
-    cooldown=8.0,
-    effect_type="damage",
-    effect_value=22, # Slightly higher base damage?
-    target_type="enemy",
-    cast_message="{caster_name} calls upon the storm!",
-    hit_message="{caster_name}'s lightning bolt strikes {target_name} for {value} electric damage!",
-    level_required=3, # Same level as Fireball
-    damage_type="electric" # Define damage type
-))
-
-# Fire DoT Spell
-register_spell(Spell(
-    spell_id="immolate",
-    name="Immolate",
-    description="Engulfs the target in magical flames that burn over time.",
-    mana_cost=14, # Similar cost to poison DoT
-    cooldown=9.0, # Similar cooldown
-    effect_type="apply_dot", # Use the apply_dot effect type
-    target_type="enemy",
-    cast_message="{caster_name} gestures, and flames erupt around {target_name}!", # Updated cast message
-    hit_message="{target_name} bursts into magical flames!", # Message when effect *applied*
-    level_required=4, # Similar level to poison DoT
-    # --- DoT Specific Properties ---
-    dot_name="Burning", # Name of the effect shown to player
-    dot_duration=12.0, # Duration in seconds (e.g., 12 seconds)
-    dot_damage_per_tick=5, # Damage per tick (e.g., 5 fire damage)
-    dot_tick_interval=3.0, # How often it ticks (e.g., every 3 seconds -> 4 ticks total)
-    dot_damage_type="fire" # Damage type of the DoT
-))
-
-# Add more spells here...

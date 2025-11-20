@@ -2,16 +2,19 @@
 
 from typing import TYPE_CHECKING, Dict, List, Optional, Any, Tuple
 import time
+import random
 from config import (
     NPC_BASE_HEALTH, NPC_BASE_MANA_REGEN_RATE, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_BEHAVIOR,
     NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN, NPC_DEFAULT_STATS, NPC_DEFAULT_WANDER_CHANCE, NPC_HEALTH_DESC_THRESHOLDS,
     NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_LEVEL_HEALTH_BASE_INCREASE, NPC_LEVEL_UP_HEALTH_HEAL_PERCENT, NPC_LEVEL_UP_STAT_INCREASE,
-    NPC_MANA_REGEN_WISDOM_DIVISOR, NPC_MAX_COMBAT_MESSAGES, NPC_XP_TO_LEVEL_MULTIPLIER, PLAYER_REGEN_TICK_INTERVAL, WORLD_UPDATE_INTERVAL
+    NPC_MANA_REGEN_WISDOM_DIVISOR, NPC_MAX_COMBAT_MESSAGES, NPC_XP_TO_LEVEL_MULTIPLIER, PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR, PLAYER_REGEN_TICK_INTERVAL, WORLD_UPDATE_INTERVAL
 )
+from config.config_player import PLAYER_BASE_HEALTH_REGEN_RATE
 from game_object import GameObject
 from items.inventory import Inventory
 from items.item import Item
 from items.item_factory import ItemFactory
+from magic.spell_registry import SPELL_REGISTRY
 from utils.utils import format_loot_drop_message, format_name_for_display, calculate_xp_gain
 
 # Import the new modules for delegation
@@ -89,7 +92,6 @@ class NPC(GameObject):
         self.original_behavior: Optional[str] = None
 
     def get_description(self) -> str:
-        # ... (this method is unchanged) ...
         health_percent = self.health / self.max_health * 100 if self.max_health > 0 else 0
         health_desc = ""
         if health_percent <= NPC_HEALTH_DESC_THRESHOLDS[0] * 100: health_desc = f"The {self.name} looks severely injured."
@@ -99,29 +101,30 @@ class NPC(GameObject):
         return f"{self.name}\n\n{self.description}\n\n{health_desc}"
 
     def talk(self, topic: Optional[str] = None) -> str:
-        # ... (this method is unchanged) ...
         if self.in_combat: return "They are too busy fighting to talk!"
         if not topic: return self.dialog.get("greeting", self.default_dialog.format(name=self.name))
         return self.dialog.get(topic.lower(), self.default_dialog.format(name=self.name))
 
     def take_damage(self, amount: int, damage_type: str) -> int:
-        # ... (this method is unchanged) ...
-        if not self.is_alive: return 0
-        reduction = self.defense if damage_type == "physical" else self.stats.get("magic_resist", 0)
-        damage_taken = max(1, amount - reduction) if amount > 0 else 0
-        self.health -= damage_taken
-        if self.health <= 0: self.is_alive = False; self.health = 0
+        """Overridden to call the superclass method, ensuring centralized logic."""
+        if not self.is_alive:
+            return 0
+        
+        damage_taken = super().take_damage(amount, damage_type)
+        
+        if self.health <= 0:
+            # The die() method is now called by the combat logic that initiated the damage
+            pass
+            
         return damage_taken
 
     def heal(self, amount: int) -> int:
-        # ... (this method is unchanged) ...
         if not self.is_alive: return 0
         old_health = self.health
         self.health = min(self.max_health, self.health + amount)
         return self.health - old_health
 
     def die(self, world: 'World') -> List[Item]:
-        # ... (this method is unchanged) ...
         if self.properties.get("is_summoned"):
             self.despawn(world, silent=True)
             return []
@@ -139,14 +142,21 @@ class NPC(GameObject):
         dropped_items: List[Item] = []
         if self.loot_table and self.current_region_id and self.current_room_id:
             for item_id, loot_data in self.loot_table.items():
-                if isinstance(loot_data, dict) and loot_data.get("chance", 0) > 0:
-                     if loot_data["chance"] >= 1.0 or loot_data["chance"] > 0:
-                         item = ItemFactory.create_item_from_template(item_id, world)
-                         if item: world.add_item_to_room(self.current_region_id, self.current_room_id, item); dropped_items.append(item)
+                if item_id == "gold_value":
+                    continue
+
+                if isinstance(loot_data, dict) and random.random() < loot_data.get("chance", 0):
+                    quantity_range = loot_data.get("quantity", [1, 1])
+                    quantity_to_drop = random.randint(quantity_range[0], quantity_range[1])
+                    
+                    for _ in range(quantity_to_drop):
+                        item = ItemFactory.create_item_from_template(item_id, world)
+                        if item:
+                            world.add_item_to_room(self.current_region_id, self.current_room_id, item)
+                            dropped_items.append(item)
         return dropped_items
         
     def to_dict(self) -> Dict[str, Any]:
-        # ... (this method is unchanged) ...
         return {
             "template_id": self.template_id, "obj_id": self.obj_id, "name": self.name,
             "current_region_id": self.current_region_id, "current_room_id": self.current_room_id,
@@ -157,7 +167,6 @@ class NPC(GameObject):
         }
 
     def despawn(self, world: 'World', silent: bool = False) -> Optional[str]:
-        # ... (this method is unchanged) ...
         if not self.properties.get("is_summoned"): return None
         self.is_alive = False
         owner_id = self.owner_id or self.properties.get("owner_id")
@@ -169,15 +178,16 @@ class NPC(GameObject):
                     break
         return f"Your {self.name} crumbles to dust." if not silent else None
 
-    def _handle_regen(self, current_time: float):
-        # ... (this method is unchanged) ...
+    def _handle_safe_zone_regen(self, current_time: float):
         if current_time - self.last_regen_time >= PLAYER_REGEN_TICK_INTERVAL:
-            mana_regen = NPC_BASE_MANA_REGEN_RATE * (1 + self.stats.get('wisdom', 5) / NPC_MANA_REGEN_WISDOM_DIVISOR)
-            self.mana = int(min(self.max_mana, self.mana + mana_regen))
+            if self.max_mana > 0:
+                mana_regen = NPC_BASE_MANA_REGEN_RATE * (1 + self.stats.get('wisdom', 5) / NPC_MANA_REGEN_WISDOM_DIVISOR)
+                self.mana = int(min(self.max_mana, self.mana + mana_regen))
+            health_regen = PLAYER_BASE_HEALTH_REGEN_RATE * (1 + self.stats.get('strength', 8) / PLAYER_HEALTH_REGEN_STRENGTH_DIVISOR)
+            self.health = int(min(self.max_health, self.health + health_regen))
             self.last_regen_time = current_time
 
     def gain_experience(self, amount: int) -> Tuple[bool, str]:
-        # ... (this method is unchanged) ...
         if not self.is_alive or amount <= 0: return False, ""
         self.experience += amount
         leveled_up = False
@@ -185,11 +195,13 @@ class NPC(GameObject):
         return leveled_up, f"{self.name} is now level {self.level}!" if leveled_up else ""
 
     def level_up(self) -> None:
-        # ... (this method is unchanged) ...
         self.level += 1
         self.experience -= self.experience_to_level
         self.experience_to_level = int(self.experience_to_level * NPC_XP_TO_LEVEL_MULTIPLIER)
-        for stat in self.stats: self.stats[stat] += NPC_LEVEL_UP_STAT_INCREASE
+        # Only increment stats that are numeric values, skipping dictionaries like 'resistances'.
+        for stat, value in self.stats.items():
+            if isinstance(value, (int, float)):
+                self.stats[stat] += NPC_LEVEL_UP_STAT_INCREASE
         old_max_health = self.max_health
         final_con = self.stats.get('constitution', 8)
         self.max_health += NPC_LEVEL_HEALTH_BASE_INCREASE + int(final_con * NPC_LEVEL_CON_HEALTH_MULTIPLIER)
@@ -225,7 +237,10 @@ class NPC(GameObject):
         
         all_messages_for_player = []
 
-        self._handle_regen(current_time)
+        is_in_safe_zone = world.is_location_safe(self.current_region_id, self.current_room_id)
+        if is_in_safe_zone and not self.in_combat:
+            self._handle_safe_zone_regen(current_time)
+        
         effect_messages = self.process_active_effects(current_time, WORLD_UPDATE_INTERVAL)
         if effect_messages and player and player.current_room_id == self.current_room_id:
              all_messages_for_player.extend(effect_messages)

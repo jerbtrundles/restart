@@ -12,8 +12,9 @@ from items.junk import Junk
 from items.key import Key
 from utils.utils import get_article, simple_plural
 
-@command("inventory", ["i", "inv"], "inventory", "Show items you are carrying.")
+@command("inventory", ["i", "inv"], "inventory", "Show items you are carrying (Text).")
 def inventory_handler(args, context):
+    """Standard text-based inventory listing."""
     world = context["world"]
     player = world.player
     if not player: return f"{FORMAT_ERROR}You must start or load a game first.{FORMAT_RESET}"
@@ -28,7 +29,30 @@ def inventory_handler(args, context):
             equipped_items_found = True
     if not equipped_items_found:
         equipped_text += "  (Nothing equipped)\n"
+    
+    # Add hint for visual mode
+    equipped_text += f"\n{FORMAT_HIGHLIGHT}(Type 'bag' or 'v' for Visual Inventory){FORMAT_RESET}"
     return inventory_text + equipped_text
+
+@command("bag", ["v", "visualinv"], "inventory", "Toggle the visual inventory screen.")
+def visual_inventory_handler(args, context):
+    game = context["game"]
+    game.show_inventory = not game.show_inventory
+    # Return empty string so it doesn't spam chat history behind the window
+    return "" 
+
+@command("invmode", [], "inventory", "Change visual inventory display mode.\nUsage: invmode <text|icon|hybrid>")
+def invmode_handler(args, context):
+    game = context["game"]
+    if not args:
+        return f"Current mode: {game.renderer.inventory_menu.mode}. Usage: invmode <text|icon|hybrid>"
+    
+    mode = args[0].lower()
+    if mode in ["text", "icon", "hybrid"]:
+        game.renderer.inventory_menu.mode = mode
+        return f"{FORMAT_SUCCESS}Visual Inventory mode set to {mode}.{FORMAT_RESET}"
+    else:
+        return f"{FORMAT_ERROR}Invalid mode. Options: text, icon, hybrid{FORMAT_RESET}"
 
 @command("status", ["stat", "st"], "inventory", "Display character status.")
 def status_handler(args, context):
@@ -56,11 +80,12 @@ def equip_handler(args, context):
     success, message = player.equip_item(item_to_equip, slot_name)
     return f"{FORMAT_SUCCESS}{message}{FORMAT_RESET}" if success else f"{FORMAT_ERROR}{message}{FORMAT_RESET}"
 
-@command("unequip", ["remove"], "inventory", "Unequip an item.\nUsage: unequip <slot_name>")
+@command("unequip", ["remove"], "inventory", "Unequip an item by name or slot.\nUsage: unequip <item_name | slot_name>")
 def unequip_handler(args, context):
     player = context["world"].player
     if not player: return f"{FORMAT_ERROR}You must start or load a game first.{FORMAT_RESET}"
     if not player.is_alive: return f"{FORMAT_ERROR}You are dead. You cannot unequip items.{FORMAT_RESET}"
+    
     if not args:
         equipped_text = f"{FORMAT_TITLE}EQUIPPED ITEMS{FORMAT_RESET}\n"
         has_equipped = False
@@ -69,11 +94,34 @@ def unequip_handler(args, context):
                 equipped_text += f"- {slot.replace('_', ' ').capitalize()}: {item.name}\n"
                 has_equipped = True
         if not has_equipped: equipped_text += "  (Nothing equipped)\n"
-        equipped_text += "\nUsage: unequip <slot_name>"
+        equipped_text += "\nUsage: unequip <item_name | slot_name>"
         return equipped_text
-    slot_name = " ".join(args).lower().replace(" ", "_")
-    if slot_name not in player.equipment:
-        valid_slots = ", ".join(player.equipment.keys())
-        return f"{FORMAT_ERROR}Invalid slot '{slot_name}'. Valid slots: {valid_slots}{FORMAT_RESET}"
-    success, message = player.unequip_item(slot_name)
-    return f"{FORMAT_SUCCESS}{message}{FORMAT_RESET}" if success else f"{FORMAT_ERROR}{message}{FORMAT_RESET}"
+
+    identifier = " ".join(args).lower()
+    slot_name_from_identifier = identifier.replace(" ", "_")
+
+    # First, check if the identifier is a valid slot name
+    if slot_name_from_identifier in player.equipment:
+        success, message = player.unequip_item(slot_name_from_identifier)
+        return f"{FORMAT_SUCCESS}{message}{FORMAT_RESET}" if success else f"{FORMAT_ERROR}{message}{FORMAT_RESET}"
+
+    # If not a slot, treat it as an item name and search equipped items
+    exact_matches, partial_matches = [], []
+    for slot, item in player.equipment.items():
+        if item:
+            if identifier == item.name.lower():
+                exact_matches.append(slot)
+            elif identifier in item.name.lower():
+                partial_matches.append(slot)
+
+    matches = exact_matches or partial_matches
+    
+    if not matches:
+        return f"{FORMAT_ERROR}You don't have an item called '{identifier}' equipped.{FORMAT_RESET}"
+    elif len(matches) > 1:
+        ambiguous_items = [f"{player.equipment[s].name} ({s})" for s in matches]
+        return f"{FORMAT_ERROR}You have multiple items like that equipped. Please specify which to unequip: {', '.join(ambiguous_items)}{FORMAT_RESET}"
+    else:
+        slot_to_unequip = matches[0]
+        success, message = player.unequip_item(slot_to_unequip)
+        return f"{FORMAT_SUCCESS}{message}{FORMAT_RESET}" if success else f"{FORMAT_ERROR}{message}{FORMAT_RESET}"

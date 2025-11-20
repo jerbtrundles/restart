@@ -1,7 +1,4 @@
 # commands/magic.py
-"""
-Contains all commands related to casting spells and managing magical abilities.
-"""
 import time
 from typing import Any, Dict, List, Optional
 from commands.command_system import command
@@ -12,6 +9,7 @@ from config import (
 from magic.spell import Spell
 from magic.spell_registry import get_spell, get_spell_by_name
 from npcs.npc import NPC
+from items.item import Item
 
 @command("cast", ["c"], "magic", "Cast a known spell.\nUsage: cast <spell_name> [on <target_name>]")
 def cast_handler(args, context):
@@ -23,7 +21,6 @@ def cast_handler(args, context):
     current_time = time.time()
 
     if not args:
-        # List known spells if no args given, reusing the logic from the spells command
         spells_known_text = player.get_status().split(f"{FORMAT_TITLE}SPELLS KNOWN{FORMAT_RESET}")
         if len(spells_known_text) > 1:
              return f"{FORMAT_TITLE}SPELLS KNOWN{FORMAT_RESET}\n" + spells_known_text[1].strip() + "\n\nUsage: cast <spell_name> [on <target_name>]"
@@ -46,7 +43,26 @@ def cast_handler(args, context):
     if not spell: return f"{FORMAT_ERROR}You don't know a spell called '{spell_name}'.{FORMAT_RESET}"
 
     target = None
-    if spell.target_type == "self":
+    
+    # --- NEW: Handling ITEM Targets for Utility Spells ---
+    if spell.target_type == "item":
+        if not target_name:
+            return f"{FORMAT_ERROR}Cast {spell.name} on what item?{FORMAT_RESET}"
+        
+        # Look for item in room
+        target = world.find_item_in_room(target_name)
+        # Look in inventory
+        if not target:
+            target = player.inventory.find_item_by_name(target_name)
+        
+        if not target:
+             return f"{FORMAT_ERROR}You don't see '{target_name}' here.{FORMAT_RESET}"
+             
+        if not isinstance(target, Item):
+             return f"{FORMAT_ERROR}That is not a valid target for this spell.{FORMAT_RESET}"
+
+    # --- Standard Entity Targets ---
+    elif spell.target_type == "self":
         target = player
     elif target_name:
         target = world.find_npc_in_room(target_name)
@@ -65,12 +81,14 @@ def cast_handler(args, context):
 
     if not target: return f"{FORMAT_ERROR}Invalid target for {spell.name}.{FORMAT_RESET}"
 
-    # Validate target type vs spell requirement
-    is_enemy = isinstance(target, NPC) and target.faction == "hostile"
-    is_friendly_npc = isinstance(target, NPC) and target.faction != "hostile"
-    is_self = target == player
-    if spell.target_type == "enemy" and not is_enemy: return f"{FORMAT_ERROR}You can only cast {spell.name} on hostile targets.{FORMAT_RESET}"
-    if spell.target_type == "friendly" and not (is_friendly_npc or is_self): return f"{FORMAT_ERROR}You can only cast {spell.name} on yourself or friendly targets.{FORMAT_RESET}"
+    # --- Logic Validation ---
+    # We only check entity types if it's not an item spell
+    if spell.target_type != "item":
+        is_enemy = isinstance(target, NPC) and target.faction == "hostile"
+        is_friendly_npc = isinstance(target, NPC) and target.faction != "hostile"
+        is_self = target == player
+        if spell.target_type == "enemy" and not is_enemy: return f"{FORMAT_ERROR}You can only cast {spell.name} on hostile targets.{FORMAT_RESET}"
+        if spell.target_type == "friendly" and not (is_friendly_npc or is_self): return f"{FORMAT_ERROR}You can only cast {spell.name} on yourself or friendly targets.{FORMAT_RESET}"
 
     result = player.cast_spell(spell, target, current_time, world)
     return result["message"]

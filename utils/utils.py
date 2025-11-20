@@ -28,6 +28,7 @@ if(TYPE_CHECKING):
     from player import Player
     from npcs.npc import NPC
 
+# ... (_serialize_item_reference, get_article, simple_plural remain unchanged) ...
 def _serialize_item_reference(item: 'Item', quantity: int, world: 'World') -> Optional[Dict[str, Any]]:
     """
     Creates a dictionary representing an item reference for saving.
@@ -55,7 +56,6 @@ def _serialize_item_reference(item: 'Item', quantity: int, world: 'World') -> Op
                     contained_refs: List[Dict[str, Any]] = []
                     if isinstance(current_value, list):
                         for contained_item in current_value:
-                            # <<< FIX: Use a different variable name to avoid shadowing >>>
                             contained_ref = _serialize_item_reference(contained_item, 1, world)
                             if contained_ref:
                                 contained_refs.append(contained_ref)
@@ -75,7 +75,6 @@ def _serialize_item_reference(item: 'Item', quantity: int, world: 'World') -> Op
                     contained_refs: List[Dict[str, Any]] = []
                     if isinstance(item.properties[key], list):
                         for contained_item in item.properties[key]:
-                            # <<< FIX: Use a different variable name here as well >>>
                             contained_ref = _serialize_item_reference(contained_item, 1, world)
                             if contained_ref:
                                 contained_refs.append(contained_ref)
@@ -113,7 +112,7 @@ def format_name_for_display(
     target: Optional[Union['Player', 'NPC', Item]],
     start_of_sentence: bool = False
 ) -> str:
-    """Formats an entity's name for display, now with mana in debug view."""
+    """Formats an entity's name for display, now with clickable tags."""
     from npcs.npc import NPC
 
     if not target or not hasattr(target, 'name') or not target.name:
@@ -123,11 +122,21 @@ def format_name_for_display(
     target_level = getattr(target, 'level', None)
     is_npc = isinstance(target, NPC)
     is_item = isinstance(target, Item)
-    is_hostile = is_npc and getattr(target, 'faction', 'neutral') == 'hostile'
-    is_generic = not base_name[0].isupper() if base_name else True
 
     color_code = FORMAT_RESET
     
+    if is_npc:
+        faction = getattr(target, 'faction', 'neutral')
+        if faction == 'hostile' and viewer and target_level is not None:
+            viewer_level = getattr(viewer, 'level', 1)
+            color_category = get_level_diff_category(viewer_level, target_level)
+            color_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
+        elif faction in ['friendly', 'player_minion']:
+            color_code = FORMAT_FRIENDLY_NPC
+        
+    elif is_item:
+        color_code = FORMAT_CATEGORY
+
     detail_suffix = ""
     if is_npc and target_level is not None and DEBUG_SHOW_LEVEL:
         hp = int(getattr(target, 'health', 0))
@@ -142,34 +151,26 @@ def format_name_for_display(
             hp_color = FORMAT_SUCCESS
         
         hp_text = f"{hp_color}{hp}/{max_hp} HP{FORMAT_RESET}"
-        
-        # --- NEW: Add Mana Display ---
         mp_text = ""
         max_mp = int(getattr(target, 'max_mana', 0))
         if max_mp > 0:
             mp = int(getattr(target, 'mana', 0))
             mp_color = FORMAT_BLUE
             mp_text = f", {mp_color}{mp}/{max_mp} MP{FORMAT_RESET}"
-        # --- END NEW ---
 
         detail_suffix = f" (Level {target_level}, {hp_text}{mp_text})"
 
-    if is_npc:
-        is_friendly = getattr(target, 'friendly', False)
-        faction = getattr(target, 'faction', 'neutral')
-
-        if is_friendly:
-            color_code = FORMAT_FRIENDLY_NPC
-        elif faction == 'hostile' and viewer and target_level is not None:
-            viewer_level = getattr(viewer, 'level', 1)
-            color_category = get_level_diff_category(viewer_level, target_level)
-            color_code = LEVEL_DIFF_COLORS.get(color_category, FORMAT_RESET)
-    elif is_item:
-        color_code = FORMAT_CATEGORY
-
     name_with_details = f"{base_name}{detail_suffix}"
-    formatted_name_part = f"{color_code}{name_with_details}{FORMAT_RESET}"
+    
+    # --- NEW: Wrap in Clickable Tag ---
+    # Use name for command (e.g., look goblin)
+    # Note: If name has spaces, look handles it.
+    click_wrapper_start = f"[[CMD:look {base_name}]]"
+    click_wrapper_end = "[[/CMD]]"
+    
+    formatted_name_part = f"{click_wrapper_start}{color_code}{name_with_details}{FORMAT_RESET}{click_wrapper_end}"
 
+    is_generic = not base_name[0].isupper() if base_name else True
     result = ""
     if is_generic:
         article = get_article(base_name)
@@ -178,7 +179,6 @@ def format_name_for_display(
         result = formatted_name_part
 
     if start_of_sentence and result:
-        # This logic correctly capitalizes the first letter, skipping over format codes
         first_letter_index = -1; in_code = False
         for i, char in enumerate(result):
              if char == '[': in_code = True
@@ -190,6 +190,7 @@ def format_name_for_display(
 
     return result
 
+# ... (Rest of file: _reverse_direction, get_departure_phrase, get_arrival_phrase, etc. remain unchanged) ...
 def _reverse_direction(direction: str) -> str:
     """Gets the opposite cardinal/relative direction."""
     opposites = {
@@ -289,12 +290,19 @@ def format_loot_drop_message(viewer: Optional[Union['Player', 'NPC']], target: U
     for item_id, data in loot_counts.items():
         name = data["name"]
         count = data["count"]
+        # Manual formatting to include click tags, since we have raw strings here
+        click_start = f"[[CMD:look {name}]]"
+        click_end = "[[/CMD]]"
+        
+        formatted_name = f"{click_start}{FORMAT_CATEGORY}{name}{FORMAT_RESET}{click_end}"
+        
         if count == 1:
             article = get_article(name)
-            loot_message_parts.append(f"{article} {name}")
+            loot_message_parts.append(f"{article} {formatted_name}")
         else:
             plural_name = simple_plural(name)
-            loot_message_parts.append(f"{count} {plural_name}")
+            formatted_plural = f"{click_start}{FORMAT_CATEGORY}{plural_name}{FORMAT_RESET}{click_end}"
+            loot_message_parts.append(f"{count} {formatted_plural}")
 
     loot_str = ""
     formatted_target_name_start = format_name_for_display(viewer, target, start_of_sentence=True)

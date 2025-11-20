@@ -20,7 +20,6 @@ direction_aliases = {
     "u": "up", "d": "down"
 }
 
-# --- MODIFIED: Corrected Type Hints and Logic ---
 def command(name: str, aliases: Optional[List[str]] = None, category: str = "other",
            help_text: str = "No help available.", plugin_id: Optional[str] = None):
     """
@@ -34,7 +33,6 @@ def command(name: str, aliases: Optional[List[str]] = None, category: str = "oth
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        # --- MODIFIED: Added '# type: ignore' to resolve Pylance error ---
         wrapper._command_info = { # type: ignore
             "name": name,
             "aliases": aliases,
@@ -121,24 +119,37 @@ class CommandProcessor:
     """Processes user input and dispatches commands to appropriate handlers."""
 
     def process_input(self, text: str, context: Any = None) -> str:
-        """Process user input and execute the corresponding command."""
+        """
+        Process user input and execute the corresponding command using a
+        longest-match-first strategy for multi-word commands.
+        """
         text = text.strip().lower()
         if not text: return ""
         parts = text.split()
-        command_word = parts[0]
-        args = parts[1:] if len(parts) > 1 else []
         
-        if command_word in direction_aliases:
-            command_word = direction_aliases[command_word]
+        # --- NEW: Longest-Match Parsing Logic ---
+        # Iterate from the longest possible command phrase down to a single word.
+        for i in range(len(parts), 0, -1):
+            potential_cmd = " ".join(parts[:i])
+            
+            # Check for direct match or alias match
+            cmd_key_to_check = potential_cmd
+            if cmd_key_to_check in direction_aliases:
+                cmd_key_to_check = direction_aliases[cmd_key_to_check]
 
-        if command_word in registered_commands:
-            cmd = registered_commands[command_word]
-            if context and isinstance(context, dict):
-                 context['executed_command_name'] = cmd.get('name', command_word)
-                 context['executed_command_aliases'] = cmd.get('aliases', [])
-            return cmd["handler"](args, context)
+            if cmd_key_to_check in registered_commands:
+                cmd_data = registered_commands[cmd_key_to_check]
+                args = parts[i:] # The rest of the input becomes the arguments
+                
+                # Add context for the handler
+                if context and isinstance(context, dict):
+                     context['executed_command_name'] = cmd_data.get('name', cmd_key_to_check)
+                     context['executed_command_aliases'] = cmd_data.get('aliases', [])
+                
+                return cmd_data["handler"](args, context)
 
-        return f"{FORMAT_ERROR}Unknown command: {command_word}{FORMAT_RESET}"
+        # If the loop finishes, no command was found.
+        return f"{FORMAT_ERROR}Unknown command: {parts[0]}{FORMAT_RESET}"
 
     def get_help_text(self) -> str:
         """Generate the top-level help text showing categories and commands."""
