@@ -9,7 +9,10 @@
       "gold_value": { "chance": 0.8, "quantity": [1, 5] },
       "item_starter_dagger": { "chance": 0.3 },
       "item_goblin_ear": { "chance": 0.9 },
-      "item_scroll_random": { "chance": 0.05 }
+      "item_scroll_random": { "chance": 0.05 },
+      "item_goblin_bead_red": { "chance": 0.1 },
+      "item_goblin_bead_blue": { "chance": 0.1 },
+      "item_goblin_bead_green": { "chance": 0.1 }
     },
     "usable_spells": ["zap"],
     "properties": { "aggression": 0.1, "flee_threshold": 0.2, "respawn_cooldown": 300, "spell_cast_chance": 0.2, "wander_chance": 0.5, "move_cooldown": 8 }

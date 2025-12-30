@@ -1,0 +1,65 @@
+# engine/items/lockpick.py
+import random
+from typing import Optional, Any, cast
+from engine.items.item import Item
+from engine.config import FORMAT_ERROR, FORMAT_SUCCESS, FORMAT_HIGHLIGHT, FORMAT_RESET
+from engine.core.skill_system import SkillSystem
+
+class Lockpick(Item):
+    def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Lockpick",
+                 description: str = "No description", weight: float = 0.1,
+                 value: int = 5, break_chance: float = 0.25, **kwargs):
+        super().__init__(obj_id, name, description, weight, value, stackable=True, **kwargs)
+        self.break_chance = break_chance
+        self.update_property("break_chance", break_chance)
+
+    def use(self, user, target: Optional[Item] = None, **kwargs) -> str:
+        if not target:
+            return f"What do you want to use the {self.name} on?"
+
+        # Check Capability (Duck Typing) for lockpicking
+        if hasattr(target, 'pick_lock') and callable(getattr(target, 'pick_lock', None)):
+            
+            # --- Type Safe Casting for Pylance ---
+            # We assume if it has pick_lock, we can treat it as Any to call it
+            target_as_any = cast(Any, target)
+            
+            # --- NEW SKILL LOGIC ---
+            # Determine difficulty (default 30 if not set)
+            difficulty = target.get_property("lock_difficulty", 30)
+            
+            # Attempt check
+            success, debug_msg = SkillSystem.attempt_check(user, "lockpicking", difficulty)
+            
+            # --- XP REWARD / PENALTY ---
+            xp_msg = ""
+            if success:
+                # Grant XP based on difficulty
+                xp_gain = max(10, difficulty // 2)
+                xp_msg = SkillSystem.grant_xp(user, "lockpicking", xp_gain)
+            else:
+                # Grant small XP for failure (learning from mistakes)
+                xp_msg = SkillSystem.grant_xp(user, "lockpicking", 2)
+
+            # --- BREAKAGE LOGIC ---
+            # High skill reduces break chance slightly
+            skill_level = user.get_skill_level("lockpicking")
+            adjusted_break_chance = max(0.05, self.break_chance - (skill_level * 0.005))
+            
+            break_msg = ""
+            if random.random() < adjusted_break_chance:
+                if hasattr(user, "inventory"):
+                    user.inventory.remove_item(self.obj_id, 1)
+                break_msg = f"\n{FORMAT_ERROR}Your lockpick snaps in the mechanism!{FORMAT_RESET}"
+
+            # Execute Result
+            if success:
+                # Call the target's logic to flip the boolean
+                target_as_any.pick_lock(user)
+                msg = f"{FORMAT_SUCCESS}Click! You skillfully pick the lock on the {target.name}.{FORMAT_RESET}"
+            else:
+                msg = f"{FORMAT_ERROR}You fumble with the lock but fail to open it.{FORMAT_RESET}"
+
+            return f"{msg} {debug_msg}{break_msg}{xp_msg}"
+        else:
+            return f"You can't use a lockpick on the {target.name}."

@@ -7,7 +7,7 @@
     "town_square": {
       "name": "Town Square",
       "description": "The heart of Riverside Village. A large stone fountain gurgles peacefully in the center of the cobblestone square. Shops and lanes branch off in all directions, and the distant sound of the flowing river can be heard to the south. A sturdy Quest Board stands near the fountain.",
-      "exits": { "north": "north_gate_road", "south": "river_road", "east": "east_market_road", "west": "west_lane", "northeast": "tavern_exterior" },
+      "exits": { "north": "north_gate_road", "south": "river_road", "east": "east_market_road", "west": "west_lane", "northeast": "tavern_exterior", "southeast": "museum_exterior" },
       "initial_npcs": [
         { "template_id": "village_elder" },
         { "template_id": "alchemist" },
@@ -82,6 +82,7 @@
       "name": "Inside the Forge",
       "description": "The interior is dominated by a massive stone forge, its coals glowing fiercely. Tools and half-finished weapons hang from the walls.",
       "properties": { "outdoors": false, "noisy": true, "smell": "smoky" },
+      "items": [ { "item_id": "item_anvil" } ],
       "exits": { "out": "blacksmith_exterior" },
       "initial_npcs": [ { "template_id": "blacksmith", "instance_id": "blacksmith_grenda_forge" } ]
     },
@@ -116,7 +117,7 @@
     "community_garden": {
       "name": "Community Garden",
       "description": "A well-tended plot of land where villagers grow vegetables and herbs. The air smells of damp earth and fresh greens.",
-      "exits": { "north": "west_lane", "south": "riverside_docks" },
+      "exits": { "north": "west_lane", "east": "river_road" },
       "initial_npcs": [ { "template_id": "wandering_villager", "instance_id": "villager_wandering_2" } ]
     },
     "east_market_road": {
@@ -155,6 +156,7 @@
       "name": "Inside the Alchemist's Shop",
       "description": "The air is thick with the scent of strange herbs and chemicals. Shelves are crowded with oddly shaped bottles, beakers, and bundles of dried plants.",
       "properties": { "outdoors": false, "smell": "herbs and chemicals" },
+      "items": [ { "item_id": "item_alchemy_kit" } ],
       "exits": { "out": "alchemist_exterior" },
       "initial_npcs": [ { "template_id": "alchemist", "instance_id": "alchemist_kaelan_shop" } ]
     },
@@ -171,8 +173,8 @@
     },
     "tavern_exterior": {
       "name": "The Drunken Dragon Tavern",
-      "description": "A large, inviting tavern with a sign depicting a rather cheerful-looking green dragon holding a foamy mug. The sound of laughter and music spills out from within.",
-      "exits": { "south": "east_market_road", "southwest": "town_square", "in": "tavern_main_floor" }
+      "description": "A large, inviting tavern with a sign depicting a rather cheerful-looking green dragon holding a foamy mug. To the east, a pristine path of white stone leads to a grand building with a lotus symbol.",
+      "exits": { "south": "east_market_road", "southwest": "town_square", "in": "tavern_main_floor", "east": "casino:lobby" }
     },
     "tavern_main_floor": {
       "name": "Tavern - Main Floor",
@@ -260,6 +262,21 @@
         "name": "East Bridge Approach",
         "description": "The stone bridge descends here, leading to a path that continues into the vast, open farmlands.",
         "exits": { "west": "bridge_middle", "east": "farmland:farm_bridge" }
+    },
+    "museum_exterior": {
+      "name": "Riverside Museum",
+      "description": "A stately building of white stone, recently renovated. Banners depicting historical artifacts hang from the pillars.",
+      "exits": {
+        "in": "museum_interior",
+        "northwest": "town_square"
+      }
+    },
+    "museum_interior": {
+      "name": "Museum Grand Hall",
+      "description": "Glass display cases line the walls, many still empty. The air is cool and quiet. A curator stands behind a large desk, sorting through papers.",
+      "properties": { "outdoors": false },
+      "exits": { "out": "museum_exterior" },
+      "initial_npcs": [ { "template_id": "curator" } ]
     }
   }
 }

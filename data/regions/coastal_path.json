@@ -48,7 +48,7 @@
             "description": "The muddy ground finally gives way to soft sand. You can hear the rhythmic sound of waves crashing nearby. To the south, you see the sturdy wooden walls of a coastal settlement.",
             "exits": {
                 "north": "salt_marsh",
-                "south": "portbridge:town_gate_south",
+                "south": "portbridge:town_gate_north",
                 "west": "sandy_beach"
             },
             "properties": { "smell": "sea air" },

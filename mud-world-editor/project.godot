@@ -11,10 +11,14 @@ config_version=5
 [application]
 
 config/name="MUD world editor"
+run/main_scene="uid://c2bqv5h65lpqc"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
 
 [display]
 
-window/size/viewport_width=2500
-window/size/viewport_height=1200
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/mode=2
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"

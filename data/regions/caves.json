@@ -147,15 +147,15 @@
       },
       "west_mine_tunnel": {
           "name": "West Mine Tunnel",
-          "description": "This tunnel feels different from the others, with smoother walls and strange, faint carvings. A faint, cold draft comes from a hidden passage to the northwest.",
+          "description": "This tunnel feels different from the others, with smoother walls and strange, faint carvings. A faint, cold draft comes from a hidden passage to the west.",
           "properties": { "dark": true },
-          "exits": { "east": "forgotten_mine_shaft", "northwest": "hidden_passage" }
+          "exits": { "east": "forgotten_mine_shaft", "west": "hidden_passage" }
       },
       "hidden_passage": {
         "name": "Hidden Passage",
         "description": "This narrow passage seems intentionally constructed, connecting the old mine to something even older. It smells of dust and ancient decay.",
         "properties": { "dark": true },
-        "exits": { "southeast": "west_mine_tunnel", "northwest": "ruins:crypt_lower_level" }
+        "exits": { "east": "west_mine_tunnel", "west": "ruins:final_tunnel" }
       }
     }
 }

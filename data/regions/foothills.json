@@ -14,11 +14,12 @@
     "rooms": {
         "grassy_slope": {
             "name": "Grassy Slope",
-            "description": "A wide, open slope covered in tough grasses and heather, climbing steadily upwards from the farmlands. The wind is stronger here. You can see the apple orchards below to the west.",
+            "description": "A wide, open slope covered in tough grasses and heather, climbing steadily upwards from the farmlands. The wind is stronger here. You can see the apple orchards below to the northwest and the town walls to the west.",
             "exits": {
-                "west": "farmland:orchard_east",
+                "west": "town:east_gate",
                 "north": "rocky_outcrop",
-                "east": "shepherds_path"
+                "east": "shepherds_path",
+                "northwest": "farmland:orchard_east"
             },
             "items": [
                  { "item_id": "item_wild_herbs", "quantity": 2 }

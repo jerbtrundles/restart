@@ -1,3 +1,4 @@
+# tools/world_visualizer.py
 import json
 import argparse
 import os

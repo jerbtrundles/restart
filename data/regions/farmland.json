@@ -17,7 +17,8 @@
             "description": "A vast field of golden wheat stretches as far as the eye can see, rustling gently in the breeze. A path cuts through it towards a distant farmhouse visible to the northeast.",
             "exits": {
                 "west": "farm_bridge",
-                "northeast": "farmhouse_path"
+                "northeast": "farmhouse_path",
+                "south": "wheat_field_south"
             }
         },
         "farmhouse_path": {
@@ -132,7 +133,7 @@
             "description": "The neat rows of apple trees end here. The ground begins to rise to the east, climbing towards rocky, windswept hills.",
             "exits": {
                 "west": "orchard_west",
-                "east": "foothills:grassy_slope"
+                "southeast": "foothills:grassy_slope"
             }
         }
     }

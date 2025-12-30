@@ -181,7 +181,9 @@
          { "item_id": "item_leather_tunic" },
          { "item_id": "item_leather_cap" },
          { "item_id": "item_leather_gloves" },
-         { "item_id": "item_leather_boots" }
+         { "item_id": "item_leather_boots" },
+         { "item_id": "item_iron_ingot", "price_multiplier": 1.2 },
+         { "item_id": "item_leather_strip", "price_multiplier": 1.2 }
       ],
       "can_give_generic_quests": true
     }
@@ -274,7 +276,8 @@
         { "item_id": "item_coiled_rope" },
         { "item_id": "item_strange_feather", "price_multiplier": 1.5 },
         { "item_id": "item_rusty_lantern", "price_multiplier": 0.8 },
-        { "item_id": "scroll_raise_skeleton", "price_multiplier": 2.5 }
+        { "item_id": "scroll_raise_skeleton", "price_multiplier": 2.5 },
+        { "item_id": "item_glass_vial" }
       ],
       "can_give_generic_quests": true
     }
@@ -428,9 +431,24 @@
         {
           "item_id": "item_scroll_random",
           "price_multiplier": 2.0
-        }
+        },
+        { "item_id": "item_glass_vial" }
       ],
       "can_give_generic_quests": true
+    }
+  },
+  "curator": {
+    "name": "Curator Vane",
+    "description": "A bespectacled scholar with an obsessive gleam in his eye. He loves nothing more than cataloging history.",
+    "level": 5, "friendly": true, "faction": "friendly", "behavior_type": "stationary",
+    "dialog": {
+      "greeting": "Welcome to the Riverside Museum! We are always looking for new [Collections].",
+      "collections": "History is scattered to the winds. If you find artifacts—coins, idols, rare items—bring them to me. I will ensure they are preserved.",
+      "reward": "Knowledge is its own reward... but I also have funding from the city to pay finders fees."
+    },
+    "properties": {
+      "is_collector": true,
+      "can_give_generic_quests": false
     }
   }
 }

@@ -35,14 +35,15 @@
             "description": "The trail makes a sharp turn here, beginning a steep ascent upwards to the west.",
             "exits": {
                 "east": "frozen_waterfall_base",
-                "west": "up"
+                "west": "rocky_ledge",
+                "up": "up"
             }
         },
         "up": {
             "name": "Steep Ascent",
             "description": "You are on a steep, winding path climbing the mountainside. You've gained significant elevation.",
             "exits": {
-                "east": "switchback_1",
+                "down": "switchback_1",
                 "northwest": "high_pass"
             }
         },
@@ -131,7 +132,7 @@
             "description": "Inside the ice cave, the temperature plummets. The air is still and silent. The ice walls glimmer, reflecting light in strange ways.",
             "exits": {
                 "out": "ice_cave_entrance",
-                "deeper": "ice_cave_chamber"
+                "in": "ice_cave_chamber"
             },
             "properties": { "dark": true }
         },

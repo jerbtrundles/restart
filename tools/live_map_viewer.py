@@ -1,3 +1,4 @@
+# tools/live_map_viewer.py
 import json
 import argparse
 import os

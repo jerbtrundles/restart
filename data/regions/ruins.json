@@ -137,7 +137,7 @@
           "properties": { "dark": true },
           "exits": {
               "southeast": "secret_passage",
-              "west": "caves:hidden_passage"
+              "east": "caves:hidden_passage"
           }
       }
     }
