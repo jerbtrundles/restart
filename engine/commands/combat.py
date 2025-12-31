@@ -14,7 +14,6 @@ def attack_handler(args, context):
     if not player.is_alive: return f"{FORMAT_ERROR}You are dead. You cannot attack.{FORMAT_RESET}"
     if not args: return f"{FORMAT_ERROR}Attack whom?{FORMAT_RESET}"
 
-    # If player is trading, attacking will stop the trade
     if player.trading_with:
         vendor = world.get_npc(player.trading_with)
         if vendor:
@@ -22,23 +21,24 @@ def attack_handler(args, context):
         player.trading_with = None
 
     target_name = " ".join(args).lower()
-    target_npc = None
-    # Prioritize exact match
-    for npc in world.get_current_room_npcs():
-        if target_name == npc.name.lower() or target_name == npc.obj_id:
-            target_npc = npc
-            break
-    # Fallback to partial match
-    if not target_npc:
-        for npc in world.get_current_room_npcs():
-            if target_name in npc.name.lower():
-                target_npc = npc
-                break
+    
+    # 1. Look for live NPCs first
+    target_npc = world.find_npc_in_room(target_name)
+    
+    if target_npc:
+        if not target_npc.is_alive:
+             return f"{FORMAT_ERROR}{target_npc.name} is already defeated.{FORMAT_RESET}"
+    else:
+        # 2. Check for dead bodies in the room to give better feedback
+        rid, rmid = player.current_region_id, player.current_room_id
+        if rid and rmid:
+             all_npcs = [n for n in world.npcs.values() if n.current_region_id == rid and n.current_room_id == rmid]
+             for npc in all_npcs:
+                  if target_name in npc.name.lower():
+                       if not npc.is_alive:
+                            return f"{FORMAT_ERROR}{npc.name} is already defeated.{FORMAT_RESET}"
 
-    if not target_npc:
         return f"{FORMAT_ERROR}No '{target_name}' here to attack.{FORMAT_RESET}"
-    if not target_npc.is_alive:
-        return f"{FORMAT_ERROR}{target_npc.name} is already defeated.{FORMAT_RESET}"
 
     current_time = time.time()
     

@@ -25,20 +25,20 @@ class Item(GameObject):
 
         # Store any additional properties from subclasses
         # Skip keys that are already core attributes or GameObject attributes
-        skip_keys = {"weight", "value", "stackable", "equip_slot", "name", "description", "obj_id", "id"}
+        # Added 'world' to skip_keys to prevent serialization errors if passed in kwargs
+        skip_keys = {"weight", "value", "stackable", "equip_slot", "name", "description", "obj_id", "id", "world"}
         for key, kwarg_value in kwargs.items():
              if key not in skip_keys:
                   self.update_property(key, kwarg_value)
 
     def examine(self) -> str:
-        # ... (examine method remains the same) ...
         base_desc = f"{self.name}\n\n{self.description}\n\nWeight: {self.weight}, Value: {self.value}"
         equip_slots = self.get_property("equip_slot")
         if equip_slots:
             slots_str = ", ".join([s.replace('_', ' ') for s in equip_slots])
             base_desc += f"\nEquip Slot(s): {slots_str}"
         extra_props = []
-        skip_keys = {"weight", "value", "stackable", "equip_slot", "name", "description", "id", "obj_id", "type"}
+        skip_keys = {"weight", "value", "stackable", "equip_slot", "name", "description", "id", "obj_id", "type", "world"}
         for key, value in self.properties.items():
             if key not in skip_keys:
                 if isinstance(value, (int, float, str, bool)):
@@ -49,11 +49,9 @@ class Item(GameObject):
         return base_desc
 
     def use(self, user, **kwargs) -> str:
-        # ... (use method remains the same) ...
         return f"You don't know how to use the {self.name}."
 
     def to_dict(self) -> Dict[str, Any]:
-        # ... (to_dict method remains the same - it includes properties) ...
         data = super().to_dict()
         # Ensure core properties are present at top level for compatibility/readability
         data["weight"] = self.weight

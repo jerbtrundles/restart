@@ -15,9 +15,13 @@ class Container(Item):
                     description: str = "No description", weight: float = 2.0,
                     value: int = 20, capacity: float = 50.0, locked: bool = False,
                     key_id: Optional[str] = None, is_open: bool = False,
-                    contents: Optional[List[Item]] = None,
+                    contents: Optional[List[Any]] = None, # Can be List[Item] OR List[Dict] during load
                     **kwargs):
           
+          # Prevent duplicate stackable arg error
+          if 'stackable' in kwargs:
+               kwargs.pop('stackable')
+
           super().__init__(obj_id, name, description, weight, value, stackable=False, **kwargs)
           
           self.properties["capacity"] = capacity
@@ -25,12 +29,41 @@ class Container(Item):
           self.properties["key_id"] = key_id
           self.properties["is_open"] = is_open
           
-          # Initialize contents. If provided via constructor, use them directly.
-          self.properties["contains"] = contents if contents is not None else []
+          # --- HYDRATE CONTENTS ---
+          # Check 'contents' arg first, then check kwargs for 'contains' (passed from overrides)
+          raw_contents = contents if contents is not None else kwargs.get("contains")
+          
+          hydrated_contents: List[Item] = []
+          
+          if raw_contents:
+               from engine.items.item_factory import ItemFactory
+               # Use 'world' passed via kwargs from ItemFactory
+               world_ref = kwargs.get('world')
+               
+               for entry in raw_contents:
+                    if isinstance(entry, Item):
+                         hydrated_contents.append(entry)
+                    elif isinstance(entry, dict) and "item_id" in entry:
+                         if world_ref:
+                             # Use factory to create item from dict reference
+                             item_id = entry["item_id"]
+                             # Get overrides if present (e.g. from nested serialization)
+                             overrides = entry.get("properties_override", {})
+                             quantity = entry.get("quantity", 1)
+                             
+                             # Recursively create the item
+                             item = ItemFactory.create_item_from_template(item_id, world_ref, **overrides)
+                             if item:
+                                 # For simple containers, we treat each entry as one item instance.
+                                 hydrated_contents.append(item)
+                         else:
+                             print(f"Warning: Cannot hydrate item '{entry.get('item_id')}' in container '{name}' without world context.")
+
+          self.properties["contains"] = hydrated_contents
 
      def get_current_weight(self) -> float:
           """Calculate the current weight of items inside."""
-          return sum(item.weight * getattr(item, 'quantity', 1) for item in self.properties.get("contains", []))
+          return sum(item.weight * getattr(item, 'quantity', 1) for item in self.properties.get("contains", []) if isinstance(item, Item))
 
      def examine(self) -> str:
           """Get a detailed description of the container."""
@@ -53,12 +86,14 @@ class Container(Item):
 
      def list_contents(self) -> str:
           """Return a string listing the contents of the container."""
-          contained_items: List[Item] = self.properties.get("contains", [])
+          contained_items: List[Any] = self.properties.get("contains", [])
           if not contained_items:
                return "  (Empty)"
 
           grouped: Dict[str, Dict[str, Any]] = {}
           for item in contained_items:
+               if not isinstance(item, Item): continue # Skip malformed/unhydrated
+               
                if item.stackable:
                     if item.obj_id not in grouped:
                          grouped[item.obj_id] = {'item': item, 'count': 0}
@@ -191,6 +226,7 @@ class Container(Item):
           item_name_lower = item_name.lower()
           contained_items: List[Item] = self.properties.get("contains", [])
           for item in contained_items:
+               if not isinstance(item, Item): continue
                if item_name_lower in item.name.lower():
                     return item
           return None
@@ -217,9 +253,10 @@ class Container(Item):
           contained_item_refs = []
           contained_items: List[Item] = self.properties.get("contains", [])
           for item in contained_items:
-               item_ref = _serialize_item_reference(item, 1, world)
-               if item_ref:
-                    contained_item_refs.append(item_ref)
+               if isinstance(item, Item):
+                    item_ref = _serialize_item_reference(item, 1, world)
+                    if item_ref:
+                         contained_item_refs.append(item_ref)
 
           if "properties" not in data: data["properties"] = {}
           data["properties"]["contains"] = contained_item_refs

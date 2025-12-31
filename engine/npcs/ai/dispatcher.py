@@ -18,14 +18,28 @@ def handle_ai(npc: 'NPC', world: 'World', current_time: float, player: 'Player')
 
     if npc.is_trading: return None 
 
-    # --- 1. Minion Expiry (High Priority, bypasses movement cooldown) ---
+    # --- 1. Minion Expiry (High Priority) ---
     if npc.behavior_type == "minion":
         duration = npc.properties.get("summon_duration", 0)
         created = npc.properties.get("creation_time", 0)
         if duration > 0 and current_time > (created + duration):
             return npc.despawn(world, silent=False)
+            
+    # --- 2. Schedule Override Check (Before Movement/Idle logic) ---
+    # Check if schedule dictates aggressive behavior for this specific time
+    if npc.behavior_type == "scheduled":
+        game = world.game
+        if game:
+             current_hour = str(game.time_manager.hour)
+             entry = npc.schedule.get(current_hour)
+             if entry:
+                 override = entry.get("behavior_override")
+                 if override == "aggressive":
+                     # Initiate combat scan with FORCED AGGRESSION
+                     initiate_msg = scan_for_targets(npc, world, player, force_aggression=True)
+                     if initiate_msg: return initiate_msg
 
-    # --- 2. High-priority specialized actions ---
+    # --- 3. High-priority specialized actions ---
     if npc.behavior_type == "healer":
         heal_msg = perform_healer_logic(npc, world, current_time, player)
         if heal_msg: return heal_msg
@@ -33,19 +47,19 @@ def handle_ai(npc: 'NPC', world: 'World', current_time: float, player: 'Player')
     if npc.behavior_type == "retreating_for_mana":
         return perform_retreat(npc, world, current_time, player)
 
-    # --- 3. Combat Action (if already in combat) ---
+    # --- 4. Combat Action (if already in combat) ---
     if npc.in_combat:
         if npc.is_alive and npc.health < npc.max_health * npc.flee_threshold:
             flee_msg = try_flee(npc, world, player)
             if flee_msg: return flee_msg
         return npc_combat.try_attack(npc, world, current_time)
 
-    # --- 4. Combat Initiation (if NOT in combat) ---
+    # --- 5. Combat Initiation (if NOT in combat) ---
     initiate_msg = scan_for_targets(npc, world, player)
     if initiate_msg:
         return initiate_msg
 
-    # --- 5. Idle Movement (Cooldown check) ---
+    # --- 6. Idle Movement (Cooldown check) ---
     if current_time - npc.last_moved < npc.move_cooldown: return None
     
     behavior = npc.behavior_type

@@ -29,6 +29,8 @@ class MockRenderer:
             "text_area": {"height": 400}
         }
         self.screen = None 
+        # Support for visual juice testing
+        self.floating_texts = []
     
     def add_message(self, message: str):
         self.message_buffer.append(message)
@@ -44,6 +46,9 @@ class MockRenderer:
     
     def get_zone_at_pos(self, pos):
         return None
+
+    def add_floating_text(self, text, x, y, color):
+        self.floating_texts.append(text)
 
 class GameTestBase(unittest.TestCase):
     """Base class for all game tests."""

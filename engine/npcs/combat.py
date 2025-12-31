@@ -1,5 +1,4 @@
 # engine/npcs/combat.py
-
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 import random
 import time
@@ -7,6 +6,7 @@ from engine.config import (
     HIT_CHANCE_AGILITY_FACTOR, LEVEL_DIFF_COMBAT_MODIFIERS, MAX_HIT_CHANCE, MIN_HIT_CHANCE, MINIMUM_DAMAGE_TAKEN, FORMAT_RESET,
     FORMAT_SUCCESS, NPC_ATTACK_DAMAGE_VARIATION_RANGE, NPC_BASE_HIT_CHANCE, NPC_LOW_MANA_RETREAT_THRESHOLD, FACTION_RELATIONSHIP_MATRIX
 )
+from engine.config.config_display import FORMAT_ERROR
 from engine.core.combat_system import CombatSystem
 from engine.magic.effects import apply_spell_effect
 from engine.magic.spell_registry import get_spell
@@ -19,11 +19,27 @@ if TYPE_CHECKING:
 
 
 def get_relation_to(viewer: Union['NPC', 'Player'], target: Union['NPC', 'Player']) -> int:
+    """
+    Calculates relationship. 
+    If Viewer is NPC and Target is Player: Base Matrix + Player Rep.
+    """
     if not hasattr(viewer, 'faction') or not hasattr(target, 'faction'): return 0
-    viewer_faction, target_faction = viewer.faction, target.faction
+    
+    viewer_faction = viewer.faction
+    target_faction = target.faction
+    
+    # 1. Base Matrix Value
     relation_map = FACTION_RELATIONSHIP_MATRIX.get(viewer_faction)
-    if not relation_map: return 0
-    return relation_map.get(target_faction, 0)
+    base_val = relation_map.get(target_faction, 0) if relation_map else 0
+    
+    # 2. Player Reputation Modifier
+    # Only applies if the viewer is an NPC judging the Player
+    modifier = 0
+    from engine.player import Player
+    if isinstance(target, Player):
+        modifier = target.reputation.get(viewer_faction, 0)
+        
+    return base_val + modifier
 
 def is_hostile_to(npc: 'NPC', other) -> bool:
     return get_relation_to(npc, other) < 0
@@ -36,16 +52,12 @@ def enter_combat(npc: 'NPC', target):
         target.enter_combat(npc)
 
 def exit_combat(npc: 'NPC', target: Optional[Any] = None):
-    """
-    Safely handles exiting combat for an NPC.
-    """
     if target:
         if target in npc.combat_targets:
             npc.combat_targets.remove(target)
             if hasattr(target, "exit_combat"):
                 target.exit_combat(npc)
     else:
-        # Clear everything
         targets_to_remove = list(npc.combat_targets)
         for t in targets_to_remove:
             npc.combat_targets.discard(t)
@@ -57,12 +69,33 @@ def exit_combat(npc: 'NPC', target: Optional[Any] = None):
         npc.combat_target = None
 
 def attack(npc: 'NPC', target) -> Dict[str, Any]:
-    """
-    Optimized to use shared CombatSystem logic.
-    """
     viewer = npc.world.player if npc.world and hasattr(npc.world, 'player') else None
     
-    # Use Core System for calculation
+    # --- BOSS MECHANICS ---
+    # Check for special abilities defined in properties
+    special_abilities = npc.properties.get("special_abilities", [])
+    if special_abilities:
+        import random
+        # Simple Logic: 20% chance to trigger a special if available
+        if random.random() < 0.2:
+            ability = random.choice(special_abilities)
+            name = ability.get("name", "Special Attack")
+            damage_mult = ability.get("damage_multiplier", 1.5)
+            message = ability.get("message", f"{npc.name} uses a special attack!")
+            
+            # Execute Special
+            combat_result = CombatSystem.execute_attack(
+                attacker=npc,
+                defender=target,
+                attack_power=int(npc.attack_power * damage_mult),
+                weapon_name=name,
+                viewer=viewer
+            )
+            
+            # Override message with boss flavor text
+            combat_result["message"] = f"{FORMAT_ERROR}{message}{FORMAT_RESET}\n{combat_result['message']}"
+            return {"message": combat_result["message"], "target_defeated": combat_result["target_defeated"]}
+
     combat_result = CombatSystem.execute_attack(
         attacker=npc,
         defender=target,
@@ -74,12 +107,8 @@ def attack(npc: 'NPC', target) -> Dict[str, Any]:
     return {"message": combat_result["message"], "target_defeated": combat_result["target_defeated"]}
 
 def cast_spell(npc: 'NPC', spell, target, current_time: float) -> Dict[str, Any]:
-    """Casts a spell, but now includes validation to prevent miscasting."""
-    
-    # --- Logic Update: Check dynamic combat state alongside static factions ---
     is_actively_hostile = target in npc.combat_targets or is_hostile_to(npc, target)
 
-    # Failsafe: Prevent friendly spells on enemies and vice-versa
     if spell.target_type == 'friendly' and is_actively_hostile:
         return attack(npc, target)
 
@@ -97,11 +126,11 @@ def cast_spell(npc: 'NPC', spell, target, current_time: float) -> Dict[str, Any]
     return {"message": full_message, "target_defeated": not getattr(target, 'is_alive', True)}
 
 def try_attack(npc: 'NPC', world, current_time: float) -> Optional[str]:
-    # --- UPDATED IMPORT ---
     from . import ai as npc_ai 
     
     player = getattr(world, 'player', None)
     if not player: return None
+    
     if current_time - npc.last_combat_action < npc.combat_cooldown: return None
     
     target = npc.combat_target
@@ -113,7 +142,6 @@ def try_attack(npc: 'NPC', world, current_time: float) -> Optional[str]:
     chosen_spell = None
     if npc.max_mana > 0 and npc.usable_spells and random.random() < npc.spell_cast_chance:
         if npc.mana / npc.max_mana < NPC_LOW_MANA_RETREAT_THRESHOLD:
-            # Use the exposed function from the new package
             retreat_message = npc_ai.start_retreat(npc, world, current_time, player)
             if retreat_message:
                 return retreat_message 
@@ -137,21 +165,28 @@ def try_attack(npc: 'NPC', world, current_time: float) -> Optional[str]:
     
     if action_result:
         messages = [action_result.get("message")]
+        
         if action_result.get("target_defeated", False):
             exit_combat(npc, target)
             
-            if player and npc.properties.get("owner_id") == getattr(player, "obj_id", None):
-                xp_gainer = player
-            else:
-                xp_gainer = npc
+            xp_gainer = None
+            if player:
+                if npc.properties.get("owner_id") == getattr(player, "obj_id", None):
+                    xp_gainer = player
+                    world.dispatch_event("npc_killed", {"player": player, "npc": target})
+                else:
+                    xp_gainer = npc
 
-            xp = calculate_xp_gain(xp_gainer.level, target.level, target.max_health)
-            if xp > 0:
-                leveled, level_msg = xp_gainer.gain_experience(xp)
-                if leveled: messages.append(level_msg)
+            if xp_gainer:
+                xp = calculate_xp_gain(xp_gainer.level, target.level, target.max_health)
+                if xp > 0:
+                    leveled, level_msg = xp_gainer.gain_experience(xp)
+                    if leveled: messages.append(level_msg)
+            
             if hasattr(target, 'die'):
                 possible_loot = target.die(world)
                 if possible_loot: messages.append(format_loot_drop_message(player, target, possible_loot))
+        
         final_message = "\n".join(filter(None, messages))
         if player and player.is_alive and player.current_room_id == npc.current_room_id: return final_message
     return None

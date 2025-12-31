@@ -140,9 +140,12 @@
       },
       "lava_tube": {
           "name": "Lava Tube",
-          "description": "A smooth, cylindrical tunnel formed by ancient lava flows. The air is still and surprisingly warm.",
+          "description": "A smooth, cylindrical tunnel formed by ancient lava flows. The air is still and surprisingly warm. A path leads deeper north into a constructed area.",
           "properties": {"dark": true},
-          "exits": { "out": "lava_tube_entrance" },
+          "exits": { 
+              "out": "lava_tube_entrance",
+              "north": "obsidian_trial:entrance" 
+          },
           "items": [ { "item_id": "item_obsidian_chunk" } ]
       },
       "west_mine_tunnel": {

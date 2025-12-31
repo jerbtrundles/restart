@@ -10,6 +10,7 @@ from engine.items.container import Container
 from engine.items.consumable import Consumable
 from engine.items.key import Key
 from engine.utils.utils import simple_plural, get_article
+from engine.items.item_factory import ItemFactory  # Needed for cloning/creating dropped items
 
 # --- Internal Helpers ---
 
@@ -176,6 +177,7 @@ def _handle_item_disposal(args: List[str], context: Dict[str, Any], command_verb
     items_in_inventory = [slot.item for slot in player.inventory.slots if slot.item]
     if not items_in_inventory: return f"{FORMAT_ERROR}Your inventory is empty.{FORMAT_RESET}"
     
+    # Matching Logic
     items_to_drop = []
     if drop_all_of_type and not item_name: 
         items_to_drop = list(items_in_inventory)
@@ -190,28 +192,78 @@ def _handle_item_disposal(args: List[str], context: Dict[str, Any], command_verb
         if not matches: return f"{FORMAT_ERROR}You don't have any '{item_name}'.{FORMAT_RESET}"
         matches.sort(key=lambda item: item.name)
         
-        if drop_all_of_type or (quantity_requested and quantity_requested > 1): 
-            items_to_drop = matches
-        elif matches: 
-            items_to_drop = [matches[0]]
+        # If dropping all matching items OR multiple (non-stackable handling), we might use list
+        # BUT for stackables, we want to handle the first match and drop quantity.
+        items_to_drop = matches
 
     if not items_to_drop: return f"{FORMAT_ERROR}You don't have any '{item_name}' to {command_verb}.{FORMAT_RESET}"
 
-    qty_to_attempt = len(items_to_drop)
-    if quantity_requested is not None: 
-        qty_to_attempt = min(quantity_requested, len(items_to_drop))
-
+    # Execution Logic
     items_dropped_summary = {}
-    for i in range(qty_to_attempt):
-        item_instance = items_to_drop[i]
-        if player.inventory.remove_item_instance(item_instance):
-            world.add_item_to_room(world.current_region_id, world.current_room_id, item_instance)
-            summary_key = f"{item_instance.obj_id}_{item_instance.name}"
-            if summary_key not in items_dropped_summary: 
-                items_dropped_summary[summary_key] = {"name": item_instance.name, "count": 0}
-            items_dropped_summary[summary_key]["count"] += 1
-        else: 
-            break
+    
+    # If quantity was explicit (e.g., "drop 4 coin"), we process quantity logic
+    # If "drop all", we process list logic.
+    
+    qty_remaining_to_drop = quantity_requested if quantity_requested is not None else float('inf')
+    
+    # Use a copy to iterate because we modify inventory structure? 
+    # remove_item modifies slots but items_to_drop are item references.
+    
+    # We iterate through the matched candidates.
+    for item_instance in items_to_drop:
+        if qty_remaining_to_drop <= 0: break
+        
+        # Case 1: Stackable Item
+        if item_instance.stackable:
+            # How many do we have in this instance? (Actually we check by ID)
+            # The player.inventory.remove_item method handles finding the slot and decrementing qty.
+            
+            # We want to drop `min(qty_remaining_to_drop, amount_in_inventory)`
+            # Note: items_to_drop might contain the same object reference if we scanned slots, 
+            # but matches came from `items_in_inventory` which is `[slot.item ...]`.
+            # So duplicates are possible if multiple slots hold the same item instance (unlikely for stackables, but safe to check).
+            
+            count_in_inv = player.inventory.count_item(item_instance.obj_id)
+            if count_in_inv == 0: continue # Already processed this ID
+            
+            amount_to_process = min(qty_remaining_to_drop, count_in_inv)
+            
+            removed_item_type, actual_removed, _ = player.inventory.remove_item(item_instance.obj_id, amount_to_process)
+            
+            if removed_item_type and actual_removed > 0:
+                # IMPORTANT: For stackables, we must create NEW instances for the room 
+                # because the original instance might remain in the inventory (just with lower qty).
+                # We add 'actual_removed' copies to the room.
+                for _ in range(actual_removed):
+                    # We try to clone via factory to get fresh properties/stats if possible
+                    # or deepcopy if template lookup fails.
+                    dropped_copy = ItemFactory.create_item_from_template(item_instance.obj_id, world)
+                    if not dropped_copy:
+                        import copy
+                        dropped_copy = copy.deepcopy(item_instance)
+                    
+                    world.add_item_to_room(world.current_region_id, world.current_room_id, dropped_copy)
+                
+                # Update Summary
+                summary_key = f"{item_instance.obj_id}_{item_instance.name}"
+                if summary_key not in items_dropped_summary:
+                    items_dropped_summary[summary_key] = {"name": item_instance.name, "count": 0}
+                items_dropped_summary[summary_key]["count"] += actual_removed
+                
+                qty_remaining_to_drop -= actual_removed
+                
+        # Case 2: Non-Stackable Item
+        else:
+            # We remove 1 instance at a time
+            if player.inventory.remove_item_instance(item_instance):
+                world.add_item_to_room(world.current_region_id, world.current_room_id, item_instance)
+                
+                summary_key = f"{item_instance.obj_id}_{item_instance.name}"
+                if summary_key not in items_dropped_summary: 
+                    items_dropped_summary[summary_key] = {"name": item_instance.name, "count": 0}
+                items_dropped_summary[summary_key]["count"] += 1
+                
+                qty_remaining_to_drop -= 1
 
     if not items_dropped_summary: return f"{FORMAT_ERROR}You couldn't {command_verb} any '{item_name}'.{FORMAT_RESET}"
     

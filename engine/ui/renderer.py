@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Dict, Any, Optional
 from engine.config import *
 from engine.ui import panels
 from engine.ui import minimap
+from engine.ui.floating_text import FloatingText
 from engine.ui.inventory_menu import InventoryMenu
 from engine.utils.text_formatter import TextFormatter, ClickableZone
 from engine.magic.spell_registry import get_spell
@@ -54,6 +55,12 @@ class Renderer:
             margin=10,
             line_spacing=LINE_SPACING
         )
+
+        self.floating_texts: List[FloatingText] = []
+
+    def add_floating_text(self, text: str, x: int, y: int, color: tuple):
+        """Adds a floating text effect to the queue."""
+        self.floating_texts.append(FloatingText(text, x, y, color))
 
     def get_zone_at_pos(self, screen_pos: tuple[int, int]) -> Optional[ClickableZone]:
         """
@@ -273,6 +280,19 @@ class Renderer:
                 self.inventory_menu.render(self.screen, overlay_rect)
                 for r, cmd in self.inventory_menu.active_hotspots:
                     self._static_hotspots.append(ClickableZone(r, cmd))
+
+        # 5. Draw Visual Juice (Floating Text)
+        # We need dt for smooth animation, but update() handles logic. 
+        # Ideally, we pass dt to draw, but for now we calculate simplistic frame time or rely on fixed step.
+        # Let's grab the last clock tick from game if possible, or just use a small constant for visual smoothness.
+        dt = 0.033 # Approx 30 FPS
+        
+        active_texts = []
+        for ft in self.floating_texts:
+            if ft.update(dt):
+                ft.draw(self.screen, self.title_font) # Use larger font for impact
+                active_texts.append(ft)
+        self.floating_texts = active_texts
 
     def _draw_text_area(self):
         """

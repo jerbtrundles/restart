@@ -8,7 +8,7 @@
     "faction": "friendly",
     "behavior_type": "wanderer",
     "stats": {
-      "strength": 700,
+      "strength": 7,
       "dexterity": 8,
       "constitution": 9,
       "agility": 9,
@@ -358,6 +358,10 @@
     },
     "dialog": {
       "greeting": "Keep the peace, citizen."
+    },
+    "properties": {
+      "aggression": 1.0,
+      "move_cooldown": 5
     }
   },
   "healer": {

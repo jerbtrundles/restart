@@ -14,23 +14,39 @@ from engine.player import Player
 from engine.npcs.npc import NPC
 
 def _display_vendor_inventory(player: Player, vendor: NPC, world) -> str:
+    # 1. Items defined in properties (Infinite stock templates)
     vendor_items_refs = vendor.properties.get("sells_items", [])
-    if not vendor_items_refs: return f"{vendor.name} has nothing to sell right now."
+    
     display_lines = [f"{FORMAT_TITLE}{vendor.name}'s Wares:{FORMAT_RESET}\n"]
-    for item_ref in vendor_items_refs:
-        item_id = item_ref.get("item_id")
-        if not item_id: continue
-        
-        template = world.item_templates.get(item_id)
-        # Fix: Explicit None check before accessing template attributes
-        if not template: 
-            continue
+    
+    # List Template Items
+    if vendor_items_refs:
+        for item_ref in vendor_items_refs:
+            item_id = item_ref.get("item_id")
+            if not item_id: continue
             
-        item_name = template.get("name", "Unknown Item")
-        base_value = template.get("value", 0)
-        price_multiplier = item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
-        buy_price = max(VENDOR_MIN_BUY_PRICE, int(base_value * price_multiplier))
-        display_lines.append(f"- {item_name:<{VENDOR_LIST_ITEM_NAME_WIDTH}} | Price: {buy_price:>{VENDOR_LIST_PRICE_WIDTH}} gold")
+            template = world.item_templates.get(item_id)
+            if not template: continue
+                
+            item_name = template.get("name", "Unknown Item")
+            base_value = template.get("value", 0)
+            price_multiplier = item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
+            buy_price = max(VENDOR_MIN_BUY_PRICE, int(base_value * price_multiplier))
+            
+            display_lines.append(f"- {item_name:<{VENDOR_LIST_ITEM_NAME_WIDTH}} | Price: {buy_price:>{VENDOR_LIST_PRICE_WIDTH}} gold")
+
+    # 2. Items in actual inventory (Buybacks / Dynamic stock)
+    for slot in vendor.inventory.slots:
+        if slot.item:
+            item_name = slot.item.name
+            buy_price = max(VENDOR_MIN_BUY_PRICE, int(slot.item.value * DEFAULT_VENDOR_SELL_MULTIPLIER))
+            
+            qty_str = f" (x{slot.quantity})" if slot.quantity > 1 else ""
+            display_lines.append(f"- {item_name}{qty_str:<{VENDOR_LIST_ITEM_NAME_WIDTH - len(qty_str)}} | Price: {buy_price:>{VENDOR_LIST_PRICE_WIDTH}} gold")
+
+    if len(display_lines) == 1:
+        return f"{vendor.name} has nothing to sell right now."
+
     display_lines.append(f"\nYour Gold: {player.gold}\n\nCommands: list, buy <item> [qty], sell <item> [qty], stoptrade")
     return "\n".join(display_lines)
 
@@ -100,6 +116,42 @@ def buy_handler(args, context):
     except ValueError: return f"{FORMAT_ERROR}Invalid quantity specified.{FORMAT_RESET}"
     if not item_name: return f"{FORMAT_ERROR}You must specify an item name.{FORMAT_RESET}"
 
+    # Search Priority: Vendor Inventory (Buybacks) -> Template Stock
+    found_inv_item = vendor.inventory.find_item_by_name(item_name)
+    
+    if found_inv_item:
+        available_qty = vendor.inventory.count_item(found_inv_item.obj_id)
+        if quantity > available_qty:
+            return f"{FORMAT_ERROR}{vendor.name} only has {available_qty} {found_inv_item.name}(s).{FORMAT_RESET}"
+            
+        base_value = found_inv_item.value
+        buy_price_per_item = max(VENDOR_MIN_BUY_PRICE, int(base_value * DEFAULT_VENDOR_SELL_MULTIPLIER))
+        total_cost = buy_price_per_item * quantity
+        
+        if player.gold < total_cost: return f"{FORMAT_ERROR}You don't have enough gold (Need {total_cost}, have {player.gold}).{FORMAT_RESET}"
+
+        can_add, inv_msg = player.inventory.can_add_item(found_inv_item, quantity)
+        if not can_add: return f"{FORMAT_ERROR}{inv_msg}{FORMAT_RESET}"
+        
+        player.gold -= total_cost
+        
+        # Move items from vendor to player
+        removed_item, removed_qty, _ = vendor.inventory.remove_item(found_inv_item.obj_id, quantity)
+        
+        if removed_item:
+            # Check if stackable and if template exists, prefer creating from template to ensure fresh instance if desired,
+            # or just adding the removed reference (or clones if stackable logic requires it).
+            if removed_item.stackable and removed_item.obj_id in world.item_templates:
+                # Re-create to be safe against reference sharing if not fully removed
+                for _ in range(quantity):
+                    new_item = ItemFactory.create_item_from_template(removed_item.obj_id, world)
+                    if new_item: player.inventory.add_item(new_item)
+            else:
+                player.inventory.add_item(removed_item, quantity)
+
+        return f"{FORMAT_SUCCESS}You buy {quantity} {found_inv_item.name}{'' if quantity == 1 else 's'} for {total_cost} gold.{FORMAT_RESET}"
+
+    # Fallback: Template Search
     found_item_ref = None; found_template = None
     for item_ref in vendor.properties.get("sells_items", []):
         item_id = item_ref.get("item_id")
@@ -122,7 +174,6 @@ def buy_handler(args, context):
     total_cost = buy_price_per_item * quantity
     if player.gold < total_cost: return f"{FORMAT_ERROR}You don't have enough gold (Need {total_cost}, have {player.gold}).{FORMAT_RESET}"
     
-    # Create temp item to check inventory constraints
     temp_item = ItemFactory.create_item_from_template(item_id, world)
     if not temp_item: return f"{FORMAT_ERROR}Internal error creating item '{item_id}'. Cannot buy.{FORMAT_RESET}"
     
@@ -138,7 +189,6 @@ def buy_handler(args, context):
               added, add_msg = player.inventory.add_item(item_instance, 1)
               if added: items_added_successfully += 1
               else:
-                   print(f"Error: Failed to add '{item_instance.name}' to inventory despite passing checks: {add_msg}")
                    player.gold += buy_price_per_item * (quantity - items_added_successfully)
                    return f"{FORMAT_ERROR}Failed to add all items to inventory. Transaction partially reverted.{FORMAT_RESET}"
          else:
@@ -189,6 +239,10 @@ def sell_handler(args, context):
     if not removed_item_type or actual_removed_count != quantity:
          return f"{FORMAT_ERROR}Something went wrong removing {item_to_sell.name} from your inventory. Sale cancelled.{FORMAT_RESET}"
          
+    # --- ADD TO VENDOR INVENTORY (Buyback) ---
+    if removed_item_type:
+        vendor.inventory.add_item(removed_item_type, actual_removed_count)
+
     player.gold += total_gold_gain
     return f"{FORMAT_SUCCESS}You sell {quantity} {removed_item_type.name}{'' if quantity == 1 else 's'} for {total_gold_gain} gold.{FORMAT_RESET}\nYour Gold: {player.gold}"
 
@@ -227,7 +281,6 @@ def repair_handler(args, context):
     repair_cost, error_msg = _calculate_repair_cost(item_to_repair)
     if error_msg: return f"{FORMAT_ERROR}{error_msg}{FORMAT_RESET}"
     
-    # Check for None explicitly because 0 is falsy but valid
     if repair_cost is None: 
         return f"{FORMAT_ERROR}Cannot determine repair cost for {item_to_repair.name}.{FORMAT_RESET}"
     

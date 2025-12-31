@@ -58,8 +58,6 @@ class InputHandler:
                 game.selected_class_index = (game.selected_class_index - 1) % len(game.available_classes)
             elif event.key == pygame.K_DOWN:
                 game.selected_class_index = (game.selected_class_index + 1) % len(game.available_classes)
-            # Pressing Enter or Space on class list shouldn't start game unless name is filled? 
-            # Let's allow Enter to start game from anywhere if name is valid
         
         elif game.creation_active_field == "name_input":
             if event.key == pygame.K_BACKSPACE:
@@ -165,10 +163,13 @@ class InputHandler:
 
     def _handle_tab_completion(self):
         if not self.input_text.strip(): return
-        if self.input_text.strip() != self.tab_completion_buffer or not self.tab_suggestions:
+        
+        # If buffer is empty or suggestions cleared, it's a new completion cycle
+        if not self.tab_completion_buffer or not self.tab_suggestions:
             self.tab_completion_buffer = self.input_text.strip()
             self.tab_suggestions = self.command_processor.get_command_suggestions(self.tab_completion_buffer)
             self.tab_index = -1
+            
         if self.tab_suggestions:
             self.tab_index = (self.tab_index + 1) % len(self.tab_suggestions)
             self.input_text = self.tab_suggestions[self.tab_index]

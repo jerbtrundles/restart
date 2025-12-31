@@ -14,17 +14,19 @@ class Gem(Item):
                  value: int = 50, # Gems are valuable
                  **kwargs):
         """Initialize a gem item."""
+        
+        # Use value from template if exists, otherwise default to True for Gems
+        is_stackable = kwargs.pop('stackable', True)
+
         super().__init__(
             obj_id=obj_id,
             name=name,
             description=description,
             weight=weight,
             value=value,
-            stackable=True, # Gems should be stackable
+            stackable=is_stackable,
             **kwargs
         )
-        # Ensure stackable is correctly set in properties
-        self.update_property("stackable", True)
 
     def use(self, user, **kwargs) -> str:
         """Using a gem just examines its quality."""

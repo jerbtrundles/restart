@@ -1,5 +1,5 @@
 # engine/player/persistence.py
-from typing import Dict, Any, TYPE_CHECKING, cast
+from typing import Dict, Any, TYPE_CHECKING, cast, Optional
 from engine.utils.utils import _serialize_item_reference
 
 if TYPE_CHECKING:
@@ -11,10 +11,8 @@ class PlayerPersistenceMixin:
     Mixin class handling serialization for the Player.
     """
     def to_dict(self, world: 'World') -> Dict[str, Any]:
-        # Cast self to Player to satisfy static analysis
         p = cast('Player', self)
         
-        # Use super().to_dict() from GameObject (which Player inherits from)
         data = super().to_dict() # type: ignore
         data.update({
             "gold": p.gold, "health": p.health, "max_health": p.max_health,
@@ -35,6 +33,20 @@ class PlayerPersistenceMixin:
             "last_talked_to": p.last_talked_to,
             "collections_progress": p.collections_progress,
             "collections_completed": p.collections_completed,
-            "follow_target": p.follow_target
+            "follow_target": p.follow_target,
+            # --- New ---
+            "reputation": p.reputation
         })
         return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], world: 'World') -> Optional['Player']:
+        # This method is overridden in core.py, but the mixin structure suggests this might be dead code
+        # if Player.from_dict calls cls(...) directly. 
+        # However, to be safe and consistent with mixin patterns:
+        
+        # NOTE: logic is actually in core.py's Player.from_dict which does NOT call super().from_dict
+        # because Player inherits from GameObject, and GameObject.from_dict creates a GameObject, not Player.
+        # So Player.from_dict fully implements loading. 
+        # This Mixin is mostly for organization of `to_dict`.
+        pass

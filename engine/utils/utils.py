@@ -52,6 +52,19 @@ def _serialize_item_reference(item: 'Item', quantity: int, world: 'World') -> Op
     override_props: Dict[str, Any] = {}
     known_dynamic_props = {"durability", "uses", "is_open", "locked", "contains"}
 
+    # --- Check for Core Attribute Overrides ---
+    # These are stored on the instance, not always in properties, so we check explicitly.
+    if template:
+        if item.name != template.get("name"):
+            override_props["name"] = item.name
+        if item.description != template.get("description"):
+            override_props["description"] = item.description
+    else:
+        # If no template, save everything critical
+        override_props["name"] = item.name
+        override_props["description"] = item.description
+
+    # --- Check Properties ---
     if template:
         template_props = template.get("properties", {})
         for key, current_value in item.properties.items():

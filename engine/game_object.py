@@ -4,6 +4,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import uuid
 import time
 from engine.config import EFFECT_DEFAULT_TICK_INTERVAL, FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, NPC_DOT_FLAVOR_MESSAGES, MINIMUM_DAMAGE_TAKEN
+from engine.config.config_display import SCREEN_HEIGHT, SCREEN_WIDTH
 
 class GameObject:
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown",
@@ -78,6 +79,18 @@ class GameObject:
         name_lower = effect_name.lower()
         return any(eff.get("name", "").lower() == name_lower for eff in self.active_effects)
 
+    def has_effect_tag(self, tag: str) -> bool:
+        """Checks if any active effect has a specific tag (e.g. 'poison', 'curse')."""
+        tag_lower = tag.lower()
+        for eff in self.active_effects:
+            tags = eff.get("tags", [])
+            # Support both list of strings and single string
+            if isinstance(tags, list):
+                if any(t.lower() == tag_lower for t in tags): return True
+            elif isinstance(tags, str):
+                if tags.lower() == tag_lower: return True
+        return False
+
     def take_damage(self, amount: int, damage_type: str) -> int:
         if not self.is_alive or amount <= 0:
             return 0
@@ -103,7 +116,7 @@ class GameObject:
         resistance_multiplier = 1.0 - (resistance_percent / 100.0)
         final_damage = int(damage_after_flat_reduction * resistance_multiplier)
 
-        # 4. Ensure at least minimum damage is dealt if the initial damage was positive
+        # 4. Ensure at least minimum damage is dealt
         actual_damage_taken = max(MINIMUM_DAMAGE_TAKEN, final_damage) if final_damage > 0 else 0
 
         # 5. Apply damage to health
@@ -113,11 +126,27 @@ class GameObject:
 
         if new_health <= 0:
             self.is_alive = False
-            # The die() method is called by the specific Player/NPC class
 
-        # CHANGED: Return the calculated damage (actual_damage_taken) 
-        # instead of the health lost (old_health - new_health).
-        # This ensures killshots display the full damage value (Overkill).
+        # --- VISUAL JUICE (Floating Text) ---
+        # Use getattr to safely access 'world' and 'game' without Pylance errors
+        world_ref = getattr(self, 'world', None)
+        if world_ref:
+            game_ref = getattr(world_ref, 'game', None)
+            if game_ref and hasattr(game_ref, 'renderer'):
+                
+                # Calculate Position
+                # Default to center screen
+                x = SCREEN_WIDTH // 2 + random.randint(-50, 50)
+                y = SCREEN_HEIGHT // 2 - 100
+                
+                # Determine Color
+                # We check class name string to avoid circular import of Player class for isinstance check
+                is_player = self.__class__.__name__ == "Player"
+                color = (255, 50, 50) if is_player else (255, 255, 255)
+                
+                # Add Text
+                game_ref.renderer.add_floating_text(f"-{actual_damage_taken}", x, y, color)
+
         return int(actual_damage_taken)
 
     def heal(self, amount: int) -> int:
@@ -155,16 +184,35 @@ class GameObject:
         if not effect_to_remove:
             return False
 
-        # If it was a stat modifier, revert the changes
         if effect_to_remove.get("type") == "stat_mod":
             for stat, value in effect_to_remove.get("modifiers", {}).items():
                 self.stat_modifiers[stat] = self.stat_modifiers.get(stat, 0) - value
-                # Clean up the dict if the modifier becomes zero
                 if self.stat_modifiers.get(stat) == 0:
                     del self.stat_modifiers[stat]
         
         self.active_effects.remove(effect_to_remove)
         return True
+
+    def remove_effects_by_tag(self, tag: str) -> List[str]:
+        """Removes all effects matching a specific tag."""
+        removed_names = []
+        tag_lower = tag.lower()
+        
+        # Iterate backwards to safely remove
+        for i in range(len(self.active_effects) - 1, -1, -1):
+            eff = self.active_effects[i]
+            tags = eff.get("tags", [])
+            match = False
+            if isinstance(tags, list):
+                if any(t.lower() == tag_lower for t in tags): match = True
+            elif isinstance(tags, str):
+                if tags.lower() == tag_lower: match = True
+            
+            if match:
+                self.remove_effect(eff["name"])
+                removed_names.append(eff["name"])
+                
+        return removed_names
 
     def process_active_effects(self, current_time: float, time_delta: float) -> List[str]:
             from engine.player import Player

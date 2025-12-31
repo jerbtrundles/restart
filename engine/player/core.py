@@ -1,4 +1,3 @@
-# engine/player/core.py
 import time
 import random
 from typing import List, Dict, Optional, Any, Tuple, Set, TYPE_CHECKING, cast
@@ -35,7 +34,6 @@ from engine.player.persistence import PlayerPersistenceMixin
 if TYPE_CHECKING:
     from engine.world.world import World
 
-# MIXINS MUST COME BEFORE GameObject TO OVERRIDE METHODS CORRECTLY
 class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
     def __init__(self, name: str, obj_id: str = "player"):
         super().__init__(obj_id=obj_id, name=name, description="The main character.")
@@ -85,7 +83,7 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
         # Interaction State
         self.trading_with: Optional[str] = None
         self.active_minigame: Optional[Dict[str, Any]] = None
-        self.follow_target: Optional[str] = None # Added for follow command
+        self.follow_target: Optional[str] = None 
         
         # Conversation System
         self.conversation = ConversationHistory()
@@ -95,24 +93,27 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
         self.collections_progress: Dict[str, List[str]] = {} 
         self.collections_completed: Dict[str, bool] = {} 
 
+        # Reputation (Faction Name -> Integer Value)
+        # 0 is neutral relative to the matrix. Positive is liked, Negative is disliked.
+        self.reputation: Dict[str, int] = {} 
+
+    def adjust_reputation(self, faction: str, amount: int):
+        """Modifies reputation with a specific faction."""
+        current = self.reputation.get(faction, 0)
+        self.reputation[faction] = current + amount
+
     def get_skill_level(self, skill_name: str) -> int:
-        """Safely gets the level of a skill, defaulting to 0."""
         skill_data = self.skills.get(skill_name)
-        if not skill_data:
-            return 0
-        if isinstance(skill_data, int):
-            return skill_data
+        if not skill_data: return 0
+        if isinstance(skill_data, int): return skill_data
         return skill_data.get("level", 0)
 
     def add_skill(self, skill_name: str, level: int = 1) -> None:
-        """Initializes or increments a skill."""
         if skill_name not in self.skills:
             self.skills[skill_name] = {"level": level, "xp": 0}
         else:
-            # Legacy check
             if isinstance(self.skills[skill_name], int):
                 self.skills[skill_name] = {"level": self.skills[skill_name], "xp": 0} # type: ignore
-                
             self.skills[skill_name]["level"] += level
 
     def apply_class_template(self, class_data: Dict[str, Any]):
@@ -220,15 +221,19 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
     def die(self, world: Optional['World'] = None) -> None:
         if not self.is_alive: return
         self.health = 0; self.is_alive = False; self.in_combat = False
-        if world and hasattr(world, 'npcs'):
-            for npc in world.npcs.values():
+        
+        target_world = world or self.world
+        if target_world and hasattr(target_world, 'npcs'):
+            for npc in target_world.npcs.values():
                 if npc.in_combat and self in npc.combat_targets: npc.exit_combat(self)
         self.combat_targets.clear(); self.active_effects.clear()
-        if self.world:
+        
+        local_world = self.world
+        if local_world:
             all_summon_ids = [inst_id for ids in self.active_summons.values() for inst_id in ids]
             for instance_id in all_summon_ids:
-                summon = self.world.get_npc(instance_id)
-                if summon and hasattr(summon, 'despawn'): summon.despawn(self.world, silent=True)
+                summon = local_world.get_npc(instance_id)
+                if summon and hasattr(summon, 'despawn'): summon.despawn(local_world, silent=True)
         self.active_summons = {}
 
     def respawn(self) -> None:
@@ -274,24 +279,18 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
                     if summon and summon.is_alive and hasattr(summon, 'enter_combat'): summon.enter_combat(target)
 
     def exit_combat(self, target: Optional[Any] = None) -> None:
-        """
-        Exits combat with a specific target or all targets.
-        """
         if target:
-            # Safe removal of a single target
             if target in self.combat_targets:
                 self.combat_targets.discard(target)
                 if hasattr(target, "exit_combat"):
                     target.exit_combat(self)
         else:
-            # Clear everything only if target is explicitly None
             target_list = list(self.combat_targets)
             for t in target_list:
                 self.combat_targets.discard(t)
                 if hasattr(t, "exit_combat"):
                     t.exit_combat(self)
 
-        # Only stop the combat state if no enemies remain
         if not self.combat_targets:
             self.in_combat = False
             self.combat_target = None
@@ -356,7 +355,11 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
                 leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
                 if leveled_up and level_up_msg: result_message += "\n" + level_up_msg
             
-            loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
+            current_world = world or self.world
+            loot_str = ""
+            if current_world and hasattr(target, 'die'):
+                 loot_str = format_loot_drop_message(self, target, target.die(current_world))
+                 
             if loot_str: result_message += "\n" + loot_str
             if quest_update_message: result_message += "\n" + quest_update_message
             
@@ -367,44 +370,63 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
 
     def cast_spell(self, spell: Spell, target, current_time: float, world: Optional['World'] = None) -> Dict[str, Any]:
         if self.has_effect("Stun"): return {"success": False, "message": f"{FORMAT_ERROR}You are stunned!{FORMAT_RESET}", "mana_cost": 0}
+        
+        # --- AoE Logic ---
+        targets = []
+        if spell.target_type == "all_enemies":
+            target_world = world or self.world
+            if not target_world: return {"success": False, "message": "System Error: No world context for AoE.", "mana_cost": 0}
+            
+            from engine.npcs.combat import is_hostile_to
+            room_npcs = target_world.get_npcs_in_room(self.current_region_id or "", self.current_room_id or "")
+            targets = [n for n in room_npcs if is_hostile_to(n, self)]
+            if not targets:
+                 return {"success": False, "message": "There are no enemies here to hit.", "mana_cost": 0}
+        else:
+            # Single Target Logic
+            if spell.target_type == 'enemy':
+                 from engine.npcs.npc import NPC
+                 is_npc_friendly = isinstance(target, NPC) and target.faction != 'hostile'
+                 is_self = (target == self)
+                 
+                 if is_self or is_npc_friendly:
+                      return {"success": False, "message": f"{FORMAT_ERROR}You can only cast {spell.name} on hostile targets.{FORMAT_RESET}", "mana_cost": 0}
+            
+            targets = [target]
+
         can_cast, reason = self.can_cast_spell(spell, current_time)
         if not can_cast: return {"success": False, "message": reason, "mana_cost": 0}
+
         self.mana -= spell.mana_cost
         self.spell_cooldowns[spell.spell_id] = current_time + spell.cooldown
-        if spell.target_type == "enemy" and target != self: self.enter_combat(target)
         
-        value, effect_message = apply_spell_effect(self, target, spell, self)
-        full_message = f"{spell.format_cast_message(self)}\n{effect_message}"
-        if spell.target_type == "enemy" or target != self: self._add_combat_message(effect_message)
+        results = []
         
-        result = {"success": True, "message": full_message, "value": value}
-        if not getattr(target, 'is_alive', True) and spell.effect_type == "damage":
-            self.exit_combat(target)
-            quest_update_message = None
-            if world: quest_update_message = world.dispatch_event("npc_killed", {"player": self, "npc": target})
-
-            gold_dropped = 0
-            if hasattr(target, 'loot_table'):
-                gold_data = target.loot_table.get("gold_value")
-                if gold_data:
-                    if random.random() < gold_data.get("chance", 0.0):
-                        qty_range = gold_data.get("quantity", [1, 1])
-                        gold_dropped = random.randint(qty_range[0], qty_range[1])
-                        if gold_dropped > 0:
-                            self.gold += gold_dropped
-                            result["message"] += f"\n{FORMAT_SUCCESS}You find {gold_dropped} gold.{FORMAT_RESET}"
+        # Iterate Targets
+        for t in targets:
+            if spell.target_type == "all_enemies" or (spell.target_type == "enemy" and t != self): 
+                self.enter_combat(t)
             
-            final_xp_gained = calculate_xp_gain(self.level, getattr(target, 'level', 1), getattr(target, 'max_health', 10))
-            if final_xp_gained > 0:
-                result["message"] += f"\n{FORMAT_SUCCESS}You gain {final_xp_gained} experience!{FORMAT_RESET}"
-                leveled_up, level_up_msg = self.gain_experience(final_xp_gained)
-                if leveled_up and level_up_msg: result["message"] += "\n" + level_up_msg
+            value, effect_message = apply_spell_effect(self, t, spell, self)
+            results.append(effect_message)
+            
+            if not getattr(t, 'is_alive', True) and spell.effect_type == "damage":
+                 self.exit_combat(t)
+                 target_world = world or self.world
+                 if target_world: target_world.dispatch_event("npc_killed", {"player": self, "npc": t})
+                 
+                 final_xp = calculate_xp_gain(self.level, getattr(t, 'level', 1), getattr(t, 'max_health', 10))
+                 if final_xp > 0:
+                     self.gain_experience(final_xp)
 
-            loot_str = format_loot_drop_message(self, target, target.die(world) if hasattr(target, 'die') else [])
-            if loot_str: result["message"] += "\n" + loot_str
-            if quest_update_message: result["message"] += "\n" + quest_update_message
-            self._add_combat_message(result["message"].replace(full_message, "").strip())
-        return result
+        if len(targets) > 1:
+            full_message = f"{spell.format_cast_message(self)}\n" + "\n".join(results)
+        else:
+            full_message = f"{spell.format_cast_message(self)}\n{results[0]}"
+
+        self._add_combat_message(full_message)
+
+        return {"success": True, "message": full_message, "value": 0}
     
     def get_valid_slots(self, item: Item) -> List[str]:
         valid = []; item_type_name = item.__class__.__name__
@@ -422,6 +444,14 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
 
     def equip_item(self, item: Item, slot_name: Optional[str] = None) -> Tuple[bool, str]:
         if not self.is_alive: return False, "You cannot equip items while dead."
+        
+        # --- Requirement Check ---
+        requirements = item.get_property("requirements", {})
+        for stat, req_value in requirements.items():
+            my_stat = self.get_effective_stat(stat)
+            if my_stat < req_value:
+                return False, f"You need {req_value} {stat.capitalize()} to equip {item.name} (Have: {my_stat})."
+
         valid_slots = self.get_valid_slots(item)
         if not valid_slots: return False, f"You can't figure out how to equip the {item.name}."
         target_slot = None
@@ -455,6 +485,10 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
         item_to_unequip = self.equipment.get(slot_name)
         if not item_to_unequip: return False, f"You have nothing equipped in your {slot_name.replace('_', ' ')}."
         
+        # --- Curse Check ---
+        if item_to_unequip.get_property("cursed"):
+            return False, f"{FORMAT_ERROR}You cannot remove the {item_to_unequip.name}! It binds to your flesh with a dark curse.{FORMAT_RESET}"
+
         effect_data = item_to_unequip.get_property("equip_effect")
         if effect_data and isinstance(effect_data, dict):
             effect_name = effect_data.get("name")
@@ -485,6 +519,11 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
 
     def can_cast_spell(self, spell: Spell, current_time: float) -> Tuple[bool, str]:
         if not self.is_alive: return False, "You cannot cast spells while dead."
+        
+        # --- Silence Check (Tag or Name) ---
+        if self.has_effect("Silenced") or self.has_effect_tag("silence"):
+            return False, f"{FORMAT_ERROR}You are silenced and cannot speak the incantations!{FORMAT_RESET}"
+
         if spell.spell_id not in self.known_spells: return False, "You don't know that spell."
         if self.level < spell.level_required: return False, f"You need to be level {spell.level_required} to cast {spell.name}."
         if self.mana < spell.mana_cost: return False, f"Not enough mana (need {spell.mana_cost}, have {int(self.mana)})."
@@ -505,30 +544,23 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
         
         player.stats = PLAYER_DEFAULT_STATS.copy(); player.stats.update(data.get("stats", {}))
         
-        # --- Skill Migration Logic with explicit casting ---
         raw_skills = data.get("skills", {})
         player.skills = {}
         for k, v in raw_skills.items():
             if isinstance(v, int):
                 player.skills[k] = {"level": v, "xp": 0}
             else:
-                # Explicit cast to satisfy Pylance
                 player.skills[k] = cast(Dict[str, int], v)
-        # -----------------------------
 
         player.quest_log = data.get("quest_log", {})
         player.completed_quest_log = data.get("completed_quest_log", {})
         player.archived_quest_log = data.get("archived_quest_log", {})
         player.active_effects = data.get("effects", [])
         
-        # --- FIX: Re-calculate stat_modifiers from loaded effects ---
-        # stat_modifiers is a runtime cache and not saved directly.
-        # We must iterate loaded effects and re-apply any stat_mods.
         for effect in player.active_effects:
             if effect.get("type") == "stat_mod":
                 for stat, value in effect.get("modifiers", {}).items():
                     player.stat_modifiers[stat] = player.stat_modifiers.get(stat, 0) + value
-        # -----------------------------------------------------------
 
         player.spell_cooldowns = data.get("spell_cooldowns", {})
         
@@ -549,7 +581,6 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
         
         equipment_data = data.get("equipment", {})
         
-        # Use Factory to recreate items
         player.equipment = {slot: None for slot in EQUIPMENT_SLOTS}
         for slot, item_ref in equipment_data.items():
             if slot in player.equipment and item_ref and "item_id" in item_ref:
@@ -564,6 +595,9 @@ class Player(PlayerDisplayMixin, PlayerPersistenceMixin, GameObject):
         player.collections_completed = data.get("collections_completed", {})
         
         player.follow_target = data.get("follow_target")
+
+        # --- LOAD REPUTATION ---
+        player.reputation = data.get("reputation", {})
 
         player.world = world
         return player

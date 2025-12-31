@@ -28,6 +28,10 @@ class CombatSystem:
     def calculate_hit_chance(attacker: Entity, defender: Entity) -> float:
         """Calculates the probability (0.0 - 1.0) of a physical attack hitting."""
         
+        if attacker.has_effect("Blind"):
+            # Hard cap for blind characters
+            return 0.20
+
         is_player = getattr(attacker, 'faction', '') == 'player'
         base_chance = PLAYER_BASE_HIT_CHANCE if is_player else NPC_BASE_HIT_CHANCE
 
@@ -68,7 +72,6 @@ class CombatSystem:
                        always_hit: bool = False, viewer: Optional[Entity] = None) -> Dict[str, Any]:
         """
         Performs a full attack calculation and generates descriptive messages.
-        viewer: The entity viewing the event (usually the player) to format names correctly.
         """
         # 1. Check Hit
         hit_chance = 1.0 if always_hit else CombatSystem.calculate_hit_chance(attacker, defender)
@@ -115,7 +118,13 @@ class CombatSystem:
         raw_damage = CombatSystem.calculate_physical_damage(attacker, defender, attack_power)
         actual_damage = defender.take_damage(raw_damage, damage_type="physical")
         result["damage"] = actual_damage
-        
+
+        # --- Vampirism Logic ---
+        vampiric_heal = 0
+        if attacker.has_effect("Vampirism") and actual_damage > 0:
+            vampiric_heal = int(actual_damage * 0.5)
+            attacker.heal(vampiric_heal)
+
         # 3. Construct Hit Message
         if is_generic_attack:
             # "The goblin attacks you and deals 5 damage."
