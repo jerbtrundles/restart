@@ -1,0 +1,174 @@
+{
+  "saga_missing_guard": {
+    "title": "The Missing Guard",
+    "type": "saga",
+    "rewards": {
+      "xp": 500,
+      "gold": 100,
+      "items": [{"item_id": "item_iron_shield", "quantity": 1}]
+    },
+    "stages": [
+      {
+        "stage_index": 0,
+        "description": "Search for clues about the missing guard.",
+        "objective": {
+          "type": "fetch",
+          "item_id": "item_bloody_tabard",
+          "item_name": "Bloody Tabard",
+          "required_quantity": 1
+        },
+        "turn_in_id": "guard_captain",
+        "start_dialogue": "One of my recruits went missing near the river. Please, see if you can find any trace of him.",
+        "completion_dialogue": "By the gods... this is his tabard. And it's covered in strange slime. Take this to Kaelan the Alchemist immediately."
+      },
+      {
+        "stage_index": 1,
+        "description": "Show the Bloody Tabard to Kaelan the Alchemist.",
+        "objective": {
+          "type": "deliver",
+          "item_instance_id": "dynamic_check_inventory", 
+          "item_id": "item_bloody_tabard",
+          "item_name": "Bloody Tabard",
+          "recipient_id": "alchemist"
+        },
+        "turn_in_id": "alchemist",
+        "start_dialogue": "Go to Kaelan. He will know what creature left this slime.",
+        "completion_dialogue": "Hmm. River Troll slime. Acidic and foul. The beast must be nearby. Slay it before it takes more victims!"
+      },
+      {
+        "stage_index": 2,
+        "description": "Slay the River Troll.",
+        "objective": {
+          "type": "kill",
+          "target_template_id": "river_troll",
+          "target_name": "River Troll",
+          "required_quantity": 1,
+          "current_quantity": 0
+        },
+        "turn_in_id": "guard_captain", 
+        "start_dialogue": "The troll is the cause. Kill it.",
+        "completion_dialogue": "The beast is dead? You have done the village a great service today."
+      }
+    ]
+  },
+  "saga_procedural_hunt": {
+    "title": "The Wild Hunt",
+    "type": "saga",
+    "generate_rewards": {
+        "gold_range": [100, 300],
+        "xp_range": [500, 1000],
+        "generate_item": {
+            "base_template_id": "item_iron_sword",
+            "level": 5,
+            "rarity": 0.8
+        }
+    },
+    "stages": [
+      {
+        "stage_index": 0,
+        "description": "Thin the herd of local monsters.",
+        "objective": {
+            "type": "group_kill",
+            "targets_config": {
+                "monster_pool": ["goblin", "wolf", "giant_rat"],
+                "total_types": 2,
+                "count_per_type_range": [2, 3]
+            }
+        },
+        "turn_in_config": {
+            "npc_pool_faction": "friendly",
+            "npc_pool_region": "town"
+        },
+        "start_dialogue": "The wilds are getting dangerous. We need someone to clear out the threats.",
+        "completion_dialogue": "Good work. But the leader is still out there."
+      },
+      {
+        "stage_index": 1,
+        "description": "Hunt down the leader.",
+        "objective": {
+            "type": "kill",
+            "target_config": {
+                "monster_pool": ["orc_grunt", "bandit_leader"],
+                "count": 1
+            }
+        },
+        "turn_in_config": "SAME_AS_PREVIOUS",
+        "start_dialogue": "We've spotted a stronger threat nearby. Deal with it.",
+        "completion_dialogue": "You've done it. The roads are safer now."
+      }
+    ]
+  },
+  "saga_bandit_king": {
+      "title": "The Bandit King",
+      "type": "saga",
+      "procedural_regions": [
+          {
+              "id_key": "bandit_camp",
+              "theme": "forest",
+              "rooms": 4,
+              "entry_point": { "region": "town" }
+          }
+      ],
+      "generate_rewards": {
+          "gold_range": [300, 600],
+          "xp_range": [1000, 1500],
+          "generate_item": {
+              "base_template_id": "item_iron_sword",
+              "level": 5,
+              "rarity": 1.0
+          }
+      },
+      "stages": [
+          {
+              "stage_index": 0,
+              "description": "Locate the Bandit Camp in the forest near town.",
+              "objective": {
+                  "type": "scout",
+                  "target_region": "{bandit_camp}",
+                  "target_room_keywords": []
+              },
+              "turn_in_id": "guard_captain",
+              "completion_dialogue": "You found it? Good. We need to deal with their leader."
+          },
+          {
+              "stage_index": 1,
+              "description": "Confront the Lieutenant. Negotiate or fight.",
+              "objective": {
+                  "type": "negotiate",
+                  "target_npc_id": "bandit_leader",
+                  "skill": "diplomacy",
+                  "difficulty": 15,
+                  "choices": {
+                      "success": { "next_stage": 3, "description": "You convinced him to betray his King." },
+                      "fail": { "next_stage": 2, "description": "Negotiations failed. Prepare for battle." }
+                  }
+              },
+              "turn_in_id": "bandit_leader",
+              "start_dialogue": "Who are you? Give me one reason not to gut you."
+          },
+          {
+              "stage_index": 2,
+              "description": "Kill the Lieutenant.",
+              "objective": {
+                  "type": "kill",
+                  "target_template_id": "bandit_leader",
+                  "required_quantity": 1
+              },
+              "turn_in_id": "guard_captain",
+              "completion_dialogue": "He's dead? Good. Now for the King."
+          },
+          {
+              "stage_index": 3,
+              "description": "Defeat the Bandit King.",
+              "objective": {
+                  "type": "kill",
+                  "target_template_id": "bandit_leader", 
+                  "target_name": "Bandit King",
+                  "required_quantity": 1
+              },
+              "turn_in_id": "guard_captain",
+              "completion_dialogue": "The King is dead. The roads are safe again."
+          }
+      ]
+  }
+}

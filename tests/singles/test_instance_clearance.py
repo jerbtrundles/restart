@@ -6,18 +6,27 @@ class TestInstanceClearance(GameTestBase):
 
     def test_clear_region_objective_completion(self):
         """Verify 'clear_region' quests trigger completion when hostiles are gone."""
-        # 1. Setup Quest in Log
+        # 1. Setup Quest in Log (Saga Structure)
         quest_id = "clear_test"
+        objective_data = {
+            "type": "clear_region",
+            "target_template_id": "giant_rat"
+        }
+        
         self.player.quest_log[quest_id] = {
             "instance_id": quest_id,
             "type": "instance",
             "state": "active",
             "instance_region_id": "dynamic_cellar",
             "completion_check_enabled": True,
-            "objective": {
-                "type": "clear_region",
-                "target_template_id": "giant_rat"
-            }
+            "current_stage_index": 0,
+            "objective": objective_data, # Sync top-level
+            "stages": [
+                {
+                    "stage_index": 0,
+                    "objective": objective_data
+                }
+            ]
         }
         
         # 2. Add Hostile to that dynamic region

@@ -268,8 +268,25 @@ def render_quests_content(surface: pygame.Surface, context: dict, hotspots: List
             title = "! " + title
         if len(title) > 28: title = title[:25] + "..."
         
+        # Display current stage info if possible
+        qm = context["game"].world.quest_manager
+        obj = qm.get_active_objective(q)
+        desc = "Task"
+        if obj:
+             q_type = obj.get("type")
+             if q_type == "kill": desc = "Hunt"
+             elif q_type == "fetch": desc = "Gather"
+             elif q_type == "deliver": desc = "Deliver"
+             elif q_type == "scout": desc = "Scout"
+        
+        # Draw Title
         _draw_clickable_text(surface, font, title, padding, y, color, "journal", hotspots)
-        y += 18
+        y += 16
+        
+        # Draw Type/Desc tiny
+        tiny_font = get_font(12)
+        surface.blit(tiny_font.render(f"  {desc}", True, (150,150,150)), (padding, y))
+        y += 14
 
 def render_effects_content(surface: pygame.Surface, context: dict, hotspots: List[ClickableZone]):
     player = context.get("player")

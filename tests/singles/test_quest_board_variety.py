@@ -37,15 +37,16 @@ class TestQuestBoardVariety(GameTestBase):
         qm = self.world.quest_manager
         self.world.quest_board = []
         
-        # Ensure we have enough data to generate different types
+        # Ensure sufficient templates
         self.world.npc_templates["target"] = {"name": "Target", "faction": "hostile", "level": 1}
         self.world.item_templates["item_a"] = {"name": "Item A", "type": "Junk", "value": 1}
         
-        # Force a high cap for the test
-        from engine.config import MAX_QUESTS_ON_BOARD
-        
         qm.ensure_initial_quests()
         
-        types_on_board = {q["type"] for q in self.world.quest_board}
-        # If we have templates for all, we expect at least 2 different types
+        # Check types in stages[0]
+        types_on_board = set()
+        for q in self.world.quest_board:
+            if "stages" in q and q["stages"]:
+                types_on_board.add(q["stages"][0]["objective"].get("type"))
+                
         self.assertGreaterEqual(len(types_on_board), 2, "Quest board should prioritize variety.")

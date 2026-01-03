@@ -155,11 +155,15 @@ class TestBatch8(GameTestBase):
         """Verify dropping a quest item updates the quest logic indirectly."""
         if not self.player: return
 
-        # 1. Setup Quest
+        # 1. Setup Quest with valid stages structure
         q_id = "fetch_rock"
         self.player.quest_log[q_id] = {
             "instance_id": q_id, "type": "fetch", "state": "active",
-            "objective": {"item_id": "rock", "required_quantity": 1}
+            "current_stage_index": 0,
+            "stages": [{
+                "stage_index": 0,
+                "objective": {"type": "fetch", "item_id": "rock", "required_quantity": 1}
+            }]
         }
         
         # 2. Get Item
@@ -181,6 +185,7 @@ class TestBatch8(GameTestBase):
             if giver:
                 # Mock the quest giver ID
                 self.player.quest_log[q_id]["giver_instance_id"] = giver.obj_id
+                self.player.quest_log[q_id]["stages"][0]["turn_in_id"] = giver.obj_id
                 self.player.quest_log[q_id]["state"] = "ready_to_complete" # Force ready state to test fallback
                 
                 # Act: Attempt complete
@@ -200,3 +205,17 @@ class TestBatch8(GameTestBase):
 
         # 1. Queue a respawn
         future = time.time() + 50.0
+        mgr.respawn_queue.append({
+            "template_id": "goblin_test", "instance_id": "g1",
+            "name": "Goblin", "home_region_id": "town", "home_room_id": "town_square",
+            "respawn_time": future
+        })
+        
+        # 2. Update time to BEFORE spawn
+        mgr.update(future - 10.0)
+        self.assertEqual(len(mgr.respawn_queue), 1)
+        
+        # 3. Update time to AFTER spawn
+        mgr.update(future + 10.0)
+        self.assertEqual(len(mgr.respawn_queue), 0)
+        self.assertIn("g1", self.world.npcs)

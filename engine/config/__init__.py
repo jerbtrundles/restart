@@ -5,10 +5,11 @@ This allows other modules to use `from engine.config import SETTING_NAME` withou
 knowing which specific file the setting is in.
 """
 
-from .config_combat import *
-from .config_commands import *
+# Order matters for dependencies within config files
 from .config_display import *
-from .config_game import *
+from .config_game import * 
+from .config_combat import * 
+from .config_commands import *
 from .config_items import *
 from .config_npc import *
 from .config_player import *

@@ -197,5 +197,19 @@
         "priority": 0
       }
     ]
+  },
+  "trouble": {
+    "display_name": "Trouble in the Valley",
+    "keywords": ["trouble", "danger", "bandits"],
+    "responses": [
+      {
+        "text": "The bandits are growing bold. I fear a rebellion. Will you help us investigate?",
+        "conditions": { "template_id": "village_elder" },
+        "priority": 10,
+        "effects": {
+          "start_campaign": "bandit_rebellion"
+        }
+      }
+    ]
   }
 }

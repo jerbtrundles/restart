@@ -29,6 +29,7 @@ from engine.ui.panel_content import (
     render_inventory_content, render_topics_content
 )
 from engine.crafting.crafting_manager import CraftingManager
+from engine.utils.logger import Logger
 
 class GameManager:
     def __init__(self, save_file: str = DEFAULT_SAVE_FILE):
@@ -59,7 +60,6 @@ class GameManager:
         
         # --- UI System ---
         self.ui_manager = UIManager()
-        # FIX: Use the adapter method to satisfy strict type checking
         self.ui_manager.on_command_callback = self._handle_ui_command
         self._init_default_panels()
 
@@ -88,11 +88,6 @@ class GameManager:
         self.collection_manager = CollectionManager(self.world)
 
     def _handle_ui_command(self, text: str) -> None:
-        """
-        Adapter method for UI callbacks. 
-        Wraps process_command to discard the return value, satisfying the 
-        Callable[[str], None] type signature expected by UIManager.
-        """
         self.process_command(text)
 
     def _load_class_definitions(self):
@@ -105,7 +100,7 @@ class GameManager:
                     self.class_definitions = json.load(f)
                     self.available_classes = list(self.class_definitions.keys())
             except Exception as e:
-                print(f"Error loading classes: {e}")
+                Logger.error("GameManager", f"Error loading classes: {e}")
                 self.class_definitions = {}
         else:
             self.class_definitions = {
@@ -228,7 +223,7 @@ class GameManager:
             class_id = self.available_classes[self.selected_class_index]
             class_data = self.class_definitions.get(class_id)
             if not class_data:
-                print(f"{FORMAT_ERROR}Failed to initialize new world properly! Returning to title.{FORMAT_RESET}")
+                Logger.error("GameManager", "Failed to initialize new world properly! Returning to title.")
                 self.game_state = "title_screen"
                 return
             
@@ -245,7 +240,7 @@ class GameManager:
             self.renderer.add_message(welcome_message)
             self.renderer.scroll_offset = 0
         else:
-            print(f"{FORMAT_ERROR}Failed to initialize new world properly! Returning to title.{FORMAT_RESET}")
+            Logger.error("GameManager", "Failed to initialize new world properly! Returning to title.")
             self.game_state = "title_screen"
 
     def load_selected_game(self):
@@ -262,7 +257,7 @@ class GameManager:
             self.renderer.add_message(welcome_message)
             self.renderer.scroll_offset = 0
         else:
-            print(f"{FORMAT_ERROR}Failed to load '{save_to_load}'. Returning to title.{FORMAT_RESET}")
+            Logger.error("GameManager", f"Failed to load '{save_to_load}'. Returning to title.")
             self.world = World(); self.world.game = self
             self.game_state = "title_screen"
 
@@ -302,7 +297,7 @@ class GameManager:
         try:
             self.available_saves = sorted([fname for fname in os.listdir(SAVE_GAME_DIR) if fname.lower().endswith(".json")])
         except Exception as e:
-            print(f"Error scanning save directory '{SAVE_GAME_DIR}': {e}")
+            Logger.error("GameManager", f"Error scanning save directory '{SAVE_GAME_DIR}': {e}")
             
     def toggle_debug_mode(self):
         self.debug_mode = not self.debug_mode

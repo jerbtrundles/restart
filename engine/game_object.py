@@ -92,40 +92,43 @@ class GameObject:
         return False
 
     def take_damage(self, amount: int, damage_type: str) -> int:
-        if not self.is_alive or amount <= 0:
-            return 0
+        if not self.is_alive or amount <= 0: return 0
 
-        # 1. Get base defense/resistance for the damage type
+        # --- 1. Reactive Logic (Hydra / Gimmick Bosses) ---
+        # Check if we have specific reactions to this damage type
+        reactions = self.properties.get("damage_reactions", {})
+        if damage_type in reactions:
+            reaction = reactions[damage_type]
+            action = reaction.get("action")
+            
+            if action == "remove_effect_tag":
+                tag = reaction.get("tag")
+                if tag:
+                    removed = self.remove_effects_by_tag(tag)
+                    # We could return visual feedback here via a floating text call or separate event
+                    # For now, the effect removal logic handles its own messages if called via update,
+                    # but immediate removal is silent unless we add text here.
+        
         base_reduction = 0
         if damage_type == "physical":
             base_reduction = self.get_effective_stat("defense")
         else:
-            # Use magic_resist for all non-physical damage as a base
             base_reduction = self.get_effective_stat("magic_resist")
 
-        # 2. Apply the flat reduction
         damage_after_flat_reduction = max(0, amount - base_reduction)
-        if damage_after_flat_reduction == 0:
-            return 0 # Damage was fully absorbed by defense/magic resist
+        if damage_after_flat_reduction == 0: return 0
 
-        # 3. Apply percentage-based resistance/weakness
         resistance_percent = self.get_resistance(damage_type)
-        # Clamp resistance to prevent healing from damage or excessive weakness
         resistance_percent = max(-100, min(100, resistance_percent))
-
         resistance_multiplier = 1.0 - (resistance_percent / 100.0)
         final_damage = int(damage_after_flat_reduction * resistance_multiplier)
-
-        # 4. Ensure at least minimum damage is dealt
         actual_damage_taken = max(MINIMUM_DAMAGE_TAKEN, final_damage) if final_damage > 0 else 0
 
-        # 5. Apply damage to health
         old_health = getattr(self, 'health', 0)
         new_health = max(0, old_health - actual_damage_taken)
         setattr(self, 'health', new_health)
 
-        if new_health <= 0:
-            self.is_alive = False
+        if new_health <= 0: self.is_alive = False
 
         # --- VISUAL JUICE (Floating Text) ---
         # Use getattr to safely access 'world' and 'game' without Pylance errors

@@ -14,6 +14,7 @@ class InstanceManager:
     def __init__(self, world: 'World'):
         self.world = world
 
+    # ... (Keep instantiate_quest_region) ...
     def instantiate_quest_region(self, quest_data: Dict[str, Any]) -> Tuple[bool, str, Optional[str]]:
         if not self.world.player:
             return False, "Cannot instantiate region without a player.", None
@@ -104,30 +105,65 @@ class InstanceManager:
     def cleanup_quest_region(self, quest_id: str):
         if not self.world.player or quest_id not in self.world.player.completed_quest_log: return
         quest_data = self.world.player.completed_quest_log[quest_id]
+        
+        # 1. Cleanup Standard Instances
         instance_region_id = quest_data.get("instance_region_id")
         entry_point = quest_data.get("entry_point")
 
-        if not instance_region_id or not entry_point: return
+        if instance_region_id and entry_point:
+            perm_region = self.world.get_region(entry_point['region_id'])
+            if perm_region:
+                perm_room = perm_region.get_room(entry_point['room_id'])
+                if perm_room and entry_point['exit_command'] in perm_room.exits:
+                    del perm_room.exits[entry_point['exit_command']]
 
-        perm_region = self.world.get_region(entry_point['region_id'])
-        if perm_region:
-            perm_room = perm_region.get_room(entry_point['room_id'])
-            if perm_room and entry_point['exit_command'] in perm_room.exits:
-                del perm_room.exits[entry_point['exit_command']]
-
-        npcs_to_remove = [npc.obj_id for npc in self.world.npcs.values() if npc.current_region_id == instance_region_id]
-        for npc_id in npcs_to_remove: del self.world.npcs[npc_id]
-        if instance_region_id in self.world.regions: del self.world.regions[instance_region_id]
+            self._remove_region_and_npcs(instance_region_id)
             
+        # 2. Cleanup Procedurally Generated Saga Regions
+        if "generated_region_ids" in quest_data:
+            for region_id in quest_data["generated_region_ids"]:
+                # Also need to find and remove the entrance link in the parent region
+                # Since we don't store the exact link pos easily, we scan exits or rely on it being okay (dangling exits are bad though).
+                # Actually, QuestGenerator linked them.
+                # To clean up properly, we should ideally search for exits pointing TO this region.
+                self._remove_links_to_region(region_id)
+                self._remove_region_and_npcs(region_id)
+
+        # Move to archive
         del self.world.player.completed_quest_log[quest_id]
         if not hasattr(self.world.player, 'archived_quest_log'): self.world.player.archived_quest_log = {}
         self.world.player.archived_quest_log[quest_id] = quest_data
+
+    def _remove_region_and_npcs(self, region_id: str):
+        npcs_to_remove = [npc.obj_id for npc in self.world.npcs.values() if npc.current_region_id == region_id]
+        for npc_id in npcs_to_remove: del self.world.npcs[npc_id]
+        if region_id in self.world.regions: del self.world.regions[region_id]
+        
+    def _remove_links_to_region(self, target_region_id: str):
+        """Scans all regions to remove exits pointing to the target region."""
+        for region in self.world.regions.values():
+            if region.obj_id == target_region_id: continue
+            for room in region.rooms.values():
+                exits_to_remove = []
+                for dir, dest in room.exits.items():
+                    if dest.startswith(f"{target_region_id}:"):
+                        exits_to_remove.append(dir)
+                for dir in exits_to_remove:
+                    del room.exits[dir]
 
     def check_and_cleanup_completed_instances(self):
         if not self.world.player or not hasattr(self.world.player, 'completed_quest_log'): return
         for quest_id in list(self.world.player.completed_quest_log.keys()):
             quest_data = self.world.player.completed_quest_log[quest_id]
-            if quest_data.get("type") == "instance":
-                instance_id = quest_data.get("instance_region_id")
-                if instance_id and self.world.player.current_region_id != instance_id:
-                    self.cleanup_quest_region(quest_id)
+            
+            # Logic: Only clean up if player is NOT in any of the regions associated with the quest
+            regions_to_check = []
+            if quest_data.get("instance_region_id"):
+                regions_to_check.append(quest_data.get("instance_region_id"))
+            if quest_data.get("generated_region_ids"):
+                regions_to_check.extend(quest_data.get("generated_region_ids"))
+            
+            if not regions_to_check: continue # Nothing to clean
+            
+            if self.world.player.current_region_id not in regions_to_check:
+                self.cleanup_quest_region(quest_id)

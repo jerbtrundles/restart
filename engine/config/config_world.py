@@ -5,6 +5,7 @@ Configuration for the game world, including simulation, spawning, and factions.
 
 # --- World Settings ---
 WORLD_UPDATE_INTERVAL = 0.5
+DYNAMIC_REGION_DEFAULT_NUM_ROOMS = 20
 
 # --- Monster Spawner Settings ---
 SPAWN_INTERVAL_SECONDS = 5.0
@@ -43,4 +44,10 @@ FACTION_RELATIONSHIP_MATRIX = {
     }
 }
 
-DYNAMIC_REGION_DEFAULT_NUM_ROOMS = 20
+# --- Reputation Thresholds ---
+REP_THRESHOLD_HATED = -50  # Below this, neutrals attack
+REP_THRESHOLD_FRIENDLY = 50 # Above this, discounts/perks
+
+# Kill Consequences (Reputation Change)
+REP_KILL_PENALTY_SAME_FACTION = -25 # Killing a friendly if you are friendly
+REP_KILL_REWARD_HOSTILE = 5         # Killing a hostile

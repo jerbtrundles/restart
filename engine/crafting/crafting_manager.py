@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple, Optional, TYPE_CHECKING
 
 from engine.config import DATA_DIR, FORMAT_ERROR, FORMAT_RESET, FORMAT_SUCCESS
 from engine.crafting.recipe import Recipe
+from engine.items.item import Item
 from engine.items.item_factory import ItemFactory
 from engine.core.skill_system import SkillSystem
 
@@ -123,3 +124,39 @@ class CraftingManager:
         xp_msg = SkillSystem.grant_xp(player, "crafting", xp_gain)
         
         return f"{FORMAT_SUCCESS}Successfully crafted {recipe.result_quantity} x {result_item.name}.{FORMAT_RESET} {roll_msg}{xp_msg}"
+
+    def salvage(self, player: 'Player', item: Item) -> str:
+        """Breaks down an item into basic materials."""
+        
+        # 1. Determine Output
+        # Simple logic: Based on name/type
+        output_template_id = None
+        output_qty = 1
+        
+        name_lower = item.name.lower()
+        if "sword" in name_lower or "plate" in name_lower or "helm" in name_lower:
+            output_template_id = "item_iron_ingot"
+            output_qty = max(1, int(item.weight // 2))
+        elif "leather" in name_lower or "boots" in name_lower:
+            output_template_id = "item_leather_scraps" # Assuming this exists or generic scrap
+            output_qty = max(1, int(item.weight // 1))
+        else:
+             # Default fallback
+             output_template_id = "item_scrap" # Generic junk
+
+        # 2. Check if template exists
+        # In a real scenario we'd check self.world.item_templates
+        # For now, let's assume factories handle None return
+        
+        mat = ItemFactory.create_item_from_template(output_template_id, self.world)
+        if not mat:
+             return f"{FORMAT_ERROR}You cannot salvage the {item.name}.{FORMAT_RESET}"
+             
+        # 3. Remove Item
+        # If stackable, we only salvage 1 unless we add qty logic. Assuming 1.
+        player.inventory.remove_item(item.obj_id, 1)
+        
+        # 4. Add Materials
+        player.inventory.add_item(mat, output_qty)
+        
+        return f"{FORMAT_SUCCESS}You salvage the {item.name} and recover {output_qty} {mat.name}.{FORMAT_RESET}"

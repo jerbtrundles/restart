@@ -5,15 +5,13 @@ Commands package initializer.
 import os
 import importlib
 from .movement import register_movement_commands
+from engine.utils.logger import Logger
 
 # Get the directory of this file
 package_dir = os.path.dirname(__file__)
-
-# CRITICAL CHANGE: Use __name__ to get the full dotted path (e.g., 'engine.commands')
-# instead of calculating it from the folder name.
 package_name = __name__
 
-print(f"--- Loading Command Modules from '{package_name}' ---")
+Logger.info("Commands", f"Loading Command Modules from '{package_name}'")
 
 for item in os.listdir(package_dir):
     item_path = os.path.join(package_dir, item)
@@ -24,19 +22,19 @@ for item in os.listdir(package_dir):
         try:
             # The '.' indicates a relative import within 'engine.commands'
             importlib.import_module(f".{module_name}", package=package_name)
-            print(f"  -> Loaded module: {module_name}")
+            Logger.debug("Commands", f"Loaded module: {module_name}")
         except ImportError as e:
-            print(f"  -> FAILED to load module '{module_name}': {e}")
+            Logger.error("Commands", f"FAILED to load module '{module_name}': {e}")
 
     # Case 2: Sub-packages (e.g., interaction/)
     elif os.path.isdir(item_path) and not item.startswith("__"):
         if os.path.exists(os.path.join(item_path, "__init__.py")):
             try:
                 importlib.import_module(f".{item}", package=package_name)
-                print(f"  -> Loaded package: {item}")
+                Logger.debug("Commands", f"Loaded package: {item}")
             except ImportError as e:
-                print(f"  -> FAILED to load package '{item}': {e}")
+                Logger.error("Commands", f"FAILED to load package '{item}': {e}")
 
-print("--- Registering Dynamic Movement Commands ---")
+Logger.info("Commands", "Registering Dynamic Movement Commands")
 register_movement_commands()
-print("--- Command Loading Complete ---")
+Logger.info("Commands", "Command Loading Complete")

@@ -117,6 +117,7 @@ class TestBatch9(GameTestBase):
         self.player.quest_log[q_id] = {
             "instance_id": q_id, "type": "deliver", "state": "active",
             "objective": {
+                "type": "deliver",
                 "item_instance_id": "pkg_id",
                 "recipient_instance_id": "correct_npc_id",
                 "recipient_name": "Correct NPC"

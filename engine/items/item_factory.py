@@ -1,3 +1,4 @@
+# engine/items/item_factory.py
 import inspect
 import json
 import os
@@ -5,7 +6,6 @@ import random
 import copy
 from typing import TYPE_CHECKING, Any, Dict, Optional, Type
 
-from engine.config import FORMAT_ERROR, FORMAT_RESET
 from engine.items.gem import Gem
 from engine.items.interactive import Interactive
 from engine.items.item import Item
@@ -19,6 +19,7 @@ from engine.items.junk import Junk
 from engine.items.lockpick import Lockpick
 from engine.items.resource_node import ResourceNode
 from engine.magic.spell_registry import SPELL_REGISTRY
+from engine.utils.logger import Logger
 
 if TYPE_CHECKING:
     from engine.world.world import World
@@ -43,9 +44,6 @@ class ItemFactory:
 
     @staticmethod
     def create_random_loot(template_id: str, world: 'World', level: int = 1) -> Optional['Item']:
-        """
-        Creates an item with procedural affixes using the LootGenerator.
-        """
         from engine.items.loot_generator import LootGenerator
         return LootGenerator.generate_loot(template_id, world, level)
 
@@ -53,7 +51,7 @@ class ItemFactory:
     def create_item(item_type: str, **kwargs) -> Optional['Item']:
         cls = ITEM_CLASS_MAP.get(item_type)
         if not cls:
-            print(f"{FORMAT_ERROR}Warning: Unknown item type '{item_type}' requested in create_item. Trying base Item.{FORMAT_RESET}")
+            Logger.warning("ItemFactory", f"Unknown item type '{item_type}' requested in create_item. Trying base Item.")
             cls = ITEM_CLASS_MAP.get("Item")
 
         if not cls:
@@ -79,7 +77,7 @@ class ItemFactory:
                 item.update_property(key, value)
             return item
         except Exception as e:
-            print(f"{FORMAT_ERROR}Error creating item type '{item_type}' with args {kwargs}: {e}{FORMAT_RESET}")
+            Logger.error("ItemFactory", f"Error creating item type '{item_type}' with args {kwargs}: {e}")
             return None
 
     @staticmethod
@@ -107,7 +105,7 @@ class ItemFactory:
             if issubclass(item_class, Container): return item_class.from_dict(data, world)
             else: return item_class.from_dict(data)
         except Exception as e:
-             print(f"{FORMAT_ERROR}Error creating item type '{item_type_name}' from dict: {e}{FORMAT_RESET}")
+             Logger.error("ItemFactory", f"Error creating item type '{item_type_name}' from dict: {e}")
              return None
 
     @staticmethod
@@ -125,7 +123,7 @@ class ItemFactory:
                  template = world.item_templates.get("item_scroll_random")
                  
             if not template:
-                print(f"{FORMAT_ERROR}Error: Item template '{item_id}' not found.{FORMAT_RESET}")
+                Logger.error("ItemFactory", f"Item template '{item_id}' not found.")
                 return None
 
         template_props = template.get("properties", {})
@@ -215,5 +213,5 @@ class ItemFactory:
             return item
 
         except Exception as e:
-            print(f"{FORMAT_ERROR}Error creating item '{item_id}': {e}{FORMAT_RESET}")
+            Logger.error("ItemFactory", f"Error creating item '{item_id}': {e}")
             return None

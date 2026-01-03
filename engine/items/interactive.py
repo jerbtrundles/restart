@@ -14,12 +14,12 @@ class Interactive(Item):
                  weight: Optional[float] = None,
                  **kwargs):
         
-        kwargs['stackable'] = False
+        if 'stackable' in kwargs:
+             kwargs.pop('stackable')
         
-        # FIX: Only default to 9999 if weight isn't explicitly provided (e.g. by template)
         final_weight = weight if weight is not None else 9999
         
-        super().__init__(obj_id, name, description, weight=final_weight, **kwargs)
+        super().__init__(obj_id, name, description, weight=final_weight, stackable=False, **kwargs)
         
         self.update_property("type", "Interactive")
         self.update_property("can_take", False)
@@ -33,27 +33,22 @@ class Interactive(Item):
         current_state = self.get_property("state")
         new_state = "on" if current_state == "off" else "off"
         
-        # 1. Update State
         self.update_property("state", new_state)
         
-        # 2. Perform Action
         action_result = ""
         linked_action = self.get_property("linked_action")
         target_id = self.get_property("linked_target_id")
         
         if linked_action and target_id:
-            # Action: Modify Room Exit
             if linked_action.startswith("toggle_exit:"):
                 direction = linked_action.split(":")[1]
                 
-                # Resolve Room
                 room = None
                 if ":" in target_id:
                     reg_id, rm_id = target_id.split(":")
                     region = world.get_region(reg_id)
                     room = region.get_room(rm_id) if region else None
                 else:
-                    # Fallback to current room if just room_id given (rare)
                     region = world.get_current_region()
                     room = region.get_room(target_id) if region else None
                     
@@ -61,12 +56,10 @@ class Interactive(Item):
                     hidden_exits = room.properties.get("hidden_exits", {})
                     
                     if new_state == "on":
-                        # Unlock/Reveal: Move from hidden to active exits
                         if direction in hidden_exits:
                             room.exits[direction] = hidden_exits[direction]
                             action_result = f" You hear a heavy grinding sound from the {direction}."
                     else:
-                        # Lock/Hide: Remove from active exits
                         if direction in room.exits and direction in hidden_exits:
                             del room.exits[direction]
                             action_result = f" The passage to the {direction} seals shut."

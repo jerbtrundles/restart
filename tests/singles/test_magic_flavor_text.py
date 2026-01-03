@@ -17,25 +17,21 @@ class TestMagicFlavorText(GameTestBase):
                 effect_type="damage", effect_value=10, damage_type="fire"
             )
             
-            # Act
             val, msg = apply_spell_effect(self.player, self.player, fire_spell, self.player)
             
-            # from engine.config: FIRE -> weakness -> "The flames roar to life..."
-            self.assertIn("roar to life", msg.lower())
+            self.assertIn("incinerating", msg.lower())
 
     def test_strong_resistance_flavor_trigger(self):
         """Verify that high resistance triggers 'strong resistance' flavor text."""
         if self.player:
-            self.player.stats["resistances"] = {"cold": 75} 
+            self.player.stats["resistances"] = {"ice": 75}  # Changed from 'cold' to 'ice' to match config
             self.player.stats["magic_resist"] = 0
             
             ice_spell = Spell(
                 spell_id="test_ice", name="Ice", description="test",
-                effect_type="damage", effect_value=10, damage_type="cold"
+                effect_type="damage", effect_value=10, damage_type="ice" # Changed from 'cold' to 'ice'
             )
             
-            # Act
             val, msg = apply_spell_effect(self.player, self.player, ice_spell, self.player)
             
-            # from engine.config: COLD -> strong_resistance -> "The icy blast dissipates harmlessly..."
-            self.assertIn("dissipates harmlessly", msg.lower())
+            self.assertIn("uselessly", msg.lower())

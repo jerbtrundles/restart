@@ -3,14 +3,21 @@ import heapq
 import time
 from typing import Dict, List, Optional, Any, Tuple, TYPE_CHECKING
 
-from engine.config import FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, DEFAULT_SAVE_FILE, WORLD_UPDATE_INTERVAL
-from engine.core.quest_manager import QuestManager
+from engine.campaign.campaign_manager import CampaignManager
+from engine.config import (
+    FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, DEFAULT_SAVE_FILE, WORLD_UPDATE_INTERVAL,
+    REP_KILL_PENALTY_SAME_FACTION, REP_KILL_REWARD_HOSTILE, FORMAT_SUCCESS
+)
+# UPDATED IMPORT
+from engine.core.quests import QuestManager
+
 from engine.items.item_factory import ItemFactory
 from engine.npcs.npc_factory import NPCFactory
 from engine.player import Player
 from engine.world.region import Region
 from engine.world.room import Room
 from engine.items.item import Item
+from engine.items.lockpick import Lockpick
 from engine.npcs.npc import NPC
 from engine.world.spawner import Spawner
 from engine.world.save_manager import SaveManager
@@ -18,9 +25,8 @@ from engine.world.definition_loader import load_all_definitions, initialize_new_
 from engine.world.respawn_manager import RespawnManager
 from engine.world.instance_manager import InstanceManager
 from engine.utils.pathfinding import find_path
-from engine.utils.utils import _serialize_item_reference
+from engine.core.skill_system import SkillSystem
 
-# New Import
 from engine.world.description_generator import generate_room_description
 
 if TYPE_CHECKING:
@@ -38,6 +44,7 @@ class World:
         self.quest_board: List[Dict[str, Any]] = []
         
         self.quest_manager = QuestManager(self)
+        self.campaign_manager = CampaignManager(self)
         self.spawner = Spawner(self)
         self.save_manager = SaveManager(self)
         self.respawn_manager = RespawnManager(self)
@@ -61,10 +68,21 @@ class World:
     def update(self) -> List[str]:
         current_time_abs = time.time()
         messages = []
-        if current_time_abs - self.last_update_time < WORLD_UPDATE_INTERVAL:
+        
+        dt = current_time_abs - self.last_update_time
+        
+        if dt < WORLD_UPDATE_INTERVAL:
              return messages
         self.last_update_time = current_time_abs
         
+        if self.current_region_id and self.current_room_id:
+            region = self.get_region(self.current_region_id)
+            if region:
+                room = region.get_room(self.current_room_id)
+                if room:
+                    room_msgs = room.update(dt)
+                    messages.extend(room_msgs)
+
         messages.extend(self.respawn_manager.update(current_time_abs))
         self.spawner.update(current_time_abs)
 
@@ -90,21 +108,39 @@ class World:
         self.respawn_manager.add_to_queue(npc)
 
     def look(self, minimal: bool = False) -> str:
-        """Delegate room description generation to the dedicated module."""
         return generate_room_description(self, minimal)
 
     def change_room(self, direction: str) -> str:
         if not self.player or not self.player.is_alive:
              return f"{FORMAT_ERROR}You cannot move while dead.{FORMAT_RESET}"
         
-        # Local narrowing for type safety
         old_region_id = self.current_region_id
         old_room_id = self.current_room_id
-        
         current_room = self.get_current_room()
+        
         if not old_region_id or not old_room_id or not current_room:
             return f"{FORMAT_ERROR}You are lost in an unknown place and cannot move.{FORMAT_RESET}"
         
+        reqs = current_room.properties.get("exit_requirements", {})
+        dir_req = reqs.get(direction)
+        
+        if dir_req:
+            req_type = dir_req.get("type")
+            if req_type == "skill":
+                skill = dir_req.get("skill_name")
+                difficulty = dir_req.get("difficulty", 10)
+                fail_msg = dir_req.get("failure_message", "You fail to traverse the path.")
+                
+                success, roll_msg = SkillSystem.attempt_check(self.player, skill, difficulty)
+                if not success:
+                    return f"{FORMAT_ERROR}{fail_msg}{FORMAT_RESET} (Requires {skill} {difficulty}+)"
+            
+            elif req_type == "locked":
+                key_id = dir_req.get("key_id")
+                has_key = any(slot.item and slot.item.obj_id == key_id for slot in self.player.inventory.slots)
+                if not has_key:
+                    return f"{FORMAT_ERROR}The way {direction} is locked.{FORMAT_RESET}"
+
         destination_id = current_room.get_exit(direction)
         if not destination_id: return f"{FORMAT_ERROR}You cannot go {direction}.{FORMAT_RESET}"
         
@@ -121,19 +157,20 @@ class World:
         if not target_room:
             return f"{FORMAT_ERROR}That path leads to an unknown place.{FORMAT_RESET}"
 
-        # --- LOCK CHECK ON DESTINATION ---
         target_lock_key = target_room.get_property("locked_by")
         if target_lock_key:
              has_key = any(slot.item and slot.item.obj_id == target_lock_key for slot in self.player.inventory.slots)
              if not has_key:
                   return f"{FORMAT_ERROR}The door to {target_room.name} is locked.{FORMAT_RESET}"
-        # ---------------------------------
 
         self.current_region_id = new_region_id
         self.current_room_id = new_room_id
         target_room.visited = True
         self.player.current_region_id = new_region_id
         self.player.current_room_id = new_room_id
+
+        if self.quest_manager:
+            self.quest_manager.handle_room_entry(self.player)
 
         if new_region_id.startswith("instance_"):
             for quest in self.player.quest_log.values():
@@ -143,6 +180,89 @@ class World:
 
         region_change_msg = f"{FORMAT_HIGHLIGHT}You have entered {target_region.name}.{FORMAT_RESET}\n\n" if new_region_id != old_region_id else ""
         return region_change_msg + self.look(minimal=True)
+
+    def dispatch_event(self, event_type: str, data: Dict[str, Any]) -> Optional[str]:
+        if event_type == "npc_killed":
+            quest_msg = self.quest_manager.handle_npc_killed(event_type, data)
+            rep_msg = self._handle_reputation_on_kill(data)
+            
+            if quest_msg and rep_msg: return f"{quest_msg}\n{rep_msg}"
+            return quest_msg or rep_msg
+        return None
+
+    def _handle_reputation_on_kill(self, data: Dict[str, Any]) -> Optional[str]:
+        player = data.get("player")
+        npc = data.get("npc")
+        if not player or not npc: return None
+        
+        faction = npc.faction
+        if faction == "hostile":
+            player.adjust_reputation("friendly", REP_KILL_REWARD_HOSTILE)
+            return None 
+        elif faction == "friendly" or faction == "neutral":
+            player.adjust_reputation("friendly", REP_KILL_PENALTY_SAME_FACTION)
+            player.adjust_reputation("neutral", REP_KILL_PENALTY_SAME_FACTION)
+            return f"{FORMAT_ERROR}Your reputation plummets! You are now looked upon with suspicion.{FORMAT_RESET}"
+        return None
+
+    def attempt_pick_lock_direction(self, direction: str) -> str:
+        current_room = self.get_current_room()
+        if not current_room: return "You are nowhere."
+        
+        reqs = current_room.properties.get("exit_requirements", {})
+        dir_req = reqs.get(direction)
+        
+        if dir_req and dir_req.get("type") == "locked":
+            difficulty = dir_req.get("pick_difficulty", 999)
+            if difficulty > 100: return "This lock cannot be picked."
+            
+            has_lockpick = False
+            if not self.player: return f"{FORMAT_ERROR}Player not found.{FORMAT_RESET}"
+            for slot in self.player.inventory.slots:
+                if isinstance(slot.item, Lockpick):
+                    has_lockpick = True
+                    break
+            
+            if not has_lockpick:
+                return "You need a lockpick."
+                
+            success, msg = SkillSystem.attempt_check(self.player, "lockpicking", difficulty)
+            if success:
+                del reqs[direction]
+                current_room.update_property("exit_requirements", reqs)
+                SkillSystem.grant_xp(self.player, "lockpicking", difficulty)
+                return f"{FORMAT_SUCCESS}Click! You unlock the way {direction}.{FORMAT_RESET}"
+            else:
+                return f"{FORMAT_ERROR}You fail to pick the lock.{FORMAT_RESET}"
+
+        dest_id = current_room.get_exit(direction)
+        if dest_id:
+            rid = self.current_region_id
+            if ":" in dest_id: rid, dest_id = dest_id.split(":")
+            
+            if rid: reg = self.get_region(rid)
+            if reg:
+                room = reg.get_room(dest_id)
+                if room and room.get_property("locked_by"):
+                    difficulty = 20 
+                    
+                    has_lockpick = False
+                    if not self.player: return f"{FORMAT_ERROR}Player not found.{FORMAT_RESET}"
+                    for slot in self.player.inventory.slots:
+                        if isinstance(slot.item, Lockpick):
+                            has_lockpick = True
+                            break
+
+                    if not has_lockpick: return "You need a lockpick."
+                    success, msg = SkillSystem.attempt_check(self.player, "lockpicking", difficulty)
+                    if success:
+                        room.properties["locked_by"] = None 
+                        SkillSystem.grant_xp(self.player, "lockpicking", 10)
+                        return f"{FORMAT_SUCCESS}Click! You unlock the door to {room.name}.{FORMAT_RESET}"
+                    else:
+                        return f"{FORMAT_ERROR}You fail to pick the lock.{FORMAT_RESET}"
+
+        return "There is nothing locked in that direction."
 
     def _load_room_items_from_save(self, room_items_data: Dict[str, Any]):
         for location_key, item_refs in room_items_data.items():
@@ -158,7 +278,6 @@ class World:
             except ValueError:
                 print(f"Warning: Could not parse room location key '{location_key}' from save file.")
 
-    # --- Accessors, Mutators, and other helpers ---
     def get_region(self, region_id: str) -> Optional[Region]: return self.regions.get(region_id)
     
     def get_current_region(self) -> Optional[Region]: 
@@ -183,7 +302,6 @@ class World:
         return [npc for npc in self.npcs.values() if npc.current_region_id == region_id and npc.current_room_id == room_id and npc.is_alive]
     
     def get_current_room_npcs(self) -> List[NPC]:
-        # Narrowing for type safety
         rid, rmid = self.current_region_id, self.current_room_id
         if not rid or not rmid: return []
         return self.get_npcs_in_room(rid, rmid)
@@ -195,7 +313,6 @@ class World:
         return getattr(room, 'items', []) if room else []
     
     def get_items_in_current_room(self) -> List[Item]:
-        # Narrowing for type safety
         rid, rmid = self.current_region_id, self.current_room_id
         if not rid or not rmid: return []
         return self.get_items_in_room(rid, rmid)
@@ -269,11 +386,6 @@ class World:
             return True
         except ValueError:
             return False
-    
-    def dispatch_event(self, event_type: str, data: Dict[str, Any]) -> Optional[str]:
-        if event_type == "npc_killed":
-            return self.quest_manager.handle_npc_killed(event_type, data)
-        return None
     
     def find_nearest_safe_room(self, source_region_id: str, source_room_id: str) -> Optional[Tuple[str, str]]:
         if self.is_location_safe(source_region_id, source_room_id):

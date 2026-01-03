@@ -7,8 +7,6 @@ class Treasure(Item):
                  description: str = "No description", weight: float = 0.5,
                  value: int = 100, **kwargs):
         
-        # Use value from template if exists, otherwise default to False (unique treasures)
-        # Note: Coins usually define "stackable": true in JSON to override this default.
         is_stackable = kwargs.pop('stackable', False)
         
         super().__init__(
@@ -22,6 +20,5 @@ class Treasure(Item):
             **kwargs
         )
     
-    def use(self, user) -> str:
-        """Use the treasure (admire it)."""
+    def use(self, user, **kwargs) -> str:
         return f"You admire the {self.name}. It looks quite valuable."

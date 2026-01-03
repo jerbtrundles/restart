@@ -1,3 +1,4 @@
+# tests/batch/test_batch_loot.py
 import time
 from unittest.mock import patch
 from tests.fixtures import GameTestBase

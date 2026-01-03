@@ -1,13 +1,12 @@
 # engine/npcs/npc_factory.py
 import inspect
 import random
-import time
 import uuid
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
 
 from engine.config import (
     FORMAT_ERROR, FORMAT_RESET, NPC_BASE_HEALTH, NPC_BASE_XP_TO_LEVEL, NPC_CON_HEALTH_MULTIPLIER, NPC_DEFAULT_AGGRESSION,
-    NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MAX_MANA, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN,
+    NPC_DEFAULT_FLEE_THRESHOLD, NPC_DEFAULT_MOVE_COOLDOWN, NPC_DEFAULT_RESPAWN_COOLDOWN,
     NPC_DEFAULT_SPELL_CAST_CHANCE, NPC_DEFAULT_WANDER, NPC_LEVEL_CON_HEALTH_MULTIPLIER, NPC_LEVEL_HEALTH_BASE_INCREASE,
     NPC_XP_TO_LEVEL_MULTIPLIER, VILLAGER_FIRST_NAMES_FEMALE, VILLAGER_FIRST_NAMES_MALE
 )
@@ -15,6 +14,7 @@ from engine.config.config_npc import NPC_MANA_LEVEL_UP_INT_DIVISOR, NPC_MANA_LEV
 from engine.items.item_factory import ItemFactory
 from .npc import NPC
 from engine.items.inventory import Inventory
+from engine.utils.logger import Logger, LogLevel # NEW IMPORT
 
 if TYPE_CHECKING:
     from engine.world.world import World
@@ -41,12 +41,12 @@ class NPCFactory:
     def create_npc_from_template(template_id: str, world: 'World', instance_id: Optional[str] = None, **overrides) -> Optional[NPC]:
         """Creates an NPC instance from a template ID and applies overrides."""
         if not world or not hasattr(world, 'npc_templates'):
-            print(f"{FORMAT_ERROR}Error: World context with npc_templates required.{FORMAT_RESET}")
+            Logger.error("NPCFactory", "World context with npc_templates required.")
             return None
 
         template = world.npc_templates.get(template_id)
         if not template:
-            print(f"{FORMAT_ERROR}Error: NPC template '{template_id}' not found.{FORMAT_RESET}")
+            Logger.error("NPCFactory", f"Error: NPC template '{template_id}' not found.")
             return None
 
         try:
@@ -83,7 +83,6 @@ class NPCFactory:
             final_int = npc.stats.get('intelligence', 5)
 
             # Health
-            # Priority: 1. Saved Max Health, 2. Calculated Max Health
             if "max_health" in overrides:
                  npc.max_health = overrides["max_health"]
             else:
@@ -95,21 +94,17 @@ class NPCFactory:
             npc.health = max(1, min(npc.health, npc.max_health))
             
             # Mana
-            # Priority: 1. Saved Max Mana, 2. Calculated Max Mana (if template allows)
             if "max_mana" in overrides:
                  npc.max_mana = overrides["max_mana"]
             else:
                  npc.max_mana = 0
-                 # Check if the template OPTS-IN to having mana.
                  base_mana_from_template = template.get("max_mana", 0)
                  
                  if base_mana_from_template > 0:
-                     # If it does, calculate the full mana pool with bonuses.
                      int_bonus = (final_int - 5) * NPC_MANA_LEVEL_UP_INT_DIVISOR 
                      level_bonus = int((npc.level - 1) * (base_mana_from_template * (NPC_MANA_LEVEL_UP_MULTIPLIER - 1)))
                      npc.max_mana = base_mana_from_template + int_bonus + level_bonus
             
-            # Set current mana: use saved value if loading, otherwise set to max.
             npc.mana = overrides.get("mana", npc.max_mana)
             npc.mana = max(0, min(npc.mana, npc.max_mana))
 
@@ -180,32 +175,31 @@ class NPCFactory:
                 if isinstance(template_inventory, list):
                     for item_ref in template_inventory:
                         if not isinstance(item_ref, dict):
-                            print(f"Warning: Invalid item reference in initial_inventory for NPC '{template.get('name')}': not a dictionary. Skipping.")
+                            Logger.warning("NPCFactory", f"Invalid item reference for '{template.get('name')}': not a dictionary. Skipping.")
                             continue
 
                         item_id = item_ref.get("item_id")
                         quantity = item_ref.get("quantity", 1)
 
-                        # Check that item_id is a valid, non-empty string
                         if item_id and isinstance(item_id, str):
                             item = ItemFactory.create_item_from_template(item_id, world)
                             if item:
                                 npc.inventory.add_item(item, quantity)
                         else:
-                            print(f"Warning: Skipping invalid item reference in initial_inventory for NPC '{template.get('name')}': {item_ref}")
+                            Logger.warning("NPCFactory", f"Skipping invalid item reference for '{template.get('name')}': {item_ref}")
                 else:
-                    print(f"Warning: 'initial_inventory' for NPC '{template.get('name')}' is not a list. Skipping inventory creation.")
+                    Logger.warning("NPCFactory", f"'initial_inventory' for '{template.get('name')}' is not a list.")
 
             npc.world = world
 
-            print("[NPCFactory create_npc_from_template()]")
-            print(f"Spawning {npc.name} - {npc.health}/{npc.max_health}hp {npc.current_region_id} - {npc.current_room_id}")
-            print(f"---------------------------------------------")
-
+            # --- NEW LOGGER USAGE ---
+            Logger.debug("NPCFactory", f"Spawning {npc.name} - {npc.health}/{npc.max_health}hp in {npc.current_region_id}:{npc.current_room_id}")
+            # Logger.separator(LogLevel.DEBUG) # Optional visual separator
+            
             return npc
 
         except Exception as e:
-            print(f"{FORMAT_ERROR}Error instantiating NPC '{template_id}' from template: {e}{FORMAT_RESET}")
+            Logger.error("NPCFactory", f"Error instantiating NPC '{template_id}': {e}")
             import traceback
             traceback.print_exc()
             return None

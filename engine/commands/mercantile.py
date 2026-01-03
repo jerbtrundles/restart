@@ -13,13 +13,22 @@ from engine.items.item import Item
 from engine.player import Player
 from engine.npcs.npc import NPC
 
+def _get_price_multiplier(vendor: NPC) -> float:
+    base = DEFAULT_VENDOR_SELL_MULTIPLIER
+    if "economy_impact" in vendor.properties:
+        discount = vendor.properties["economy_impact"].get("discount", 0.0)
+        return max(0.1, base - discount)
+    return base
+
 def _display_vendor_inventory(player: Player, vendor: NPC, world) -> str:
-    # 1. Items defined in properties (Infinite stock templates)
     vendor_items_refs = vendor.properties.get("sells_items", [])
     
     display_lines = [f"{FORMAT_TITLE}{vendor.name}'s Wares:{FORMAT_RESET}\n"]
     
-    # List Template Items
+    current_multiplier = _get_price_multiplier(vendor)
+    if current_multiplier < DEFAULT_VENDOR_SELL_MULTIPLIER:
+        display_lines.append(f"{FORMAT_HIGHLIGHT}(Special Discount Active!){FORMAT_RESET}\n")
+
     if vendor_items_refs:
         for item_ref in vendor_items_refs:
             item_id = item_ref.get("item_id")
@@ -30,16 +39,31 @@ def _display_vendor_inventory(player: Player, vendor: NPC, world) -> str:
                 
             item_name = template.get("name", "Unknown Item")
             base_value = template.get("value", 0)
-            price_multiplier = item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
-            buy_price = max(VENDOR_MIN_BUY_PRICE, int(base_value * price_multiplier))
+            
+            # Combine item-specific multiplier with vendor global multiplier (discount)
+            # Item specific multiplier is usually 1.0 or higher.
+            # Vendor global multiplier starts at 2.0 (DEFAULT_SELL) and lowers with discount.
+            # Effective Price = Base * ItemMult * (VendorMult / DefaultVendorMult) ??
+            # Or simpler: The stored price_multiplier in item_ref IS the sell price factor relative to base value.
+            # Default is 2.0. If item has 5.0, it's expensive.
+            # If we apply a discount (e.g. 0.2 off), we should reduce the final factor.
+            
+            item_mult = item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
+            
+            # Calculate discount ratio
+            discount_ratio = current_multiplier / DEFAULT_VENDOR_SELL_MULTIPLIER
+            final_mult = item_mult * discount_ratio
+            
+            buy_price = max(VENDOR_MIN_BUY_PRICE, int(base_value * final_mult))
             
             display_lines.append(f"- {item_name:<{VENDOR_LIST_ITEM_NAME_WIDTH}} | Price: {buy_price:>{VENDOR_LIST_PRICE_WIDTH}} gold")
 
-    # 2. Items in actual inventory (Buybacks / Dynamic stock)
     for slot in vendor.inventory.slots:
         if slot.item:
             item_name = slot.item.name
-            buy_price = max(VENDOR_MIN_BUY_PRICE, int(slot.item.value * DEFAULT_VENDOR_SELL_MULTIPLIER))
+            
+            # Dynamic stock usually uses default multiplier
+            buy_price = max(VENDOR_MIN_BUY_PRICE, int(slot.item.value * current_multiplier))
             
             qty_str = f" (x{slot.quantity})" if slot.quantity > 1 else ""
             display_lines.append(f"- {item_name}{qty_str:<{VENDOR_LIST_ITEM_NAME_WIDTH - len(qty_str)}} | Price: {buy_price:>{VENDOR_LIST_PRICE_WIDTH}} gold")
@@ -86,7 +110,6 @@ def list_handler(args, context):
     if not player.trading_with: return f"{FORMAT_ERROR}You are not currently trading with anyone.{FORMAT_RESET}"
     
     vendor = world.get_npc(player.trading_with)
-    # Strict None checks for vendor location
     if not vendor or vendor.current_region_id != player.current_region_id or vendor.current_room_id != player.current_room_id:
         player.trading_with = None
         return f"{FORMAT_ERROR}The vendor you were trading with is no longer here.{FORMAT_RESET}"
@@ -116,7 +139,10 @@ def buy_handler(args, context):
     except ValueError: return f"{FORMAT_ERROR}Invalid quantity specified.{FORMAT_RESET}"
     if not item_name: return f"{FORMAT_ERROR}You must specify an item name.{FORMAT_RESET}"
 
-    # Search Priority: Vendor Inventory (Buybacks) -> Template Stock
+    # Calculate current effective multiplier (including discounts)
+    current_multiplier = _get_price_multiplier(vendor)
+    discount_ratio = current_multiplier / DEFAULT_VENDOR_SELL_MULTIPLIER
+
     found_inv_item = vendor.inventory.find_item_by_name(item_name)
     
     if found_inv_item:
@@ -125,7 +151,7 @@ def buy_handler(args, context):
             return f"{FORMAT_ERROR}{vendor.name} only has {available_qty} {found_inv_item.name}(s).{FORMAT_RESET}"
             
         base_value = found_inv_item.value
-        buy_price_per_item = max(VENDOR_MIN_BUY_PRICE, int(base_value * DEFAULT_VENDOR_SELL_MULTIPLIER))
+        buy_price_per_item = max(VENDOR_MIN_BUY_PRICE, int(base_value * current_multiplier))
         total_cost = buy_price_per_item * quantity
         
         if player.gold < total_cost: return f"{FORMAT_ERROR}You don't have enough gold (Need {total_cost}, have {player.gold}).{FORMAT_RESET}"
@@ -135,14 +161,10 @@ def buy_handler(args, context):
         
         player.gold -= total_cost
         
-        # Move items from vendor to player
         removed_item, removed_qty, _ = vendor.inventory.remove_item(found_inv_item.obj_id, quantity)
         
         if removed_item:
-            # Check if stackable and if template exists, prefer creating from template to ensure fresh instance if desired,
-            # or just adding the removed reference (or clones if stackable logic requires it).
             if removed_item.stackable and removed_item.obj_id in world.item_templates:
-                # Re-create to be safe against reference sharing if not fully removed
                 for _ in range(quantity):
                     new_item = ItemFactory.create_item_from_template(removed_item.obj_id, world)
                     if new_item: player.inventory.add_item(new_item)
@@ -151,7 +173,6 @@ def buy_handler(args, context):
 
         return f"{FORMAT_SUCCESS}You buy {quantity} {found_inv_item.name}{'' if quantity == 1 else 's'} for {total_cost} gold.{FORMAT_RESET}"
 
-    # Fallback: Template Search
     found_item_ref = None; found_template = None
     for item_ref in vendor.properties.get("sells_items", []):
         item_id = item_ref.get("item_id")
@@ -169,9 +190,13 @@ def buy_handler(args, context):
 
     item_id = found_template["obj_id"] = found_item_ref["item_id"]
     base_value = found_template.get("value", 0)
-    price_multiplier = found_item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
-    buy_price_per_item = max(VENDOR_MIN_BUY_PRICE, int(base_value * price_multiplier))
+    
+    item_specific_mult = found_item_ref.get("price_multiplier", DEFAULT_VENDOR_SELL_MULTIPLIER)
+    final_mult = item_specific_mult * discount_ratio
+    
+    buy_price_per_item = max(VENDOR_MIN_BUY_PRICE, int(base_value * final_mult))
     total_cost = buy_price_per_item * quantity
+    
     if player.gold < total_cost: return f"{FORMAT_ERROR}You don't have enough gold (Need {total_cost}, have {player.gold}).{FORMAT_RESET}"
     
     temp_item = ItemFactory.create_item_from_template(item_id, world)
@@ -239,7 +264,6 @@ def sell_handler(args, context):
     if not removed_item_type or actual_removed_count != quantity:
          return f"{FORMAT_ERROR}Something went wrong removing {item_to_sell.name} from your inventory. Sale cancelled.{FORMAT_RESET}"
          
-    # --- ADD TO VENDOR INVENTORY (Buyback) ---
     if removed_item_type:
         vendor.inventory.add_item(removed_item_type, actual_removed_count)
 

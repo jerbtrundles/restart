@@ -1,0 +1,79 @@
+{
+  "quest_scout_forest": {
+    "title": "Eyes in the Woods",
+    "type": "quest",
+    "description": "Scout the forest to locate the bandit camp.",
+    "stages": [
+      {
+        "stage_index": 0,
+        "description": "Locate the Hidden Camp in the Whispering Woods.",
+        "objective": {
+          "type": "scout",
+          "target_region": "forest",
+          "target_room_keywords": ["camp", "clearing"],
+          "target_room_id": "forest_clearing" 
+        },
+        "turn_in_id": "village_elder"
+      }
+    ],
+    "rewards": { "xp": 200 }
+  },
+  "quest_negotiate_or_kill_bandit": {
+    "title": "The Bandit Lieutenant",
+    "type": "quest",
+    "description": "Deal with the bandit leadership.",
+    "stages": [
+      {
+        "stage_index": 0,
+        "description": "Confront the Lieutenant.",
+        "turn_in_id": "bandit_lieutenant",
+        "objective": {
+          "type": "negotiate",
+          "target_npc_id": "bandit_lieutenant",
+          "skill": "diplomacy",
+          "difficulty": 10,
+          "choices": {
+            "success": { "description": "You convinced him to stand down. Peace is possible." },
+            "fail": { "next_stage": 1, "description": "Negotiations failed. Kill him." }
+          }
+        }
+      },
+      {
+        "stage_index": 1,
+        "description": "Kill the Lieutenant.",
+        "objective": {
+          "type": "kill",
+          "target_template_id": "bandit_lieutenant",
+          "required_quantity": 1
+        },
+        "turn_in_id": "village_elder"
+      }
+    ],
+    "rewards": { "xp": 500, "gold": 100 }
+  },
+  "quest_kill_bandit_king": {
+    "title": "Regicide",
+    "type": "quest",
+    "stages": [{
+        "stage_index": 0,
+        "objective": { "type": "kill", "target_template_id": "bandit_king", "required_quantity": 1 },
+        "turn_in_id": "village_elder"
+    }],
+    "rewards": { "xp": 1000, "items": [{"item_id": "item_iron_sword", "quantity": 1}] }
+  },
+  "quest_deliver_treaty": {
+    "title": "The White Flag",
+    "type": "quest",
+    "stages": [{
+        "stage_index": 0,
+        "objective": { 
+            "type": "deliver", 
+            "item_template_id": "item_treaty", 
+            "recipient_instance_id": "bandit_king",
+            "item_to_deliver_name": "Peace Treaty"
+        },
+        "turn_in_id": "bandit_king"
+    }],
+    "rewards": { "xp": 1000, "gold": 500 }
+  }
+}

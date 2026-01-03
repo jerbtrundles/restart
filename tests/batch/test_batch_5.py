@@ -106,59 +106,44 @@ class TestBatch5(GameTestBase):
             self.assertEqual(broken_power, base_power, "Broken weapon should not grant damage bonus.")
 
     def test_kill_quest_persistence_interim(self):
-            """Verify kill count persists across save/load cycles in the middle of a quest."""
-            TEST_SAVE = "test_kill_persist.json"
+        """Verify kill count persists across save/load cycles in the middle of a quest."""
+        TEST_SAVE = "test_kill_persist.json"
+        
+        q_id = "rat_killer_persist"
+        self.player.quest_log[q_id] = {
+            "instance_id": q_id, "type": "kill", "state": "active", "current_stage_index": 0,
+            "title": "Rat Hunt",
+            "stages": [{
+                "stage_index": 0,
+                "objective": {"type": "kill", "target_template_id": "giant_rat", "required_quantity": 5, "current_quantity": 0}
+            }]
+        }
+        
+        rat = NPCFactory.create_npc_from_template("giant_rat", self.world)
+        if rat:
+            self.world.dispatch_event("npc_killed", {"player": self.player, "npc": rat})
+            self.world.dispatch_event("npc_killed", {"player": self.player, "npc": rat})
             
-            # 1. Setup Quest (Kill 5 Rats)
-            q_id = "rat_killer_persist"
-            self.player.quest_log[q_id] = {
-                "instance_id": q_id,
-                "type": "kill",
-                "state": "active",
-                "title": "Rat Hunt",
-                "objective": {
-                    "target_template_id": "giant_rat",
-                    "required_quantity": 5,
-                    "current_quantity": 0
-                }
-            }
-            
-            # 2. Kill 2 Rats
-            rat = NPCFactory.create_npc_from_template("giant_rat", self.world)
-            if rat:
-                self.world.dispatch_event("npc_killed", {"player": self.player, "npc": rat})
-                self.world.dispatch_event("npc_killed", {"player": self.player, "npc": rat})
-                
-            self.assertEqual(self.player.quest_log[q_id]["objective"]["current_quantity"], 2)
-            
-            # 3. Save Game
-            self.world.save_game(TEST_SAVE)
-            
-            # 4. Reset World
-            self.player.quest_log = {}
-            
-            # 5. Load Game
-            self.world.load_save_game(TEST_SAVE)
-            loaded_player = self.world.player
+        self.assertEqual(self.player.quest_log[q_id]["stages"][0]["objective"]["current_quantity"], 2)
+        
+        self.world.save_game(TEST_SAVE)
+        self.player.quest_log = {}
+        self.world.load_save_game(TEST_SAVE)
+        loaded_player = self.world.player
 
-            # --- FIX: Explicit None check for loaded player ---
-            self.assertIsNotNone(loaded_player, "Player should exist after load.")
+        self.assertIsNotNone(loaded_player, "Player should exist after load.")
+        
+        if loaded_player:
+            if rat:
+                self.world.dispatch_event("npc_killed", {"player": loaded_player, "npc": rat})
             
-            if loaded_player:
-                # 6. Kill 3rd Rat
-                if rat:
-                    # Re-dispatch event using loaded player context
-                    self.world.dispatch_event("npc_killed", {"player": loaded_player, "npc": rat})
+            loaded_quest = loaded_player.quest_log.get(q_id)
+            self.assertIsNotNone(loaded_quest)
+            if loaded_quest:
+                self.assertEqual(loaded_quest["stages"][0]["objective"]["current_quantity"], 3)
                 
-                # 7. Assert Progress (2 + 1 = 3)
-                loaded_quest = loaded_player.quest_log.get(q_id)
-                self.assertIsNotNone(loaded_quest)
-                if loaded_quest:
-                    self.assertEqual(loaded_quest["objective"]["current_quantity"], 3)
-                
-            # Cleanup
-            if os.path.exists(os.path.join("data", "saves", TEST_SAVE)):
-                os.remove(os.path.join("data", "saves", TEST_SAVE))
+        if os.path.exists(os.path.join("data", "saves", TEST_SAVE)):
+            os.remove(os.path.join("data", "saves", TEST_SAVE))
 
     def test_container_capacity_rejection(self):
         """Verify putting an item into a full container fails and item remains in inventory."""

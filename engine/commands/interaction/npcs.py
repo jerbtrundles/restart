@@ -4,6 +4,8 @@ from engine.config import (
     FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE,
     FOLLOW_COMMAND_STOP_ALIASES
 )
+from engine.config.config_display import FORMAT_CATEGORY
+from engine.core.skill_system import SkillSystem
 from engine.utils.utils import format_name_for_display
 
 @command("talk", ["speak", "chat", "ask"], "interaction", "Talk to an NPC.\nUsage: talk <npc_name> [topic | complete quest]")
@@ -19,7 +21,6 @@ def talk_handler(args, context):
     best_match_npc = None
     best_match_len = 0
 
-    # Greedy Name Matching
     for i in range(len(args), 0, -1):
         potential_name = " ".join(args[:i]).lower()
         found = None
@@ -53,15 +54,23 @@ def talk_handler(args, context):
             is_quest_turn_in = True
         else: 
             topic = topic_str
-    
+
     if is_quest_turn_in:
         return _handle_quest_dialogue(player, target_npc, world)
     else:
-        # Standard Dialogue
         ready_quests_for_npc = []
         if hasattr(player, 'quest_log') and player.quest_log:
             for q_id, q_data in player.quest_log.items():
-                if (q_data.get("state") == "ready_to_complete" and q_data.get("giver_instance_id") == target_npc.obj_id):
+                stages = q_data.get("stages", [])
+                idx = q_data.get("current_stage_index", 0)
+                
+                # Resolve Turn-In Target
+                turn_in_target = q_data.get("giver_instance_id")
+                if stages and idx < len(stages):
+                    stage_target = stages[idx].get("turn_in_id")
+                    if stage_target: turn_in_target = stage_target
+
+                if (q_data.get("state") == "ready_to_complete" and turn_in_target == target_npc.obj_id):
                     ready_quests_for_npc.append(q_id)
         
         turn_in_hint = f"\n{FORMAT_HIGHLIGHT}(You have tasks to report. Type 'talk {target_npc.name} complete quest'){FORMAT_RESET}" if ready_quests_for_npc else ""
@@ -107,11 +116,9 @@ def ask_handler(args, context):
     if not args:
         return f"{FORMAT_ERROR}Ask who/what? Usage: ask [npc_name] <topic>{FORMAT_RESET}"
 
-    # 1. Determine Target (Greedy Matching Logic)
     target_npc = None
     topic_start_index = 0
 
-    # A. Check for explicit NPC match in args
     npcs_in_room = world.get_current_room_npcs()
     best_match_npc = None
     best_match_len = 0
@@ -136,7 +143,6 @@ def ask_handler(args, context):
         target_npc = best_match_npc
         topic_start_index = best_match_len
     else:
-        # B. Fallback to Context
         if player.trading_with:
             target_npc = world.get_npc(player.trading_with)
         elif player.last_talked_to:
@@ -158,26 +164,18 @@ def ask_handler(args, context):
 
     player.last_talked_to = target_npc.obj_id
 
-    # 2. Extract Topic String
     topic_words = args[topic_start_index:]
     if not topic_words:
         return f"{FORMAT_ERROR}Ask {target_npc.name} about what?{FORMAT_RESET}"
     
     raw_input = " ".join(topic_words)
-
-    # 3. Resolve Topic ID
     topic_id = manager.resolve_topic_id(raw_input)
 
     if not topic_id:
         topic_id = raw_input.lower().replace(" ", "_")
 
-    # 4. Mark Discussed
     player.conversation.mark_discussed(target_npc.obj_id, topic_id)
-    
-    # 5. Get Response
     raw_response = manager.get_response(target_npc, topic_id, player)
-    
-    # 6. Highlight & Reveal
     formatted_response = manager.parse_and_highlight(raw_response, player, source_npc=target_npc)
     
     return f"{FORMAT_TITLE}{target_npc.name}{FORMAT_RESET}: {formatted_response}"
@@ -231,80 +229,112 @@ def guide_handler(args, context):
     return f"{FORMAT_HIGHLIGHT}\"{guide_npc.dialog.get('accept_guide', 'Follow me!')}\"{FORMAT_RESET}"
 
 def _handle_quest_dialogue(player, target_npc, world) -> str:
-    """Helper to process quest completions via dialogue."""
     ready_quests_for_npc = []
+    quest_manager = world.quest_manager
+    
     if hasattr(player, 'quest_log') and player.quest_log:
         for q_id, q_data in player.quest_log.items():
-            if (q_data.get("state") == "ready_to_complete" and q_data.get("giver_instance_id") == target_npc.obj_id):
+            stages = q_data.get("stages", [])
+            idx = q_data.get("current_stage_index", 0)
+            turn_in_target = q_data.get("giver_instance_id") 
+            if stages and idx < len(stages):
+                 stage_target = stages[idx].get("turn_in_id")
+                 if stage_target: turn_in_target = stage_target
+                 objective = stages[idx].get("objective", {})
+                 if objective.get("type") == "negotiate":
+                      target_tid = objective.get("target_npc_id")
+                      if target_tid == target_npc.template_id or target_tid == target_npc.obj_id:
+                           turn_in_target = target_npc.obj_id
+            state = q_data.get("state")
+            objective = quest_manager.get_active_objective(q_data) or {} 
+            objective_type = objective.get("type")
+            is_target_npc = (turn_in_target == target_npc.obj_id) or (turn_in_target == target_npc.template_id)
+            is_ready = False
+            if state == "ready_to_complete" and is_target_npc:
+                is_ready = True
+            elif state == "active" and is_target_npc:
+                if objective_type in ["fetch", "deliver", "talk", "negotiate", "dialogue_choice"]:
+                    is_ready = True
+            if is_ready:
                 ready_quests_for_npc.append((q_id, q_data))
 
     if not ready_quests_for_npc: return f"{target_npc.name} doesn't seem to be expecting anything from you right now."
-    
     quest_turn_in_id, quest_data = ready_quests_for_npc[0]
-    quest_type = quest_data.get("type")
-    objective = quest_data.get("objective", {})
+    objective = quest_manager.get_active_objective(quest_data)
+    if not objective:
+        return f"{FORMAT_ERROR}Error: Quest objective data missing for '{quest_data.get('title')}'.{FORMAT_RESET}"
+
     can_complete = True
     completion_error_msg = ""
     
-    if quest_type == "fetch":
-        required_item_id = objective.get("item_id")
-        required_qty = objective.get("required_quantity", 1)
-        player_has_qty = player.inventory.count_item(required_item_id)
-        
-        if player_has_qty < required_qty:
-            can_complete = False
-            completion_error_msg = f"You still need {required_qty - player_has_qty} more {objective.get('item_name_plural', 'items')}."
+    if objective.get("type") == "negotiate":
+        skill = objective.get("skill", "diplomacy")
+        difficulty = objective.get("difficulty", 10)
+        success, msg = SkillSystem.attempt_check(player, skill, difficulty)
+        choices = objective.get("choices", {})
+        choice_id = "success" if success else "fail"
+        if choice_id in choices:
+            qm = world.quest_manager
+            dialogue = qm.advance_quest_stage(player, quest_turn_in_id, choice_id=choice_id)
+            if dialogue == "QUEST_COMPLETE":
+                 rewards_msg = qm.complete_quest(player, quest_turn_in_id)
+                 return f"{FORMAT_SUCCESS}[Quest Complete] {quest_data.get('title')}{FORMAT_RESET}\n{FORMAT_HIGHLIGHT}\"Negotiation concluded.\"{FORMAT_RESET}"
+            outcome_desc = choices[choice_id].get("description", "Result")
+            status_color = FORMAT_SUCCESS if success else FORMAT_ERROR
+            return f"{status_color}[Negotiation {choice_id.upper()}]{FORMAT_RESET} {msg}\n\n{FORMAT_HIGHLIGHT}\"{dialogue}\"{FORMAT_RESET}\n({outcome_desc})"
+        else: return f"{FORMAT_ERROR}Negotiation config error.{FORMAT_RESET}"
+
+    req_item_id = objective.get("item_id")
+    item_to_remove = None
+    req_qty = objective.get("required_quantity", 1)
+
+    if req_item_id:
+        if objective.get("type") == "deliver" and objective.get("item_instance_id"):
+             item_to_remove = player.inventory.find_item_by_id(objective["item_instance_id"])
+             if not item_to_remove:
+                 can_complete = False
+                 completion_error_msg = f"You don't have the {objective.get('item_to_deliver_name', 'package')}."
         else:
-            removed_type, removed_count, remove_msg = player.inventory.remove_item(required_item_id, required_qty)
-            if not removed_type or removed_count != required_qty:
-                    can_complete = False
-                    completion_error_msg = "Error removing required items from your inventory. Cannot complete quest."
-                    
-    elif quest_type == "deliver":
-        required_instance_id = objective.get("item_instance_id")
-        package_instance = player.inventory.find_item_by_id(required_instance_id)
-        if not package_instance:
-            can_complete = False
-            completion_error_msg = f"You don't seem to have the {objective.get('item_to_deliver_name', 'package')} anymore!"
+             current_count = player.inventory.count_item(req_item_id)
+             if current_count < req_qty:
+                 can_complete = False
+                 remaining = req_qty - current_count
+                 completion_error_msg = f"You still need {remaining} more {objective.get('item_name', 'items')}."
+
+    if can_complete and req_item_id:
+        if objective.get("type") == "deliver" and item_to_remove:
+             player.inventory.remove_item_instance(item_to_remove)
         else:
-            if not player.inventory.remove_item_instance(package_instance):
-                    can_complete = False
-                    completion_error_msg = f"Error removing the {objective.get('item_to_deliver_name', 'package')} from your inventory."
-    
+             player.inventory.remove_item(req_item_id, req_qty)
+
     if can_complete:
-        rewards = quest_data.get("rewards", {})
-        xp_reward = rewards.get("xp", 0)
-        gold_reward = rewards.get("gold", 0)
-        leveled_up, level_up_message = False, ""
-        reward_messages = []
-
-        if xp_reward > 0:
-                leveled_up, level_up_message = player.gain_experience(xp_reward)
-                reward_messages.append(f"{xp_reward} XP")
-
-        if gold_reward > 0: 
-            player.gold += gold_reward
-            reward_messages.append(f"{gold_reward} Gold")
+        qm = world.quest_manager
+        dialogue = qm.advance_quest_stage(player, quest_turn_in_id)
+        
+        if dialogue == "QUEST_COMPLETE":
+            # DETERMINE RESOLUTION
+            objective = qm.get_active_objective(quest_data) or {}
+            obj_type = objective.get("type", "unknown")
+            resolution = "SUCCESS"
             
-        if quest_turn_in_id in player.quest_log:
-            completed_quest = player.quest_log.pop(quest_turn_in_id)
-            player.completed_quest_log[quest_turn_in_id] = completed_quest
-
-        quest_manager = world.quest_manager
-        if quest_manager: quest_manager.replenish_board(quest_turn_in_id)
-
-        completion_message = f"{FORMAT_SUCCESS}[Quest Complete] {quest_data.get('title', 'Task')}{FORMAT_RESET}\n"
-        npc_response = target_npc.dialog.get(f"complete_{quest_turn_in_id}", target_npc.dialog.get("quest_complete", f"\"Ah, thank you for your help!\" says {target_npc.name}."))
-        completion_message += f"{FORMAT_HIGHLIGHT}{npc_response}{FORMAT_RESET}\n"
-        if reward_messages: completion_message += "You receive: " + ", ".join(reward_messages) + "."
-
-        if quest_type == "instance":
-            giver_id = quest_data.get("giver_instance_id")
-            if giver_id and giver_id in world.npcs:
-                del world.npcs[giver_id]
-                completion_message += f"\nHaving given you your reward, {target_npc.name} heads back inside their home."
-
-        if leveled_up and level_up_message: completion_message += "\n\n" + level_up_message
-        return completion_message
+            if obj_type == "kill" or obj_type == "clear_region":
+                resolution = "VIOLENT_SUCCESS"
+            elif obj_type in ["negotiate", "talk", "deliver", "fetch"]:
+                resolution = "PEACEFUL_SUCCESS"
+            
+            rewards_msg = qm.complete_quest(player, quest_turn_in_id, resolution=resolution)
+            
+            title = quest_data.get('title', 'Quest')
+            completion_msg = f"{FORMAT_SUCCESS}[Quest Complete] {title}{FORMAT_RESET}\n"
+            if not dialogue or dialogue == "QUEST_COMPLETE":
+                 dialogue = target_npc.dialog.get("quest_complete", f"\"Thank you!\" says {target_npc.name}.")
+            completion_msg += f"{FORMAT_HIGHLIGHT}\"{dialogue}\"{FORMAT_RESET}"
+            if rewards_msg: completion_msg += f"\n{rewards_msg}"
+            return completion_msg
+        else:
+            new_idx = quest_data.get("current_stage_index", 0)
+            new_stage_desc = quest_data["stages"][new_idx]["description"]
+            return f"{FORMAT_SUCCESS}[Objective Complete]{FORMAT_RESET}\n{FORMAT_HIGHLIGHT}\"{dialogue}\"{FORMAT_RESET}\n\n{FORMAT_CATEGORY}New Objective:{FORMAT_RESET} {new_stage_desc}"
+            
     else: 
-        return f"{FORMAT_ERROR}You haven't fully met the requirements for '{quest_data.get('title', 'this quest')}'. {completion_error_msg}{FORMAT_RESET}"
+        return f"{FORMAT_ERROR}You haven't fully met the requirements. {completion_error_msg}{FORMAT_RESET}"

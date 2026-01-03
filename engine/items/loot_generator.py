@@ -1,3 +1,4 @@
+# engine/items/loot_generator.py
 import random
 from typing import Optional, Dict, Any
 

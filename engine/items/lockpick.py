@@ -10,7 +10,6 @@ class Lockpick(Item):
                  description: str = "No description", weight: float = 0.1,
                  value: int = 5, break_chance: float = 0.25, **kwargs):
                  
-        # Use value from template if exists, otherwise default to True for Lockpicks
         is_stackable = kwargs.pop('stackable', True)
 
         super().__init__(
@@ -30,9 +29,7 @@ class Lockpick(Item):
         if not target:
             return f"What do you want to use the {self.name} on?"
 
-        # Check Capability (Duck Typing) for lockpicking
         if hasattr(target, 'pick_lock') and callable(getattr(target, 'pick_lock', None)):
-            
             target_as_any = cast(Any, target)
             
             difficulty = target.get_property("lock_difficulty", 30)

@@ -5,8 +5,9 @@ Registry of all available spells in the game, loaded from data files.
 import json
 import os
 from typing import Dict, Optional
-from engine.config import DATA_DIR, FORMAT_ERROR, FORMAT_RESET
+from engine.config import DATA_DIR
 from engine.magic.spell import Spell
+from engine.utils.logger import Logger
 
 # The registry is now populated at runtime by the loader.
 SPELL_REGISTRY: Dict[str, Spell] = {}
@@ -18,7 +19,7 @@ def load_spells_from_json():
     """
     magic_dir = os.path.join(DATA_DIR, "magic")
     if not os.path.isdir(magic_dir):
-        print(f"{FORMAT_ERROR}Error: Magic data directory not found at '{magic_dir}'.{FORMAT_RESET}")
+        Logger.error("SpellRegistry", f"Magic data directory not found at '{magic_dir}'.")
         return
 
     for filename in os.listdir(magic_dir):
@@ -31,14 +32,14 @@ def load_spells_from_json():
                         spell_object = Spell.from_dict(spell_id, spell_data)
                         register_spell(spell_object)
             except json.JSONDecodeError:
-                print(f"{FORMAT_ERROR}Error: Could not decode JSON from '{file_path}'. Check for syntax errors.{FORMAT_RESET}")
+                Logger.error("SpellRegistry", f"Could not decode JSON from '{file_path}'. Check for syntax errors.")
             except Exception as e:
-                print(f"{FORMAT_ERROR}An unexpected error occurred while loading spells from '{filename}': {e}{FORMAT_RESET}")
+                Logger.error("SpellRegistry", f"An unexpected error occurred while loading spells from '{filename}': {e}")
 
 def register_spell(spell: Spell):
     """Adds a spell to the registry."""
     if spell.spell_id in SPELL_REGISTRY:
-        print(f"Warning: Overwriting spell with ID {spell.spell_id}")
+        Logger.warning("SpellRegistry", f"Overwriting spell with ID {spell.spell_id}")
     SPELL_REGISTRY[spell.spell_id] = spell
 
 def get_spell(spell_id: str) -> Optional[Spell]:

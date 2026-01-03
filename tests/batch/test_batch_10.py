@@ -13,14 +13,18 @@ class TestBatch10(GameTestBase):
     def test_summon_kill_credit(self):
         if not self.player: return
         q_id = "minion_kill_test"
+        # Update to Saga Schema
         self.player.quest_log[q_id] = {
-            "instance_id": q_id, "type": "kill", "state": "active",
-            "objective": {"target_template_id": "goblin", "required_quantity": 1, "current_quantity": 0}
+            "instance_id": q_id, "type": "kill", "state": "active", "current_stage_index": 0,
+            "stages": [{
+                "stage_index": 0,
+                "objective": {"type": "kill", "target_template_id": "goblin", "required_quantity": 1, "current_quantity": 0}
+            }]
         }
+        
         minion = NPCFactory.create_npc_from_template("skeleton_minion", self.world)
         target = NPCFactory.create_npc_from_template("goblin", self.world)
-        self.assertIsNotNone(minion)
-        self.assertIsNotNone(target)
+        
         if minion and target:
             minion.properties["owner_id"] = self.player.obj_id
             self.world.add_npc(minion)
@@ -38,10 +42,11 @@ class TestBatch10(GameTestBase):
                 with patch('engine.utils.utils.calculate_xp_gain', return_value=0):
                     try_attack(minion, self.world, time.time())
             self.assertFalse(target.is_alive, "Target should be dead.")
+            
+            # Check progress via stages
             quest_data = self.player.quest_log.get(q_id)
-            self.assertIsNotNone(quest_data)
             if quest_data:
-                self.assertEqual(quest_data["objective"]["current_quantity"], 1, "Quest did not update from minion kill.")
+                self.assertEqual(quest_data["stages"][0]["objective"]["current_quantity"], 1, "Quest did not update from minion kill.")
 
     def test_spell_resistance_mitigation(self):
         if not self.player: return

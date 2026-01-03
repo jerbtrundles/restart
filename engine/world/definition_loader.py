@@ -14,6 +14,7 @@ from engine.npcs.npc_factory import NPCFactory
 from engine.npcs.ai import initialize_npc_schedules
 from engine.player import Player
 from engine.world.region import Region
+from engine.utils.logger import Logger
 
 if TYPE_CHECKING:
     from engine.world.world import World
@@ -21,18 +22,18 @@ if TYPE_CHECKING:
 
 def load_all_definitions(world: 'World'):
     """Populates the world's template dictionaries by loading from disk."""
-    print("Loading definitions...")
+    Logger.info("Loader", "Loading definitions...")
     load_spells_from_json()
     _load_item_templates(world)
     _load_npc_templates(world)
     world.quest_manager._load_npc_interests()
     _load_regions(world)
-    print("Definitions loaded.")
+    Logger.info("Loader", "Definitions loaded.")
 
 def _load_item_templates(world: 'World'):
     world.item_templates = {}
     if not os.path.isdir(ITEM_TEMPLATE_DIR):
-        print(f"Warning: Item template directory not found: {ITEM_TEMPLATE_DIR}")
+        Logger.warning("Loader", f"Item template directory not found: {ITEM_TEMPLATE_DIR}")
         return
     for filename in os.listdir(ITEM_TEMPLATE_DIR):
         if filename.endswith(".json"):
@@ -42,18 +43,18 @@ def _load_item_templates(world: 'World'):
                     data = json.load(f)
                     for item_id, template_data in data.items():
                         if item_id in world.item_templates:
-                            print(f"Warning: Duplicate item template ID '{item_id}' found in {filename}.")
+                            Logger.warning("Loader", f"Duplicate item template ID '{item_id}' found in {filename}.")
                         if "name" not in template_data or "type" not in template_data:
-                            print(f"Warning: Item template '{item_id}' in {filename} is missing 'name' or 'type'. Skipping.")
+                            Logger.warning("Loader", f"Item template '{item_id}' in {filename} is missing 'name' or 'type'. Skipping.")
                             continue
                         world.item_templates[item_id] = template_data
             except Exception as e:
-                print(f"Error loading item templates from {path}: {e}")
+                Logger.error("Loader", f"Error loading item templates from {path}: {e}")
 
 def _load_npc_templates(world: 'World'):
     world.npc_templates = {}
     if not os.path.isdir(NPC_TEMPLATE_DIR):
-        print(f"Warning: NPC template directory not found: {NPC_TEMPLATE_DIR}")
+        Logger.warning("Loader", f"NPC template directory not found: {NPC_TEMPLATE_DIR}")
         return
     for filename in os.listdir(NPC_TEMPLATE_DIR):
         if filename.endswith(".json"):
@@ -63,19 +64,19 @@ def _load_npc_templates(world: 'World'):
                     data = json.load(f)
                     for template_id, template_data in data.items():
                         if template_id in world.npc_templates:
-                            print(f"Warning: Duplicate NPC template ID '{template_id}' found in {filename}.")
+                            Logger.warning("Loader", f"Duplicate NPC template ID '{template_id}' found in {filename}.")
                         if "name" not in template_data:
-                            print(f"Warning: NPC template '{template_id}' in {filename} is missing 'name'. Skipping.")
+                            Logger.warning("Loader", f"NPC template '{template_id}' in {filename} is missing 'name'. Skipping.")
                             continue
                         world.npc_templates[template_id] = template_data
             except Exception as e:
-                print(f"Error loading NPC templates from {path}: {e}")
-    print(f"[NPC Templates] Loaded {len(world.npc_templates)} NPC templates.")
+                Logger.error("Loader", f"Error loading NPC templates from {path}: {e}")
+    Logger.info("Loader", f"[NPC Templates] Loaded {len(world.npc_templates)} NPC templates.")
 
 def _load_regions(world: 'World'):
     world.regions = {}
     if not os.path.isdir(REGION_DIR):
-        print(f"Warning: Region directory not found: {REGION_DIR}")
+        Logger.warning("Loader", f"Region directory not found: {REGION_DIR}")
         return
     for filename in os.listdir(REGION_DIR):
         if filename.endswith(".json"):
@@ -88,10 +89,10 @@ def _load_regions(world: 'World'):
                     region = Region.from_dict(region_data)
                     world.add_region(region_id, region)
             except Exception as e:
-                print(f"Error loading region from {path}: {e}")
+                Logger.error("Loader", f"Error loading region from {path}: {e}")
 
 def initialize_new_world(world: 'World', start_region="town", start_room="town_square"):
-    print("Initializing new world state...")
+    Logger.info("Loader", "Initializing new world state...")
     world.player = Player("Adventurer")
     world.player.world = world
     starter_dagger = ItemFactory.create_item_from_template("item_starter_dagger", world)
@@ -128,7 +129,7 @@ def initialize_new_world(world: 'World', start_region="town", start_room="town_s
                         npcs_created_count += 1
 
     if npcs_created_count == 0:
-        print(f"{FORMAT_ERROR}[World Warning] No initial NPCs were spawned. The world may feel empty.{FORMAT_RESET}")
+        Logger.warning("Loader", "No initial NPCs were spawned. The world may feel empty.")
 
     initialize_npc_schedules(world)
 
@@ -136,4 +137,4 @@ def initialize_new_world(world: 'World', start_region="town", start_room="town_s
     world.quest_board = []
     world.quest_manager.ensure_initial_quests()
     
-    print(f"New world initialized. Player at {start_region}:{start_room}")
+    Logger.info("Loader", f"New world initialized. Player at {start_region}:{start_room}")

@@ -4,7 +4,8 @@ Configuration for core game systems, file paths, and debug settings.
 """
 import os
 
-from engine.config import FORMAT_GRAY
+# FIX: Import directly from the module to avoid circular dependency with engine.config
+from engine.config.config_display import FORMAT_GRAY
 
 # --- Directories and Files ---
 # Calculate the Project Root based on the location of this config file
@@ -16,6 +17,7 @@ REGION_DIR = os.path.join(DATA_DIR, "regions")
 ITEM_TEMPLATE_DIR = os.path.join(DATA_DIR, "items")
 NPC_TEMPLATE_DIR = os.path.join(DATA_DIR, "npcs")
 DEFAULT_SAVE_FILE = "default_save.json"
+CAMPAIGN_DIR = os.path.join(DATA_DIR, "campaigns")
 
 # --- System Settings ---
 SCROLL_SPEED = 3

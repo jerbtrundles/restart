@@ -13,7 +13,8 @@ from engine.npcs.npc_factory import NPCFactory
 from engine.npcs.ai import initialize_npc_schedules
 from engine.player import Player
 from engine.utils.utils import _serialize_item_reference
-from engine.world.region import Region # Added Import
+from engine.world.region import Region
+from engine.utils.logger import Logger
 
 if TYPE_CHECKING:
     from engine.world.world import World
@@ -27,7 +28,7 @@ class SaveManager:
         """Saves the current world state to a JSON file."""
         save_path = self._resolve_save_path(filename, SAVE_GAME_DIR)
         if not save_path: return False
-        print(f"Saving game to {save_path}...")
+        Logger.info("SaveManager", f"Saving game to {save_path}...")
         try:
             if not self.world.player or not self.world.game: return False
 
@@ -64,7 +65,7 @@ class SaveManager:
                 "player": player_data,
                 "npc_states": npc_states,
                 "room_items_state": dynamic_items,
-                "dynamic_regions": dynamic_regions, # NEW FIELD
+                "dynamic_regions": dynamic_regions, 
                 "quest_board": self.world.quest_board,
                 "time_state": self.world.game.time_manager.get_time_state_for_save(),
                 "weather_state": self.world.game.weather_manager.get_weather_state_for_save(),
@@ -73,10 +74,10 @@ class SaveManager:
             
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
             with open(save_path, 'w') as f: json.dump(save_data, f, indent=2, default=str)
-            print(f"Game saved successfully to {save_path}.")
+            Logger.info("SaveManager", f"Game saved successfully to {save_path}.")
             return True
         except Exception as e:
-            print(f"{FORMAT_ERROR}Error saving game: {e}{FORMAT_RESET}")
+            Logger.error("SaveManager", f"Error saving game: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -88,11 +89,11 @@ class SaveManager:
         """
         save_path = self._resolve_load_path(filename, SAVE_GAME_DIR)
         if not save_path or not os.path.exists(save_path):
-            print(f"Save file not found: {filename}. Starting new game.")
+            Logger.warning("SaveManager", f"Save file not found: {filename}. Starting new game.")
             self.world.initialize_new_world()
             return True, None, None
 
-        print(f"Loading save game from {save_path}...")
+        Logger.info("SaveManager", f"Loading save game from {save_path}...")
         try:
             with open(save_path, 'r') as f: save_data = json.load(f)
 
@@ -107,9 +108,9 @@ class SaveManager:
                     try:
                         region = Region.from_dict(region_data)
                         self.world.add_region(region.obj_id, region)
-                        print(f"Restored dynamic region: {region.obj_id}")
+                        Logger.debug("SaveManager", f"Restored dynamic region: {region.obj_id}")
                     except Exception as e:
-                        print(f"Failed to restore dynamic region: {e}")
+                        Logger.error("SaveManager", f"Failed to restore dynamic region: {e}")
 
             time_state = save_data.get("time_state")
             weather_state = save_data.get("weather_state")
@@ -125,7 +126,7 @@ class SaveManager:
                 
                 # Check for invalid location
                 if not self.world.get_current_room():
-                    print(f"Warning: Loaded location invalid ({self.world.current_region_id}). Resetting to respawn point.")
+                    Logger.warning("SaveManager", f"Loaded location invalid ({self.world.current_region_id}). Resetting to respawn point.")
                     self.world.current_region_id = self.world.player.respawn_region_id
                     self.world.current_room_id = self.world.player.respawn_room_id
                     self.world.player.current_region_id = self.world.current_region_id
@@ -158,7 +159,7 @@ class SaveManager:
             
             return True, time_state, weather_state
         except Exception as e:
-            print(f"{FORMAT_ERROR}Critical Error loading save game '{filename}': {e}{FORMAT_RESET}")
+            Logger.error("SaveManager", f"Critical Error loading save game '{filename}': {e}")
             import traceback
             traceback.print_exc()
             self.world.initialize_new_world()
@@ -171,7 +172,7 @@ class SaveManager:
             if not safe_filename.endswith(".json"): safe_filename += ".json"
             return os.path.abspath(os.path.join(base_dir, safe_filename))
         except Exception as e:
-            print(f"Error resolving save path '{filename}': {e}")
+            Logger.error("SaveManager", f"Error resolving save path '{filename}': {e}")
             return None
 
     def _resolve_load_path(self, filename: str, base_dir: str) -> Optional[str]:
@@ -187,5 +188,5 @@ class SaveManager:
             
             return None
         except Exception as e:
-            print(f"Error resolving load path '{filename}': {e}")
+            Logger.error("SaveManager", f"Error resolving load path '{filename}': {e}")
             return None

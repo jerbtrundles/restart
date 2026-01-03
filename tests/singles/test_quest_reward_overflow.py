@@ -9,22 +9,36 @@ class TestQuestRewardOverflow(GameTestBase):
         """Verify quest completion checks inventory space for rewards."""
         # 1. Setup Quest
         quest_id = "deliver_test"
+        package_id = "package_1"
+        objective_data = {
+            "type": "deliver",
+            "item_instance_id": package_id,
+            "recipient_instance_id": "recipient_1",
+            "item_to_deliver_name": "Package"
+        }
+
         self.player.quest_log[quest_id] = {
             "instance_id": quest_id,
             "type": "deliver",
             "state": "active",
-            "objective": {
-                "item_instance_id": "package_1",
-                "recipient_instance_id": "recipient_npc"
-            },
-            "rewards": { "items": [{"item_id": "reward_sword", "quantity": 1}] }
+            "current_stage_index": 0,
+            "giver_instance_id": "sender",
+            "rewards": { "items": [{"item_id": "reward_sword", "quantity": 1}] },
+            "objective": objective_data, # Sync top-level for give_handler logic
+            "stages": [
+                {
+                    "stage_index": 0,
+                    "turn_in_id": "recipient_1",
+                    "objective": objective_data
+                }
+            ]
         }
         
         # 2. Add Package to inventory
         self.world.item_templates["pkg"] = {"type": "Item", "name": "Package", "weight": 1}
         pkg = ItemFactory.create_item_from_template("pkg", self.world)
         if pkg: 
-            pkg.obj_id = "package_1"
+            pkg.obj_id = package_id # Ensure ID matches objective
             self.player.inventory.add_item(pkg)
             
         # 3. Fill Inventory (Max slots)
@@ -40,12 +54,12 @@ class TestQuestRewardOverflow(GameTestBase):
         self.assertEqual(self.player.inventory.get_empty_slots(), 0)
         
         # 4. Turn In Logic simulation
-        # Create recipient with a UNIQUE NAME to ensure find_npc_in_room finds THIS specific instance
+        # Create recipient with correct ID to match objective
         npc = NPCFactory.create_npc_from_template(
             "wandering_villager", 
             self.world, 
-            instance_id="recipient_npc",
-            name="Unique Recipient" # Fix: Ensure name uniqueness
+            instance_id="recipient_1", # Fixed ID
+            name="Unique Recipient" 
         )
         self.assertIsNotNone(npc, "Failed to create recipient NPC.")
         

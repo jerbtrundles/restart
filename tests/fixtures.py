@@ -11,12 +11,12 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-# Now update imports to use the 'engine.' prefix
 from engine.world.world import World
 from engine.player.core import Player
 from engine.core.game_manager import GameManager
 from engine.ui.renderer import Renderer
 from engine.items.inventory import Inventory
+from engine.utils.logger import Logger, LogLevel
 
 class MockRenderer:
     """
@@ -52,37 +52,43 @@ class MockRenderer:
 
 class GameTestBase(unittest.TestCase):
     """Base class for all game tests."""
+    
+    _total_tests_run = 0
 
     def setUp(self):
         """Runs before EVERY test function."""
-        # 1. Create a dummy Game Manager (headless)
+        # 1. Silence Logger
+        Logger.set_level(LogLevel.CRITICAL)
+        
+        # 2. Create a dummy Game Manager (headless)
         self.game = GameManager(save_file="test_save.json")
         
-        # 2. Swap out the real renderer for a mock.
+        # 3. Swap out the real renderer for a mock.
         self.game.renderer = MockRenderer() # type: ignore
         
-        # 3. Initialize a fresh world
+        # 4. Initialize a fresh world
         self.game.world.initialize_new_world()
         self.world = self.game.world
         
-        # 4. Handle Player safely
+        # 5. Handle Player safely
         if not self.world.player:
             self.fail("Player was not initialized in World.")
         self.player = cast(Player, self.world.player)
         
-        # 5. Inject game reference
+        # 6. Inject game reference
         self.world.game = self.game
         self.player.world = self.world
         
-        # 6. RESET PLAYER STATE FOR TESTING
-        # Initialize new empty inventory to avoid starting items messing up counts
+        # 7. RESET PLAYER STATE FOR TESTING
         self.player.inventory = Inventory(max_slots=20, max_weight=100.0)
-        # Reset equipment
         for slot in self.player.equipment:
             self.player.equipment[slot] = None
 
     def tearDown(self):
-        pass
+        GameTestBase._total_tests_run += 1
+        if GameTestBase._total_tests_run % 50 == 0:
+            sys.stderr.write(f"\n <{GameTestBase._total_tests_run}> ")
+            sys.stderr.flush()
 
     def assertMessageContains(self, substring: str):
         """Custom helper to check if the game printed specific text."""

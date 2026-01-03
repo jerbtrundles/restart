@@ -11,19 +11,21 @@ class TestBatch26(GameTestBase):
         """Verify killing target increments quest counter."""
         q_id = "kill_q"
         self.player.quest_log[q_id] = {
-            "instance_id": q_id, "type": "kill", "state": "active",
-            "objective": {"target_template_id": "goblin", "required_quantity": 5, "current_quantity": 0}
+            "instance_id": q_id, "type": "kill", "state": "active", "current_stage_index": 0,
+            "stages": [{
+                "stage_index": 0,
+                "objective": {"type": "kill", "target_template_id": "goblin", "required_quantity": 5, "current_quantity": 0}
+            }]
         }
         
         goblin = NPCFactory.create_npc_from_template("goblin", self.world)
         if goblin:
             self.world.dispatch_event("npc_killed", {"player": self.player, "npc": goblin})
             
-        self.assertEqual(self.player.quest_log[q_id]["objective"]["current_quantity"], 1)
+        self.assertEqual(self.player.quest_log[q_id]["stages"][0]["objective"]["current_quantity"], 1)
 
     def test_quest_fetch_removal(self):
         """Verify items are removed on fetch turn-in."""
-        # Setup Quest
         q_id = "fetch_q"
         self.world.item_templates["rock"] = {"type": "Item", "name": "Rock"}
         
@@ -34,19 +36,20 @@ class TestBatch26(GameTestBase):
         giver.current_room_id = self.player.current_room_id
         
         self.player.quest_log[q_id] = {
-            "instance_id": q_id, "type": "fetch", "state": "ready_to_complete",
+            "instance_id": q_id, "type": "fetch", "state": "active", "current_stage_index": 0,
             "giver_instance_id": giver.obj_id,
-            "objective": {"item_id": "rock", "required_quantity": 1}
+            "stages": [{
+                "stage_index": 0, "turn_in_id": giver.obj_id,
+                "objective": {"type": "fetch", "item_id": "item_rock", "required_quantity": 1}
+            }]
         }
         
-        # Give item
-        rock = ItemFactory.create_item_from_template("rock", self.world)
+        rock = ItemFactory.create_item_from_template("item_rock", self.world)
         if rock: self.player.inventory.add_item(rock)
         
-        # Turn in
         self.game.process_command(f"talk {giver.name} complete")
         
-        self.assertEqual(self.player.inventory.count_item("rock"), 0)
+        self.assertEqual(self.player.inventory.count_item("item_rock"), 0)
 
     def test_npc_schedule_updates(self):
         """Verify setting time updates NPC scheduled task."""

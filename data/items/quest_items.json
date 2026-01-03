@@ -1,0 +1,13 @@
+{
+  "item_bloody_tabard": {
+    "type": "Item",
+    "name": "Bloody Tabard",
+    "description": "A guard's uniform, stained with a strange acidic slime.",
+    "weight": 1.0,
+    "value": 0,
+    "stackable": false,
+    "properties": {
+        "quest_item": true
+    }
+  }
+}

@@ -8,20 +8,21 @@ class Consumable(Item):
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Consumable",
                  description: str = "No description", weight: float = 0.5,
                  value: int = 5, uses: int = 1, effect_value: int = 10,
-                 effect_type: str = "heal"):
-        # Call super without stackable
+                 effect_type: str = "heal", **kwargs):
+        
+        # Prevent duplicate stackable arg error
+        if 'stackable' in kwargs:
+            kwargs.pop('stackable')
+            
         super().__init__(
             obj_id=obj_id, name=name, description=description, weight=weight,
-            value=value, # Pass weight and value
-            # Pass other kwargs specific to this subclass for properties
-            uses=uses, max_uses=uses, effect_value=effect_value, effect_type=effect_type
+            value=value, stackable=(uses==1),
+            uses=uses, max_uses=uses, effect_value=effect_value, effect_type=effect_type,
+            **kwargs
         )
-        # Set stackable based on uses *after* super init
-        self.stackable = (uses == 1)
-        self.update_property("stackable", self.stackable)
+        self.update_property("stackable", (uses == 1))
     
-    def use(self, user, **kwargs) -> str: # Added **kwargs to potentially accept target later if needed
-        """Use the consumable item."""
+    def use(self, user, **kwargs) -> str:
         current_uses = self.get_property("uses")
         if current_uses <= 0:
             return f"The {self.name} has already been used up."
@@ -104,7 +105,6 @@ class Consumable(Item):
         return message
 
     def examine(self) -> str:
-        """Get a detailed description of the consumable."""
         base_desc = super().examine()
         if self.properties.get("max_uses", 1) > 1:
             return f"{base_desc}\n\nUses remaining: {self.properties.get('uses', 0)}/{self.properties.get('max_uses', 1)}"

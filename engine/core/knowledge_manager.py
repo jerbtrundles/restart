@@ -70,8 +70,14 @@ class KnowledgeManager:
         if not valid_responses:
             return f"{npc.name} has nothing to say about {topic_data.get('display_name', topic_id)}."
 
+        # Sort by priority
         valid_responses.sort(key=lambda x: x.get("priority", 0), reverse=True)
-        return f"\"{valid_responses[0]['text']}\""
+        chosen_response = valid_responses[0]
+        
+        # --- NEW: Process Effects ---
+        self._process_response_effects(chosen_response, player)
+        
+        return f"\"{chosen_response['text']}\""
 
     def _check_conditions(self, npc, player, conditions: Dict) -> bool:
         for key, val in conditions.items():
@@ -190,3 +196,23 @@ class KnowledgeManager:
         asked.sort(key=lambda t: self.topics[t].get("display_name", t))
         
         return unasked, asked
+
+    def _process_response_effects(self, response_data: Dict, player: 'Player'):
+            """Handles side effects defined in topics.json responses."""
+            effects = response_data.get("effects", {})
+            
+            # 1. Start Quest
+            if "start_quest" in effects:
+                quest_id = effects["start_quest"]
+                self.world.quest_manager.start_quest(quest_id, player)
+                
+            # 2. Start Campaign (NEW)
+            if "start_campaign" in effects:
+                campaign_id = effects["start_campaign"]
+                self.world.quest_manager.start_campaign(campaign_id, player)
+                
+            # 3. Give Item (Optional Utility)
+            if "give_item" in effects:
+                item_id = effects["give_item"]
+                item = self.world.item_factory.create_item_from_template(item_id, self.world)
+                if item: player.inventory.add_item(item)

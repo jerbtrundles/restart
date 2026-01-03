@@ -1,10 +1,10 @@
-# file_fixer_upper.py
+# tools/file_fixer_upper.py
 import os
 
 # Configuration: Directories to skip
 IGNORE_DIRS = {'.git', '__pycache__', 'venv', '.venv', 'env', 'build', 'dist'}
 
-def process_files(root_dir="."):
+def process_files(root_dir=".."):
     for root, dirs, files in os.walk(root_dir):
         # Modifying dirs in-place allows os.walk to skip ignored directories
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]

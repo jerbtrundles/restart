@@ -1,3 +1,4 @@
+# engine/magic/debug_effects.py
 """
 A registry of pre-defined status effects for easy application via debug commands.
 """

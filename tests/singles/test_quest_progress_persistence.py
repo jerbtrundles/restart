@@ -24,21 +24,27 @@ class TestQuestProgressPersistence(GameTestBase):
             "type": "kill",
             "state": "active",
             "title": "Rat Hunt",
-            "objective": {
-                "target_template_id": target_tid,
-                "required_quantity": 5,
-                "current_quantity": 0
-            }
+            "current_stage_index": 0,
+            "stages": [
+                {
+                    "stage_index": 0,
+                    "objective": {
+                        "type": "kill",
+                        "target_template_id": target_tid,
+                        "required_quantity": 5,
+                        "current_quantity": 0
+                    }
+                }
+            ]
         }
         
         # 2. Make Progress (Kill 2 rats)
         rat = NPCFactory.create_npc_from_template(target_tid, self.world)
         if rat:
-            # Simulate 2 kills
             self.world.dispatch_event("npc_killed", {"player": self.player, "npc": rat})
             self.world.dispatch_event("npc_killed", {"player": self.player, "npc": rat})
             
-        self.assertEqual(self.player.quest_log[quest_id]["objective"]["current_quantity"], 2)
+        self.assertEqual(self.player.quest_log[quest_id]["stages"][0]["objective"]["current_quantity"], 2)
         
         # 3. Save
         self.world.save_game(self.TEST_SAVE)
@@ -55,4 +61,5 @@ class TestQuestProgressPersistence(GameTestBase):
         if loaded:
             self.assertIn(quest_id, loaded.quest_log)
             q = loaded.quest_log[quest_id]
-            self.assertEqual(q["objective"]["current_quantity"], 2)
+            # Access via stages
+            self.assertEqual(q["stages"][0]["objective"]["current_quantity"], 2)

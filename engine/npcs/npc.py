@@ -1,5 +1,4 @@
 # engine/npcs/npc.py
-
 from typing import TYPE_CHECKING, Dict, List, Optional, Any, Tuple
 import time
 import random
@@ -17,8 +16,7 @@ from engine.items.item_factory import ItemFactory
 from engine.magic.spell_registry import SPELL_REGISTRY
 from engine.utils.utils import format_loot_drop_message, format_name_for_display, calculate_xp_gain
 
-# --- UPDATED IMPORTS ---
-from . import ai as npc_ai  # Changed from 'behaviors as npc_behaviors'
+from . import ai as npc_ai 
 from . import combat as npc_combat
 
 if TYPE_CHECKING:
@@ -151,8 +149,8 @@ class NPC(GameObject):
         return {
             "template_id": self.template_id, "obj_id": self.obj_id, "name": self.name,
             "current_region_id": self.current_region_id, "current_room_id": self.current_room_id,
-            "health": self.health, "max_health": self.max_health, # Added max_health
-            "mana": self.mana, "max_mana": self.max_mana, # Added max_mana
+            "health": self.health, "max_health": self.max_health,
+            "mana": self.mana, "max_mana": self.max_mana,
             "level": self.level,
             "is_alive": self.is_alive, "stats": self.stats,
             "ai_state": self.ai_state, "spell_cooldowns": self.spell_cooldowns,
@@ -199,7 +197,6 @@ class NPC(GameObject):
         self.max_health += NPC_LEVEL_HEALTH_BASE_INCREASE + int(final_con * NPC_LEVEL_CON_HEALTH_MULTIPLIER)
         self.heal(int((self.max_health - old_max_health) * NPC_LEVEL_UP_HEALTH_HEAL_PERCENT))
 
-    # --- DELEGATED METHODS ---
     def attack(self, target) -> Dict[str, Any]:
         return npc_combat.attack(self, target)
 
@@ -220,7 +217,6 @@ class NPC(GameObject):
         if len(self.combat_messages) > self.max_combat_messages:
             self.combat_messages.pop(0)
 
-    # --- MAIN UPDATE LOOP ---
     def update(self, world, current_time: float) -> Optional[str]:
         if not self.is_alive: return None
         
@@ -237,8 +233,13 @@ class NPC(GameObject):
         if effect_messages and player and player.current_room_id == self.current_room_id:
              all_messages_for_player.extend(effect_messages)
 
+        # Economy Expiry
+        if "economy_impact" in self.properties:
+            impact = self.properties["economy_impact"]
+            if current_time > impact.get("expiry", 0):
+                del self.properties["economy_impact"]
+
         if self.is_alive:
-            # Updated to call the new package entry point
             ai_message = npc_ai.handle_ai(self, world, current_time, player)
             if ai_message: all_messages_for_player.append(ai_message)
 

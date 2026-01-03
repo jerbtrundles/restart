@@ -4,9 +4,6 @@ from engine.items.item import Item
 from engine.config import FORMAT_ERROR, FORMAT_SUCCESS, FORMAT_RESET
 
 class ResourceNode(Item):
-    """
-    An object in a room that can be harvested using a tool.
-    """
     def __init__(self, obj_id: Optional[str] = None, name: str = "Resource",
                  description: str = "A resource node.", 
                  resource_item_id: str = "item_stone",
@@ -14,10 +11,13 @@ class ResourceNode(Item):
                  charges: int = 3,
                  **kwargs):
         
-        kwargs['stackable'] = False # Nodes aren't picked up
-        kwargs['weight'] = 9999 # Immovable
-        
-        super().__init__(obj_id, name, description, **kwargs)
+        if 'stackable' in kwargs:
+            kwargs.pop('stackable')
+            
+        if 'weight' in kwargs:
+            kwargs.pop('weight')
+
+        super().__init__(obj_id, name, description, weight=9999, stackable=False, **kwargs)
         
         self.update_property("can_take", False)
         self.update_property("resource_item_id", resource_item_id)
@@ -32,14 +32,11 @@ class ResourceNode(Item):
             
         tool_req = self.get_property("tool_required")
         
-        # Check for tool in inventory or equipment
         has_tool = False
-        # Check Equipment first
         for item in player.equipment.values():
             if item and item.get_property("tool_type") == tool_req:
                 has_tool = True
                 break
-        # Check Inventory
         if not has_tool:
             for slot in player.inventory.slots:
                 if slot.item and slot.item.get_property("tool_type") == tool_req:

@@ -1,6 +1,6 @@
 # engine/items/weapon.py
 from engine.items.item import Item
-from typing import List, Optional # Import List, Optional
+from typing import List, Optional
 
 class Weapon(Item):
     def __init__(self, obj_id: Optional[str] = None, name: str = "Unknown Weapon",
@@ -11,20 +11,19 @@ class Weapon(Item):
         if equip_slot is None:
              equip_slot = ["main_hand", "off_hand"]
 
-        # Call super without stackable, but include other kwargs
+        # Prevent duplicate stackable arg error
+        if 'stackable' in kwargs:
+            kwargs.pop('stackable')
+
         super().__init__(
             obj_id=obj_id, name=name, description=description, weight=weight,
-            value=value, equip_slot=equip_slot,
+            value=value, equip_slot=equip_slot, stackable=False,
             damage=damage, durability=durability, max_durability=durability,
             **kwargs
         )
-        # Set stackable after super init
-        self.stackable = False
-        self.update_property("stackable", self.stackable)
+        self.update_property("stackable", False)
 
     def use(self, user, **kwargs) -> str:
-        """Use the weapon (e.g., to equip it if not equipped)."""
-        # Check if already equipped
         is_equipped = False
         for slot, equipped_item in user.equipment.items():
              if equipped_item and equipped_item.obj_id == self.obj_id:
@@ -37,12 +36,8 @@ class Weapon(Item):
              condition = "sturdy" if durability > self.get_property("max_durability", 1) / 2 else "worn"
              return f"You practice swinging the equipped {self.name}. It feels {condition}."
         else:
-             # Attempt to equip it
              success, message = user.equip_item(self)
              return message
 
     def examine(self) -> str:
-        """Get a detailed description of the weapon."""
-        base_desc = super().examine() # Includes equip slot now
-        # Damage and Durability are added by base examine if they are in properties
-        return base_desc # Base examine should be sufficient now
+        return super().examine()

@@ -90,3 +90,20 @@ def craft_handler(args, context):
         return f"{FORMAT_SUCCESS}{result}{FORMAT_RESET}"
     else:
         return f"{FORMAT_ERROR}{result}{FORMAT_RESET}"
+    
+@command("salvage", ["breakdown", "scrap"], "crafting", "Break an item into materials.\nUsage: salvage <item>")
+def salvage_handler(args, context):
+    world = context["world"]
+    player = world.player
+    manager = world.game.crafting_manager
+    
+    if not args: return f"{FORMAT_ERROR}Salvage what?{FORMAT_RESET}"
+    
+    item_name = " ".join(args).lower()
+    item = player.inventory.find_item_by_name(item_name)
+    
+    if not item: return f"{FORMAT_ERROR}You don't have '{item_name}'.{FORMAT_RESET}"
+    
+    # Optional: Check for tool (Hammer/Kit) here if desired
+    
+    return manager.salvage(player, item)
