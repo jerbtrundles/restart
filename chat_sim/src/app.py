@@ -25,7 +25,7 @@ class App:
         # Simulation Logic
         self.is_generating = False
         self.last_turn_time = pygame.time.get_ticks()
-        self.turn_delay = 3000  # ms between bots talking
+        self.turn_delay = 1  # ms between bots talking
 
         # UI Setup
         self.setup_creator_ui()
@@ -117,7 +117,7 @@ class App:
                     if current_time - self.last_turn_time > self.turn_delay:
                         self.bot_turn()
                         self.last_turn_time = current_time
-                        self.turn_delay = random.randint(2000, 6000)
+                        self.turn_delay = 1 # random.randint(2000, 6000)
 
             # --- Drawing ---
             self.screen.fill(COLOR_BG)
@@ -158,41 +158,77 @@ class App:
             el.draw(self.screen, self.font)
 
     def draw_chat(self):
-        # 1. Main Chat Window (Widen to 750px)
-        self.draw_window_frame(20, 20, 750, 500, "Chat Room - Main Lobby")
+        # --- 1. Draw Windows ---
+        # Main Chat Window (Widen to 750px)
+        chat_x, chat_y, chat_w, chat_h = 20, 20, 750, 500
+        self.draw_window_frame(chat_x, chat_y, chat_w, chat_h, "Chat Room - Main Lobby")
         
-        # 2. Roster Window (Move to x=790, Widen to 210px)
+        # Roster Window
         self.draw_window_frame(790, 20, 210, 500, "Online")
 
-        # 3. Draw Roster Names
+        # --- 2. Draw Roster Names ---
         y_off = 50
         for char in self.characters:
-            # Truncate slightly longer names just in case
             display_name = char.name if len(char.name) < 22 else char.name[:19] + "..."
             txt = self.font.render(display_name, True, COLOR_TEXT)
-            self.screen.blit(txt, (800, y_off)) # x=800 ensures padding inside window
+            self.screen.blit(txt, (800, y_off))
             y_off += 20
 
-        # 4. Draw Chat Log
-        y_start = 50
-        visible_msgs = self.chat_history[-22:] 
-        for msg in visible_msgs:
-            line = f"{msg.sender}: {msg.text}"
+        # --- 3. Draw Chat Messages (With Text Wrapping) ---
+        
+        # Helper: text wrapping logic
+        def get_wrapped_lines(text, font, max_width):
+            words = text.split(' ')
+            lines = []
+            current_line = []
             
-            # Increased text wrap limit from 75 to 110 chars
-            if len(line) > 110: 
-                line = line[:107] + "..."
+            for word in words:
+                # Test if adding the next word exceeds width
+                test_line = ' '.join(current_line + [word])
+                w, h = font.size(test_line)
+                if w < max_width:
+                    current_line.append(word)
+                else:
+                    # Line is full, push it and start new one
+                    lines.append(' '.join(current_line))
+                    current_line = [word]
             
-            txt = self.font.render(line, True, COLOR_TEXT)
-            self.screen.blit(txt, (30, y_start))
-            y_start += 20
+            # Append the remainder
+            if current_line:
+                lines.append(' '.join(current_line))
+            return lines
 
-        # Draw UI Buttons
+        # Area where text can actually go
+        text_area_width = chat_w - 20  # Padding
+        line_height = 20
+        max_lines_visible = (chat_h - 40) // line_height  # How many lines fit vertically?
+
+        # Convert recent history into a flat list of visual lines
+        visual_lines = []
+        
+        # We look at the last 15 messages to ensure we have enough content to fill the screen
+        # (If messages are long, 15 is plenty. If short, it might leave space at top, which is fine)
+        for msg in self.chat_history[-15:]:
+            full_text = f"{msg.sender}: {msg.text}"
+            wrapped = get_wrapped_lines(full_text, self.font, text_area_width)
+            visual_lines.extend(wrapped)
+
+        # Slice to keep only the lines that fit in the window (Bottom-up view)
+        lines_to_draw = visual_lines[-max_lines_visible:]
+
+        # Render them
+        y_text = 50 # Start y position inside the window
+        for line in lines_to_draw:
+            txt_surf = self.font.render(line, True, COLOR_TEXT)
+            self.screen.blit(txt_surf, (30, y_text))
+            y_text += line_height
+
+        # --- 4. Draw UI Buttons & Status ---
         for el in self.chat_ui_elements:
             el.draw(self.screen, self.font)
             
         if self.is_generating:
-            # Show who is thinking
             lbl_text = f"{self.current_speaker_name} is typing..." if hasattr(self, 'current_speaker_name') and self.current_speaker_name else "Someone is typing..."
+            # Draw this slightly above the bottom border so it doesn't overlap text
             loading = self.font.render(lbl_text, True, (100, 100, 100))
-            self.screen.blit(loading, (30, 490))
+            self.screen.blit(loading, (30, chat_y + chat_h - 25))

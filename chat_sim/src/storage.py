@@ -1,7 +1,8 @@
 import json
 import os
+import random
 from .models import Character
-from .config import DATA_FILE
+from .config import DATA_FILE, NUM_CHARACTERS
 
 def load_characters():
     if not os.path.exists(DATA_FILE):
@@ -9,7 +10,8 @@ def load_characters():
     try:
         with open(DATA_FILE, 'r') as f:
             data = json.load(f)
-            return [Character.from_dict(c) for c in data]
+            all_characters = [Character.from_dict(c) for c in data]
+            return random.sample(all_characters, NUM_CHARACTERS)
     except (json.JSONDecodeError, IOError):
         return []
 

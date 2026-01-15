@@ -22,7 +22,11 @@ COLOR_ACCENT = (0, 128, 128)
 
 # LLM Settings
 # We use device_map="auto" to use GPU if available, otherwise CPU
-LLM_MODEL_ID = "microsoft/Phi-4-mini-instruct"
+# LLM_MODEL_ID = "microsoft/Phi-3.5-mini-instruct"
+LLM_MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
+# LLM_MODEL_ID = "google/gemma-3-1b-it"
+# LLM_MODEL_ID = "HuggingFaceTB/SmolLM3-3B"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-HISTORY_LIMIT = 5
-MAX_NEW_TOKENS = 45 # Keep responses short for chat style
+HISTORY_LIMIT = 20
+MAX_NEW_TOKENS = 100 # Keep responses short for chat style
+NUM_CHARACTERS = 5

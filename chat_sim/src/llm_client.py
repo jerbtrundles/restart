@@ -11,15 +11,15 @@ def init_ai():
     print(f"--- [SYSTEM] Loading AI Model ({LLM_MODEL_ID})... ---")
     
     try:
+        device = torch.device('cuda')
         _tokenizer = AutoTokenizer.from_pretrained(LLM_MODEL_ID)
         _model = AutoModelForCausalLM.from_pretrained(
             LLM_MODEL_ID, 
-            torch_dtype=torch.float16 if DEVICE == "cuda" else torch.float32,
-            device_map="auto" if DEVICE == "cuda" else None,
-            trust_remote_code=True
-        )
+            trust_remote_code=False
+        ).to(device)
         if DEVICE == "cpu":
             _model.to("cpu")
+            print("Running on cpu. Slower!")
             
         print("--- [SYSTEM] Model Loaded successfully. ---")
     except Exception as e:
@@ -44,9 +44,14 @@ def generate_response(character, history):
     # We log the prompt components separately so they are easy to read
     system_prompt = (
         f"You are a user in an online chatroom named {character.name}. "
-        f"Your personality is: {character.prompt}. "
+        "Your job is to pay attention to and then continue the conversation that's happening. "
+        "If no conversation exists, start one. "
         "Keep your response short, casual, and text-only (no actions like *waves*). "
-        "Do not prefix your response with your name."
+        "Do not prefix your response with your name. "
+        f"Form a complete and coherent phrase within a {MAX_NEW_TOKENS - 5} token limit. "
+        "Stop immediately after this personality has spoken. "
+        "Your response should not contain previous conversation."
+        f"Your personality is: {character.prompt}. "
     )
     
     user_prompt = f"Here is the recent chat conversation:\n{chat_log}\n\nRespond as {character.name}:"
@@ -56,7 +61,7 @@ def generate_response(character, history):
         {"role": "user", "content": user_prompt}
     ]
 
-    print(f"--- [PROMPT] System: {character.prompt[:50]}...")
+    print(f"--- [PROMPT] System: {character.prompt}...")
     print(f"--- [PROMPT] Context: {len(history)} previous messages.")
 
     # 3. Tokenize
@@ -77,7 +82,7 @@ def generate_response(character, history):
         max_new_tokens=MAX_NEW_TOKENS,
         eos_token_id=terminators,
         do_sample=True,
-        temperature=0.8,
+        temperature=1.2,
         top_p=0.9,
     )
 
