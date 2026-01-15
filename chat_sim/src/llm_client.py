@@ -11,12 +11,12 @@ def init_ai():
     print(f"--- [SYSTEM] Loading AI Model ({LLM_MODEL_ID})... ---")
     
     try:
-        device = torch.device('cuda')
+        # device = torch.device('cuda')
         _tokenizer = AutoTokenizer.from_pretrained(LLM_MODEL_ID)
         _model = AutoModelForCausalLM.from_pretrained(
             LLM_MODEL_ID, 
             trust_remote_code=False
-        ).to(device)
+        ) #.to(device)
         if DEVICE == "cpu":
             _model.to("cpu")
             print("Running on cpu. Slower!")

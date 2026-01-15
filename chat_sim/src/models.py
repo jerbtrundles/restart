@@ -1,13 +1,17 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 import time
 
 @dataclass
 class Character:
     name: str
     prompt: str
+    # Runtime stats (not saved to JSON)
+    messages_sent: int = field(default=0, metadata={'exclude': True})
+    color: tuple = field(default=(0,0,0), metadata={'exclude': True})
 
     def to_dict(self):
-        return asdict(self)
+        # We only save name/prompt, ignoring runtime stats
+        return {'name': self.name, 'prompt': self.prompt}
 
     @staticmethod
     def from_dict(data):
