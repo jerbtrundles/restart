@@ -4,8 +4,7 @@
     "description": "Investigate the rising darkness in Riverside.",
     "quest_chain": [
       "instance_generic_infestation",
-      "saga_missing_guard",
-      "saga_bandit_king"
+      "quest_missing_guard" 
     ],
     "auto_advance": true
   }

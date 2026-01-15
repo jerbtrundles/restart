@@ -17,7 +17,7 @@
     },
     "confront_lieutenant": {
       "description": "Deal with the Lieutenant.",
-      "quest_template_id": "quest_negotiate_or_kill_bandit",
+      "quest_template_id": "quest_bandit_lieutenant", 
       "transitions": [
         {
           "trigger": "VIOLENT_SUCCESS",

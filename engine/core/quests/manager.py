@@ -1,4 +1,3 @@
-# engine/core/quests/manager.py
 import random
 from typing import Dict, Any, List, Optional, TYPE_CHECKING, cast
 
@@ -8,6 +7,7 @@ from engine.config import (
 from engine.core.quest_generation.generator import QuestGenerator
 from engine.items.item_factory import ItemFactory
 from engine.npcs.npc_factory import NPCFactory
+from engine.utils.logger import Logger
 from .loader import load_quest_templates
 from .tracker import check_quest_completion, handle_npc_killed
 
@@ -115,7 +115,17 @@ class QuestManager:
             quest_data["giver_instance_id"] = "event"
 
         player.quest_log[instance_id] = quest_data
-        self.handle_room_entry(player)
+        
+        # Initialize stage 0 spawns if any
+        if quest_data.get("stages"):
+             self._setup_stage_mechanics(quest_data, quest_data["stages"][0])
+
+        # Check immediately if we are already satisfying a scout objective
+        updates = self.handle_room_entry(player)
+        if updates and self.world.game:
+            for msg in updates:
+                self.world.game.renderer.add_message(msg)
+
         return True
 
     def start_campaign(self, campaign_id: str, player) -> bool:
@@ -225,23 +235,95 @@ class QuestManager:
                     self.world.add_npc(npc)
                     objective["target_npc_instance_id"] = npc.obj_id
 
-    def handle_room_entry(self, player):
-        if not hasattr(player, 'quest_log'): return
+        # Legacy Boss Spawn support (spawn on start of stage)
+        spawn_on_start = stage_data.get("spawn_on_start")
+        if spawn_on_start:
+             tid = spawn_on_start.get("template_id")
+             rid = spawn_on_start.get("region_id")
+             rmid = spawn_on_start.get("room_id")
+             
+             if tid and rid and rmid:
+                  existing = [n for n in self.world.npcs.values() if n.template_id == tid and n.current_region_id == rid and n.is_alive]
+                  if not existing:
+                       boss = NPCFactory.create_npc_from_template(tid, self.world)
+                       if boss:
+                            boss.current_region_id = rid
+                            boss.current_room_id = rmid
+                            if "name_override" in spawn_on_start:
+                                 boss.name = spawn_on_start["name_override"]
+                            self.world.add_npc(boss)
+
+    def handle_room_entry(self, player) -> List[str]:
+        """Checks for scout objectives AND spawn triggers, returning update messages."""
+        if not hasattr(player, 'quest_log'): return []
         msgs = []
         for q_id, q_data in player.quest_log.items():
             if q_data["state"] != "active": continue
             
+            stages = q_data.get("stages", [])
+            idx = q_data.get("current_stage_index", 0)
+            
+            if stages and 0 <= idx < len(stages):
+                current_stage = stages[idx]
+                spawn_config = current_stage.get("spawn_on_entry")
+                already_spawned = current_stage.get("_spawn_on_entry_triggered", False)
+                
+                if not spawn_config:
+                    Logger.debug("spawn_on_entry", "We DO NOT have a spawn config.")
+                if already_spawned:
+                    Logger.debug("spawn_on_entry", "We have already spawned.")
+                if spawn_config and not already_spawned:
+                    Logger.debug("spawn_on_entry", "We have a spawn config and have not already spawned.")
+
+                    req_region = spawn_config.get("region_id")
+                    req_room = spawn_config.get("room_id")
+                    
+                    # DEBUG LOG
+                    Logger.debug("spawn_on_entry", f"Checking spawn for {q_id}. Player at {player.current_region_id}:{player.current_room_id}. Req: {req_region}:{req_room}")
+                    
+                    if player.current_region_id == req_region and player.current_room_id == req_room:
+                        Logger.debug("spawn_on_entry", "Player location matches spawn location.")
+                        current_stage["_spawn_on_entry_triggered"] = True 
+                        
+                        tid = spawn_config.get("template_id")
+                        if tid:
+                            Logger.debug("spawn_on_entry", "1")
+                            overrides = {}
+                            if "name_override" in spawn_config:
+                                overrides["name"] = spawn_config["name_override"]
+                                Logger.debug("spawn_on_entry", "Name overwritten: " + overrides["name"])
+                            if "behavior_type" in spawn_config:
+                                overrides["behavior_type"] = spawn_config["behavior_type"]
+                                Logger.debug("spawn_on_entry", "Behavior type overwritten: " + overrides["behavior_type"])      
+                            boss = NPCFactory.create_npc_from_template(
+                                tid, self.world, 
+                                current_region_id=req_region,
+                                current_room_id=req_room,
+                                **overrides
+                            )
+                            if boss:
+                                Logger.debug("spawn_on_entry", "We have a boss.")
+                                self.world.add_npc(boss)
+                                msgs.append(f"{FORMAT_HIGHLIGHT}A {boss.name} steps out from the shadows!{FORMAT_RESET}")
+                                # Force immediate visibility check in renderer logic if needed
+                            else:
+                                Logger.debug("spawn_on_entry", "We DO NOT have a boss.")
+
+            # --- Scout Logic ---
             objective = self.get_active_objective(q_data)
             if not objective: continue
             
             if objective.get("type") == "scout":
                 if (player.current_region_id == objective.get("target_region") and 
                     player.current_room_id == objective.get("target_room_id")):
+                    
                     q_data["state"] = "ready_to_complete"
-                    msgs.append(f"{FORMAT_HIGHLIGHT}[Quest Update] You have found the location!{FORMAT_RESET}")
+                    quest_title = q_data.get("title", "Scouting Mission")
+                    turn_in_name = self.resolve_turn_in_name(q_data)
+                    msgs.append(f"{FORMAT_HIGHLIGHT}[Quest Update] {quest_title}{FORMAT_RESET}\n"
+                                f"You have reached the target location. Report back to {turn_in_name}.")
 
-        if msgs and self.world.game:
-            for m in msgs: self.world.game.renderer.add_message(m)
+        return msgs
 
     def handle_npc_killed(self, event_type: str, data: Dict[str, Any]) -> Optional[str]:
         return handle_npc_killed(self, event_type, data)

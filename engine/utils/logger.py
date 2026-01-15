@@ -10,7 +10,7 @@ class LogLevel:
 
 class Logger:
     _instance = None
-    _level = LogLevel.CRITICAL  # Default level
+    _level = LogLevel.DEBUG  # Default level
 
     def __new__(cls):
         if cls._instance is None:

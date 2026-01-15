@@ -1,7 +1,7 @@
-# engine/core/quests/loader.py
 import os
 import json
 from typing import Dict, Any
+from engine.utils.logger import Logger
 
 def load_quest_templates(data_dir: str) -> Dict[str, Any]:
     templates = {}
@@ -23,8 +23,14 @@ def load_quest_templates(data_dir: str) -> Dict[str, Any]:
                             "objective": q_data.get("objective", {}),
                             "turn_in_id": q_data.get("giver_npc_template_id") or "quest_board"
                         }]
+                    
+                    # DEBUG CHECK
+                    for stage in q_data.get("stages", []):
+                        if "spawn_on_entry" in stage:
+                            Logger.debug("QuestLoader", f"Loaded spawn_on_entry for quest '{q_id}'")
+
                     templates[q_id] = q_data
         except Exception as e:
-            print(f"Error loading {path}: {e}")
+            Logger.error("QuestLoader", f"Error loading {path}: {e}")
             
     return templates

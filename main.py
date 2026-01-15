@@ -24,7 +24,7 @@ def main():
     # Initialize Game
     game = GameManager(args.save)
     game.run()
-
+#2
 def create_initial_directories():
     if not os.path.exists(SAVE_GAME_DIR):
         os.makedirs(SAVE_GAME_DIR)

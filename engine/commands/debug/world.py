@@ -1,4 +1,3 @@
-# engine/commands/debug/world.py
 from engine.commands.command_system import command
 from engine.config import FORMAT_ERROR, FORMAT_SUCCESS, FORMAT_RESET, FORMAT_HIGHLIGHT
 from engine.world.region_generator import RegionGenerator
@@ -63,7 +62,15 @@ def teleport_handler(args, context):
             world.current_room_id = args[1]
             world.player.current_region_id = args[0]
             world.player.current_room_id = args[1]
-            return f"{FORMAT_SUCCESS}Teleported to {args[0]}:{args[1]}.{FORMAT_RESET}\n{world.look(minimal=True)}"
+            
+            # --- TRIGGER UPDATE ---
+            msgs = []
+            if world.quest_manager:
+                quest_msgs = world.quest_manager.handle_room_entry(world.player)
+                if quest_msgs: msgs.extend(quest_msgs)
+            
+            msg_str = "\n".join(msgs)
+            return f"{FORMAT_SUCCESS}Teleported to {args[0]}:{args[1]}.{FORMAT_RESET}\n{msg_str}\n{world.look(minimal=True)}"
 
     name = " ".join(args)
     matches = _find_npc_globally(world, name)
@@ -80,7 +87,15 @@ def teleport_handler(args, context):
     world.current_room_id = target.current_room_id
     world.player.current_region_id = target.current_region_id
     world.player.current_room_id = target.current_room_id
-    return f"{FORMAT_SUCCESS}Teleported to {target.name}.{FORMAT_RESET}\n{world.look(minimal=True)}"
+    
+    # --- TRIGGER UPDATE ---
+    msgs = []
+    if world.quest_manager:
+        quest_msgs = world.quest_manager.handle_room_entry(world.player)
+        if quest_msgs: msgs.extend(quest_msgs)
+
+    msg_str = "\n".join(msgs)
+    return f"{FORMAT_SUCCESS}Teleported to {target.name}.{FORMAT_RESET}\n{msg_str}\n{world.look(minimal=True)}"
 
 @command("whereis", ["find"], "debug", "Find NPC.\nUsage: whereis <name>")
 def whereis_handler(args, context):

@@ -44,23 +44,28 @@ def draw_character_creation_screen(renderer: 'Renderer'):
     
     # Unified Colors
     active_color = (100, 255, 100)
+    inactive_color = (100, 100, 100)
     bg_active = (60, 60, 70)
     text_white = (255, 255, 255)
     text_grey = (180, 180, 180)
+    
+    # Determine focus
+    name_focused = (renderer.game.creation_active_field == "name_input")
+    name_border = active_color if name_focused else inactive_color
 
     # --- SECTION 1: NAME INPUT (Top) ---
     name_box_width = 400
     name_box_rect = pygame.Rect((sw - name_box_width)//2, 100, name_box_width, 50)
     
-    # Always draw as active to indicate you can type
+    # Visual feedback for focus
     pygame.draw.rect(renderer.screen, bg_active, name_box_rect)
-    pygame.draw.rect(renderer.screen, active_color, name_box_rect, 2)
+    pygame.draw.rect(renderer.screen, name_border, name_box_rect, 2)
     
     label_surf = renderer.font.render("Name:", True, (200, 200, 200))
     renderer.screen.blit(label_surf, (name_box_rect.x - label_surf.get_width() - 10, name_box_rect.y + 15))
     
     name_txt = renderer.game.creation_name_input
-    if renderer.cursor_visible: name_txt += "|"
+    if name_focused and renderer.cursor_visible: name_txt += "|"
     name_surf = renderer.font.render(name_txt, True, text_white)
     text_rect = name_surf.get_rect(center=name_box_rect.center)
     renderer.screen.blit(name_surf, text_rect)
@@ -79,8 +84,11 @@ def draw_character_creation_screen(renderer: 'Renderer'):
     details_width = 400
     details_x = (sw // 2) + 20
     
+    list_focused = (renderer.game.creation_active_field == "class_list")
+    header_color = active_color if list_focused else inactive_color
+    
     # Header for Class List
-    renderer.screen.blit(renderer.selected_font.render("Select Class", True, active_color), (list_x, content_y - 30))
+    renderer.screen.blit(renderer.selected_font.render("Select Class", True, header_color), (list_x, content_y - 30))
     
     # Draw Class List Items
     for i, class_id in enumerate(renderer.game.available_classes):
@@ -93,7 +101,9 @@ def draw_character_creation_screen(renderer: 'Renderer'):
         if is_selected:
             bg_rect = pygame.Rect(list_x - 10, item_y - 5, list_width + 20, 30)
             pygame.draw.rect(renderer.screen, (60, 60, 80), bg_rect)
-            pygame.draw.rect(renderer.screen, active_color, bg_rect, 1)
+            # Border depends on focus
+            border_col = active_color if list_focused else (150, 150, 150)
+            pygame.draw.rect(renderer.screen, border_col, bg_rect, 1)
             color = (255, 255, 100)
             prefix = "> "
             font = renderer.selected_font
@@ -157,7 +167,7 @@ def draw_character_creation_screen(renderer: 'Renderer'):
 
     # Instructions
     inst_y = sh - 40
-    controls = "[TYPE] Name  [ARROWS] Select Class  [ENTER] Start Adventure"
+    controls = "[TAB/CLICK] Switch Focus  [TYPE] Name  [ARROWS] Select Class  [ENTER] Start"
     inst_surf = renderer.font.render(controls, True, (100, 255, 100))
     inst_rect = inst_surf.get_rect(center=(sw//2, inst_y))
     renderer.screen.blit(inst_surf, inst_rect)

@@ -19,7 +19,7 @@
         "priority": 10
       },
       {
-        "text": "I serve as the Elder of Riverside. It is my burden and privilege to guide our community.",
+        "text": "My duty is to guide this village, not to hire farmhands. However... we are facing trouble. If you are a warrior, perhaps you can help where my guards cannot.",
         "conditions": { "template_id": "village_elder" },
         "priority": 10
       },
@@ -59,7 +59,7 @@
             "priority": 15
         },
         {
-            "text": "Check the Quest Board in the square. I usually post my requests there.",
+            "text": "Check the Quest Board in the square. Or, if you are brave, ask me about the trouble we are facing.",
             "conditions": { "template_id": "village_elder" },
             "priority": 10
         },
@@ -74,6 +74,11 @@
     "display_name": "Latest Rumors",
     "keywords": ["rumors", "news", "gossip", "happenings"],
     "responses": [
+      {
+        "text": "The villagers gossip about lost shipments, but I know better. There is trouble brewing in the forest that threatens us all.",
+        "conditions": { "template_id": "village_elder" },
+        "priority": 10
+      },
       {
         "text": "Have you heard? A merchant caravan lost its missing supplies near the forest edge.",
         "conditions": { "region_id": "town" },
@@ -91,6 +96,22 @@
       },
       {
         "text": "It's been quiet lately. Too quiet.",
+        "conditions": {},
+        "priority": 0
+      }
+    ]
+  },
+  "village_elder": {
+    "display_name": "Village Elder",
+    "keywords": ["village elder", "elder", "thorne"],
+    "responses": [
+      {
+        "text": "I am Thorne. I have led this village for longer than many have been alive. It is a heavy burden, but one I bear with pride. Feel free to ask about my trade or the latest rumors.",
+        "conditions": { "template_id": "village_elder" },
+        "priority": 10
+      },
+      {
+        "text": "Elder Thorne lives in the large house near the Town Square. He speaks for all of us.",
         "conditions": {},
         "priority": 0
       }
@@ -127,7 +148,7 @@
         "priority": 10
       },
       {
-        "text": "Yes, it is a tragedy. We need those supplies for winter. Please, if you find them, let me know.",
+        "text": "It is a tragedy. We need those supplies for winter. Please, if you find them, let me know.",
         "conditions": { "template_id": "village_elder" },
         "priority": 15
       },
@@ -176,17 +197,6 @@
       }
     ]
   },
-  "village_elder": {
-    "display_name": "Village Elder",
-    "keywords": ["village elder", "elder", "thorne"],
-    "responses": [
-      {
-        "text": "Elder Thorne lives in the large house near the Town Square. He speaks for all of us.",
-        "conditions": {},
-        "priority": 0
-      }
-    ]
-  },
   "murkwater_swamp": {
     "display_name": "Murkwater Swamp",
     "keywords": ["murkwater swamp", "swamp", "bog", "mire"],
@@ -203,12 +213,35 @@
     "keywords": ["trouble", "danger", "bandits"],
     "responses": [
       {
-        "text": "The bandits are growing bold. I fear a rebellion. Will you help us investigate?",
+        "text": "The bandits in the forest are becoming organized. I fear a rebellion is brewing. We need a capable outsider to investigate. Are you willing to accept this mission?",
         "conditions": { "template_id": "village_elder" },
+        "priority": 10
+      }
+    ]
+  },
+  "accept_mission": {
+    "display_name": "The Mission",
+    "keywords": ["accept", "accept mission"],
+    "responses": [
+      {
+        "text": "Excellent. I need you to scout the forest to the north. Locate their camp, but do not engage their leader yet. Report back when you have found it.",
+        "conditions": { 
+            "template_id": "village_elder",
+            "campaign_state": { "campaign_id": "bandit_rebellion", "state": "not_active" },
+            "knowledge_state": { "topic_id": "trouble", "state": "discussed" }
+        },
         "priority": 10,
         "effects": {
           "start_campaign": "bandit_rebellion"
         }
+      },
+      {
+        "text": "We have already discussed this. Make haste to the forest.",
+        "conditions": { 
+            "template_id": "village_elder",
+            "campaign_state": { "campaign_id": "bandit_rebellion", "state": "active" }
+        },
+        "priority": 10
       }
     ]
   }

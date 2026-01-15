@@ -1,4 +1,5 @@
 # engine/commands/interaction/npcs.py
+from typing import List, Optional, Any
 from engine.commands.command_system import command
 from engine.config import (
     FORMAT_ERROR, FORMAT_HIGHLIGHT, FORMAT_RESET, FORMAT_SUCCESS, FORMAT_TITLE,
@@ -8,6 +9,36 @@ from engine.config.config_display import FORMAT_CATEGORY
 from engine.core.skill_system import SkillSystem
 from engine.utils.utils import format_name_for_display
 
+def _resolve_target_npc(world, args, player):
+    """Helper to resolve NPC target based on arguments or context."""
+    npcs_in_room = world.get_current_room_npcs()
+    
+    # 1. Try fuzzy match from args
+    if args:
+        for i in range(len(args), 0, -1):
+            potential_name = " ".join(args[:i]).lower()
+            for npc in npcs_in_room:
+                if npc.name.lower() == potential_name or npc.obj_id == potential_name:
+                    return npc, i
+            for npc in npcs_in_room:
+                if potential_name in npc.name.lower():
+                    return npc, i
+    
+    # 2. Fallback to context
+    if player.trading_with:
+        return world.get_npc(player.trading_with), 0
+    elif player.last_talked_to:
+        candidate = world.get_npc(player.last_talked_to)
+        if candidate and candidate.current_region_id == player.current_region_id and candidate.current_room_id == player.current_room_id:
+            return candidate, 0
+            
+    # 3. Fallback to any valid NPC
+    valid_npcs = [n for n in npcs_in_room if n.faction != "hostile" and n.faction != "player_minion"]
+    if valid_npcs:
+        return valid_npcs[0], 0
+        
+    return None, 0
+
 @command("talk", ["speak", "chat", "ask"], "interaction", "Talk to an NPC.\nUsage: talk <npc_name> [topic | complete quest]")
 def talk_handler(args, context):
     world = context["world"]
@@ -15,28 +46,10 @@ def talk_handler(args, context):
     if not player: return f"{FORMAT_ERROR}You must start or load a game first.{FORMAT_RESET}"
     
     if args and args[0].lower() == "to": args = args[1:]
-    if not args: return f"{FORMAT_ERROR}Talk to whom?{FORMAT_RESET}"
+    
+    target_npc, match_len = _resolve_target_npc(world, args, player)
 
-    npcs_in_room = world.get_current_room_npcs()
-    best_match_npc = None
-    best_match_len = 0
-
-    for i in range(len(args), 0, -1):
-        potential_name = " ".join(args[:i]).lower()
-        found = None
-        for npc in npcs_in_room:
-            if npc.name.lower() == potential_name or npc.obj_id == potential_name: found = npc; break
-        if not found:
-            for npc in npcs_in_room:
-                if potential_name in npc.name.lower(): found = npc; break
-        if found:
-            best_match_npc = found; best_match_len = i
-            if found.name.lower() == potential_name: break
-            break
-
-    if not best_match_npc: return f"{FORMAT_ERROR}There's no one matching '{args[0]}' here.{FORMAT_RESET}"
-
-    target_npc = best_match_npc
+    if not target_npc: return f"{FORMAT_ERROR}There is no one here to talk to.{FORMAT_RESET}"
     
     if target_npc.faction == "hostile":
         formatted_name = format_name_for_display(player, target_npc, start_of_sentence=True)
@@ -44,141 +57,152 @@ def talk_handler(args, context):
 
     player.last_talked_to = target_npc.obj_id
 
-    remaining_args = args[best_match_len:]
+    remaining_args = args[match_len:]
     topic = None
     is_quest_turn_in = False
     
     if remaining_args:
+        if remaining_args[0].lower() == "about": remaining_args.pop(0)
         topic_str = " ".join(remaining_args)
-        if topic_str.lower() in ["complete quest", "report quest", "finish quest", "turnin quest", "complete", "turnin"]: 
+        if topic_str.lower() in ["complete quest", "report quest", "finish quest", "turnin quest", "complete", "turnin", "negotiate", "parley"]: 
             is_quest_turn_in = True
         else: 
             topic = topic_str
 
     if is_quest_turn_in:
         return _handle_quest_dialogue(player, target_npc, world)
-    else:
-        ready_quests_for_npc = []
-        if hasattr(player, 'quest_log') and player.quest_log:
-            for q_id, q_data in player.quest_log.items():
-                stages = q_data.get("stages", [])
-                idx = q_data.get("current_stage_index", 0)
-                
-                # Resolve Turn-In Target
-                turn_in_target = q_data.get("giver_instance_id")
-                if stages and idx < len(stages):
-                    stage_target = stages[idx].get("turn_in_id")
-                    if stage_target: turn_in_target = stage_target
+    
+    if topic:
+         manager = world.game.knowledge_manager
+         player.conversation.mark_discussed(target_npc.obj_id, topic)
+         topic_id = manager.resolve_topic_id(topic)
+         if not topic_id: topic_id = topic.lower().replace(" ", "_")
+         
+         raw_response = manager.get_response(target_npc, topic_id, player)
+         
+         if raw_response is None:
+             topic_display = manager.topics.get(topic_id, {}).get("display_name", topic)
+             return f"{target_npc.name} has nothing to say about {topic_display}."
 
-                if (q_data.get("state") == "ready_to_complete" and turn_in_target == target_npc.obj_id):
-                    ready_quests_for_npc.append(q_id)
-        
-        turn_in_hint = f"\n{FORMAT_HIGHLIGHT}(You have tasks to report. Type 'talk {target_npc.name} complete quest'){FORMAT_RESET}" if ready_quests_for_npc else ""
-        offer_hint = f"\n{FORMAT_HIGHLIGHT}({target_npc.name} might have work. Try 'talk {target_npc.name} work'){FORMAT_RESET}" if target_npc.properties.get("can_give_generic_quests", False) else ""
-        
-        response = target_npc.talk(topic)
-        npc_title = f"{FORMAT_TITLE}CONVERSATION WITH {target_npc.name.upper()}{FORMAT_RESET}\n\n"
-        
-        if topic: 
-            return f"{npc_title}You ask {target_npc.name} about '{topic}'.\n\n{FORMAT_HIGHLIGHT}{response}{FORMAT_RESET}{turn_in_hint}{offer_hint}"
-        else: 
-            return f"{npc_title}You greet {target_npc.name}.\n\n{FORMAT_HIGHLIGHT}{response}{FORMAT_RESET}{turn_in_hint}{offer_hint}"
+         formatted_response = manager.parse_and_highlight(raw_response, player, source_npc=target_npc, exclude_topic_id=topic_id)
+         return f"{FORMAT_TITLE}{target_npc.name}{FORMAT_RESET}: {formatted_response}"
 
-@command("turnin", ["donate", "deposit"], "interaction", "Turn in collection items to a collector.\nUsage: turnin")
-def turnin_handler(args, context):
-    world = context["world"]
-    player = world.player
-    game = context["game"]
-    manager = game.collection_manager 
+    # Default Greeting / Status Check
+    ready_quests_for_npc = []
+    active_quests_for_npc = []
     
-    if not player: return "Error."
-    
-    target_npc = None
-    if player.trading_with: target_npc = world.get_npc(player.trading_with)
-    elif player.last_talked_to:
-        c = world.get_npc(player.last_talked_to)
-        if c and c.current_room_id == player.current_room_id: target_npc = c
-    
-    if not target_npc:
-        for npc in world.get_current_room_npcs():
-            if npc.properties.get("is_collector"): target_npc = npc; break
-    
-    if not target_npc: return f"{FORMAT_ERROR}There is no one here to accept collections.{FORMAT_RESET}"
-        
-    return manager.turn_in_items(player, target_npc)
+    if hasattr(player, 'quest_log') and player.quest_log:
+        for q_id, q_data in player.quest_log.items():
+            stages = q_data.get("stages", [])
+            idx = q_data.get("current_stage_index", 0)
+            
+            turn_in_target = q_data.get("giver_instance_id")
+            if stages and idx < len(stages):
+                stage_target = stages[idx].get("turn_in_id")
+                if stage_target: turn_in_target = stage_target
 
-@command("ask", ["topic", "query"], "interaction", "Ask an NPC about a topic.\nUsage: ask [npc_name] <topic>")
+            if turn_in_target == target_npc.obj_id or turn_in_target == target_npc.template_id:
+                if q_data.get("state") == "ready_to_complete":
+                    ready_quests_for_npc.append(q_data)
+                elif q_data.get("state") == "active":
+                    active_quests_for_npc.append(q_data)
+    
+    hints = []
+    raw_response = target_npc.talk()
+    
+    # Priority Overrides for Greeting
+    if ready_quests_for_npc:
+        quest_title = ready_quests_for_npc[0].get("title", "the mission")
+        raw_response = f"I see you have returned. Do you have news regarding {quest_title}?"
+        hints.append(f"Type '{FORMAT_HIGHLIGHT}talk {target_npc.name} complete{FORMAT_RESET}' to report success.")
+    elif active_quests_for_npc:
+         # Optionally mention waiting
+         pass
+    elif target_npc.properties.get("can_give_generic_quests", False):
+         hints.append(f"Try '{FORMAT_HIGHLIGHT}ask {target_npc.name} job{FORMAT_RESET}' or '{FORMAT_HIGHLIGHT}rumors{FORMAT_RESET}'.")
+    
+    formatted_response = world.game.knowledge_manager.parse_and_highlight(raw_response, player, source_npc=target_npc)
+    
+    npc_title = f"{FORMAT_TITLE}CONVERSATION WITH {target_npc.name.upper()}{FORMAT_RESET}\n\n"
+    output = f"{npc_title}\"{formatted_response}\""
+    if hints: output += "\n\n" + "\n".join(hints)
+        
+    return output
+
+@command("ask", ["topic", "query"], "interaction", "Ask an NPC about a topic.\nUsage: ask [npc_name] [about] <topic>")
 def ask_handler(args, context):
     world = context["world"]
     player = world.player
     manager = world.game.knowledge_manager
 
-    if not args:
-        return f"{FORMAT_ERROR}Ask who/what? Usage: ask [npc_name] <topic>{FORMAT_RESET}"
+    if not args: return f"{FORMAT_ERROR}Ask who/what? Usage: ask [npc_name] <topic>{FORMAT_RESET}"
 
-    target_npc = None
-    topic_start_index = 0
-
-    npcs_in_room = world.get_current_room_npcs()
-    best_match_npc = None
-    best_match_len = 0
-
-    for i in range(len(args), 0, -1):
-        potential_name = " ".join(args[:i]).lower()
-        found = None
-        for npc in npcs_in_room:
-            if npc.name.lower() == potential_name or npc.obj_id == potential_name:
-                found = npc; break
-        if not found:
-            for npc in npcs_in_room:
-                if potential_name in npc.name.lower():
-                    found = npc; break
-        if found:
-            best_match_npc = found
-            best_match_len = i
-            if found.name.lower() == potential_name: break
-            break
-
-    if best_match_npc:
-        target_npc = best_match_npc
-        topic_start_index = best_match_len
-    else:
-        if player.trading_with:
-            target_npc = world.get_npc(player.trading_with)
-        elif player.last_talked_to:
-            candidate = world.get_npc(player.last_talked_to)
-            if candidate and candidate.current_region_id == player.current_region_id and candidate.current_room_id == player.current_room_id:
-                target_npc = candidate
-        
-        if not target_npc:
-            valid_npcs = [n for n in npcs_in_room if n.faction != "hostile" and n.faction != "player_minion"]
-            if valid_npcs:
-                target_npc = valid_npcs[0]
-
-    if not target_npc:
-        return f"{FORMAT_ERROR}There is no one here to ask.{FORMAT_RESET}"
+    target_npc, match_len = _resolve_target_npc(world, args, player)
     
+    if not target_npc: return f"{FORMAT_ERROR}There is no one here to ask.{FORMAT_RESET}"
     if target_npc.faction == "hostile":
-        formatted_name = format_name_for_display(player, target_npc, start_of_sentence=True)
-        return f"{formatted_name} {FORMAT_ERROR}refuses to listen.{FORMAT_RESET}"
+        return f"{target_npc.name} {FORMAT_ERROR}refuses to listen.{FORMAT_RESET}"
 
     player.last_talked_to = target_npc.obj_id
 
-    topic_words = args[topic_start_index:]
-    if not topic_words:
-        return f"{FORMAT_ERROR}Ask {target_npc.name} about what?{FORMAT_RESET}"
+    topic_words = args[match_len:]
+    if topic_words and topic_words[0].lower() == "about": topic_words.pop(0)
+
+    if not topic_words: return f"{FORMAT_ERROR}Ask {target_npc.name} about what?{FORMAT_RESET}"
     
     raw_input = " ".join(topic_words)
     topic_id = manager.resolve_topic_id(raw_input)
-
-    if not topic_id:
-        topic_id = raw_input.lower().replace(" ", "_")
+    if not topic_id: topic_id = raw_input.lower().replace(" ", "_")
 
     player.conversation.mark_discussed(target_npc.obj_id, topic_id)
     raw_response = manager.get_response(target_npc, topic_id, player)
-    formatted_response = manager.parse_and_highlight(raw_response, player, source_npc=target_npc)
     
+    if raw_response is None:
+        topic_display = manager.topics.get(topic_id, {}).get("display_name", raw_input)
+        return f"{target_npc.name} has nothing to say about {topic_display}."
+
+    formatted_response = manager.parse_and_highlight(raw_response, player, source_npc=target_npc, exclude_topic_id=topic_id)
     return f"{FORMAT_TITLE}{target_npc.name}{FORMAT_RESET}: {formatted_response}"
+
+def handle_accept_offer(args, context):
+    """
+    Called by 'accept' command when not at a quest board.
+    Attempts to accept an offer from the focused NPC.
+    """
+    world = context["world"]
+    player = world.player
+    manager = world.game.knowledge_manager
+    
+    target_npc, _ = _resolve_target_npc(world, [], player)
+    
+    if not target_npc:
+        return "No one here has offered you anything."
+
+    topic_id = manager.resolve_topic_id("accept")
+    if not topic_id: topic_id = "accept_mission"
+    
+    raw_response = manager.get_response(target_npc, topic_id, player)
+    
+    if raw_response is None:
+        return "No one here has offered you anything."
+        
+    formatted_response = manager.parse_and_highlight(raw_response, player, source_npc=target_npc)
+    return f"{FORMAT_TITLE}{target_npc.name}{FORMAT_RESET}: {formatted_response}"
+
+@command("turnin", ["donate", "deposit"], "interaction", "Turn in collection items to a collector.\nUsage: turnin")
+def turnin_handler(args, context):
+    world = context["world"]; player = world.player; game = context["game"]; manager = game.collection_manager 
+    if not player: return "Error."
+    target_npc = None
+    if player.trading_with: target_npc = world.get_npc(player.trading_with)
+    elif player.last_talked_to:
+        c = world.get_npc(player.last_talked_to)
+        if c and c.current_room_id == player.current_room_id: target_npc = c
+    if not target_npc:
+        for npc in world.get_current_room_npcs():
+            if npc.properties.get("is_collector"): target_npc = npc; break
+    if not target_npc: return f"{FORMAT_ERROR}There is no one here to accept collections.{FORMAT_RESET}"
+    return manager.turn_in_items(player, target_npc)
 
 @command("follow", [], "interaction", "Follow an NPC.\nUsage: follow <npc_name> | follow stop")
 def follow_handler(args, context):
@@ -338,3 +362,10 @@ def _handle_quest_dialogue(player, target_npc, world) -> str:
             
     else: 
         return f"{FORMAT_ERROR}You haven't fully met the requirements. {completion_error_msg}{FORMAT_RESET}"
+    
+@command("negotiate", ["parley"], "interaction", "Attempt to negotiate with an NPC.\nUsage: negotiate <npc>")
+def negotiate_handler(args, context):
+    """Shortcut command that proxies to 'talk <npc> negotiate'."""
+    # This tricks the talk_handler into thinking we typed 'talk <npc> negotiate'
+    # which triggers the quest logic update we made above.
+    return talk_handler(args + ["negotiate"], context)

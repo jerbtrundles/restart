@@ -85,10 +85,10 @@ class GameTestBase(unittest.TestCase):
             self.player.equipment[slot] = None
 
     def tearDown(self):
-        GameTestBase._total_tests_run += 1
         if GameTestBase._total_tests_run % 50 == 0:
             sys.stderr.write(f"\n <{GameTestBase._total_tests_run}> ")
             sys.stderr.flush()
+        GameTestBase._total_tests_run += 1
 
     def assertMessageContains(self, substring: str):
         """Custom helper to check if the game printed specific text."""

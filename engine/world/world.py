@@ -169,8 +169,10 @@ class World:
         self.player.current_region_id = new_region_id
         self.player.current_room_id = new_room_id
 
+        # NEW: Get quest updates (returns list of strings instead of printing)
+        quest_updates = []
         if self.quest_manager:
-            self.quest_manager.handle_room_entry(self.player)
+            quest_updates = self.quest_manager.handle_room_entry(self.player)
 
         if new_region_id.startswith("instance_"):
             for quest in self.player.quest_log.values():
@@ -179,7 +181,15 @@ class World:
                     break
 
         region_change_msg = f"{FORMAT_HIGHLIGHT}You have entered {target_region.name}.{FORMAT_RESET}\n\n" if new_region_id != old_region_id else ""
-        return region_change_msg + self.look(minimal=True)
+        
+        # Assemble Final Output
+        output = region_change_msg + self.look(minimal=True)
+        
+        # Append quest updates at the bottom so they are seen last
+        if quest_updates:
+            output += "\n\n" + "\n\n".join(quest_updates)
+
+        return output
 
     def dispatch_event(self, event_type: str, data: Dict[str, Any]) -> Optional[str]:
         if event_type == "npc_killed":

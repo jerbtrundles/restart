@@ -76,26 +76,46 @@ def load_handler(args, context):
     else:
          return f"{FORMAT_ERROR}Error loading world state from {fname}. Game state might be unstable.{FORMAT_RESET}"
 
-@command("minimap", ["map"], "system", "Toggle the visual minimap.\nUsage: minimap [on|off]")
+@command("minimap", ["map"], "system", "Toggle the visual minimap panel.\nUsage: minimap [on|off]")
 def toggle_minimap_handler(args, context):
     game = context.get("game")
     if not game: return f"{FORMAT_ERROR}System error: Game context missing.{FORMAT_RESET}"
-
-    if not args:
-        # Toggle if no arg
-        game.show_minimap = not game.show_minimap
-        status = "enabled" if game.show_minimap else "disabled"
-        return f"{FORMAT_SUCCESS}Minimap {status}.{FORMAT_RESET}"
     
-    arg = args[0].lower()
-    if arg == "on":
-        game.show_minimap = True
-        return f"{FORMAT_SUCCESS}Minimap enabled.{FORMAT_RESET}"
-    elif arg == "off":
-        game.show_minimap = False
-        return f"{FORMAT_SUCCESS}Minimap disabled.{FORMAT_RESET}"
+    panel_id = "map"
+    manager = game.ui_manager
+    
+    # Check if currently visible
+    is_visible = False
+    for panel in manager.right_dock + manager.left_dock:
+        if panel.panel_id == panel_id:
+            is_visible = True
+            break
+
+    should_show = not is_visible # Default toggle logic
+
+    if args:
+        arg = args[0].lower()
+        if arg == "on": should_show = True
+        elif arg == "off": should_show = False
+        else: return f"{FORMAT_ERROR}Usage: minimap [on|off]{FORMAT_RESET}"
+
+    if should_show:
+        if is_visible:
+            return f"{FORMAT_HIGHLIGHT}Minimap is already enabled.{FORMAT_RESET}"
+        
+        # Try adding to right dock
+        if manager.add_panel_to_dock(panel_id, "right"):
+             return f"{FORMAT_SUCCESS}Minimap enabled.{FORMAT_RESET}"
+        else:
+             return f"{FORMAT_ERROR}Could not enable minimap (Panel ID error).{FORMAT_RESET}"
     else:
-        return f"{FORMAT_ERROR}Usage: minimap [on|off]{FORMAT_RESET}"
+        if not is_visible:
+            return f"{FORMAT_HIGHLIGHT}Minimap is already disabled.{FORMAT_RESET}"
+            
+        if manager.remove_panel(panel_id):
+            return f"{FORMAT_SUCCESS}Minimap disabled.{FORMAT_RESET}"
+        else:
+            return f"{FORMAT_ERROR}Could not disable minimap.{FORMAT_RESET}"
     
 @command("view", ["ui", "panel"], "system", "Manage UI panels.\nUsage: view list | view <panel> <on|off>")
 def view_panel_handler(args, context):

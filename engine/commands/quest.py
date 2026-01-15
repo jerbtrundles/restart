@@ -6,6 +6,9 @@ from engine.items.item_factory import ItemFactory
 from engine.player import Player
 from engine.world import world
 
+# Need to import handle_accept_offer
+from engine.commands.interaction.npcs import handle_accept_offer
+
 def _is_player_at_quest_board(player: Player, quest_manager) -> bool:
     """Checks if the player's current location is one of the valid quest board locations."""
     board_locations = quest_manager.config.get("quest_board_locations", [])
@@ -53,21 +56,40 @@ def look_board_handler(args, context):
     response += f"Type '{FORMAT_HIGHLIGHT}accept quest <#>{FORMAT_RESET}' to take a task."
     return response
 
-@command(name="accept quest", aliases=["accept"], category="interaction", help_text="Accept a quest from the board.\nUsage: accept quest <number>")
+@command(name="accept quest", aliases=["accept"], category="interaction", help_text="Accept a quest from the board or an offer from an NPC.\nUsage: accept <# | topic>")
 def accept_quest_handler(args, context):
+    """
+    Handles accepting quests.
+    1. If args are numeric (e.g. "accept 1"), it interacts with the Quest Board.
+    2. If args are text (e.g. "accept mission"), it delegates to NPC dialogue.
+    """
     world = context["world"]
     player = world.player
     quest_manager = world.quest_manager
 
-    if not _is_player_at_quest_board(player, quest_manager):
-        return f"{FORMAT_ERROR}You need to be at a quest board to accept tasks.{FORMAT_RESET}"
-    if not args or not args[0].isdigit():
-        return f"{FORMAT_ERROR}Usage: accept quest <number>{FORMAT_RESET}"
+    # --- 1. DETERMINE TARGET (Board vs NPC) ---
+    is_numeric = False
+    quest_index = -1
+    
+    if args:
+        # Check for "quest 1" or just "1"
+        target_arg = args[0]
+        if target_arg.lower() == "quest" and len(args) > 1:
+            target_arg = args[1]
+        
+        if target_arg.isdigit():
+            is_numeric = True
+            quest_index = int(target_arg) - 1
 
-    try:
-        quest_index = int(args[0]) - 1
-    except ValueError: return f"{FORMAT_ERROR}Invalid number.{FORMAT_RESET}"
+    # --- 2. NPC CONVERSATION FALLBACK ---
+    # If not a number, or if we aren't at a board, try to accept offer from NPC
+    at_board = _is_player_at_quest_board(player, quest_manager)
+    
+    if not is_numeric or not at_board:
+        # Call the dedicated handler for NPC offers
+        return handle_accept_offer(args, context)
 
+    # --- 3. QUEST BOARD LOGIC ---
     if quest_index < 0 or quest_index >= len(world.quest_board):
         return f"{FORMAT_ERROR}Invalid quest number.{FORMAT_RESET}"
 

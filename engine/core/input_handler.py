@@ -1,7 +1,7 @@
 # engine/core/input_handler.py
 """
 Handles all raw user input from Pygame and translates it into game actions.
-Updated to handle mouse clicks for clickable text.
+Updated to handle mouse clicks for clickable text and character creation.
 """
 import pygame
 from typing import TYPE_CHECKING, List
@@ -39,9 +39,41 @@ class InputHandler:
             handler(event)
 
     def _handle_creation_input(self, event):
-        if event.type != pygame.KEYDOWN: return
-        
         game = self.game
+
+        # --- Mouse Handling ---
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            sw = game.renderer.layout.get("screen_width", 800)
+            
+            # 1. Check Name Box Click
+            name_box_width = 400
+            name_box_rect = pygame.Rect((sw - name_box_width)//2, 100, name_box_width, 50)
+            
+            if name_box_rect.collidepoint(event.pos):
+                game.creation_active_field = "name_input"
+                return
+
+            # 2. Check Class List Clicks
+            content_y = 220
+            list_width = 250
+            list_x = (sw // 2) - list_width - 20
+            
+            for i, class_id in enumerate(game.available_classes):
+                item_y = content_y + (i * 40)
+                # Area matches visual list item
+                item_rect = pygame.Rect(list_x - 10, item_y - 5, list_width + 20, 30)
+                
+                if item_rect.collidepoint(event.pos):
+                    game.selected_class_index = i
+                    game.creation_active_field = "class_list"
+                    return
+
+            # Clicked background -> Default to class list
+            game.creation_active_field = "class_list"
+            return
+
+        # --- Keyboard Handling ---
+        if event.type != pygame.KEYDOWN: return
         
         # Navigation
         if event.key == pygame.K_TAB:

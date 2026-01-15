@@ -53,13 +53,14 @@ class KnowledgeManager:
             
         return None
 
-    def get_response(self, npc: 'NPC', topic_id: str, player: 'Player') -> str:
+    def get_response(self, npc: 'NPC', topic_id: str, player: 'Player') -> Optional[str]:
         if "custom_dialog" in npc.properties and topic_id in npc.properties["custom_dialog"]:
             return npc.properties["custom_dialog"][topic_id]
 
         topic_data = self.topics.get(topic_id)
         if not topic_data:
-            return f"\"{npc.name} looks confused. I don't know what that is.\""
+            # Topic exists in code/parser but not in database
+            return None
 
         valid_responses = []
         for resp in topic_data.get("responses", []):
@@ -68,13 +69,13 @@ class KnowledgeManager:
                 valid_responses.append(resp)
 
         if not valid_responses:
-            return f"{npc.name} has nothing to say about {topic_data.get('display_name', topic_id)}."
+            return None
 
         # Sort by priority
         valid_responses.sort(key=lambda x: x.get("priority", 0), reverse=True)
         chosen_response = valid_responses[0]
         
-        # --- NEW: Process Effects ---
+        # Process Effects
         self._process_response_effects(chosen_response, player)
         
         return f"\"{chosen_response['text']}\""
@@ -85,6 +86,31 @@ class KnowledgeManager:
             if key == "faction" and npc.faction != val: return False
             if key == "template_id" and npc.template_id != val: return False
             
+            # Knowledge/Conversation State Check
+            if key == "knowledge_state":
+                topic = val.get("topic_id")
+                state_req = val.get("state") # "known", "discussed", "revealed"
+                
+                if state_req == "known":
+                    if not player.conversation.is_in_vocabulary(topic): return False
+                elif state_req == "discussed":
+                    if not player.conversation.has_discussed(npc.obj_id, topic): return False
+                elif state_req == "revealed":
+                    if not player.conversation.is_revealed(npc.obj_id, topic): return False
+
+            # Campaign State Check
+            if key == "campaign_state":
+                c_id = val.get("campaign_id")
+                state_req = val.get("state") # "active", "completed", "not_active"
+                
+                is_active = c_id in player.active_campaigns
+                is_completed = c_id in player.completed_campaigns
+                
+                if state_req == "active" and not is_active: return False
+                if state_req == "completed" and not is_completed: return False
+                if state_req == "not_active" and (is_active or is_completed): return False
+
+            # Quest State Check
             if key == "quest_state":
                 req_state = val.get("state")
                 from_this = val.get("from_this_npc", False)
@@ -109,7 +135,7 @@ class KnowledgeManager:
 
         return True
 
-    def parse_and_highlight(self, text: str, player: 'Player', source_npc: Optional['NPC'] = None) -> str:
+    def parse_and_highlight(self, text: str, player: 'Player', source_npc: Optional['NPC'] = None, exclude_topic_id: Optional[str] = None) -> str:
         """
         Scans text for known topics and wraps them in clickable command tags.
         """
@@ -117,13 +143,17 @@ class KnowledgeManager:
         
         scannable = []
         for tid, data in self.topics.items():
+            # Skip if this is the topic we are currently viewing
+            if tid == exclude_topic_id:
+                continue
+
             # Add Display Name
             scannable.append((data.get("display_name", tid), tid))
             # Add Keywords (aliases)
             for kw in data.get("keywords", []):
                 scannable.append((kw, tid))
         
-        # Sort by length descending to match longest phrases first (e.g., "missing supplies" before "supplies")
+        # Sort by length descending to match longest phrases first
         scannable.sort(key=lambda x: len(x[0]), reverse=True)
         
         processed_text = text
@@ -149,9 +179,8 @@ class KnowledgeManager:
                     original_word = match.group(0)
                     token = f"__TOPIC_{uuid.uuid4().hex}__"
                     
-                    # LOGIC CHANGE: Use the *original word* (or phrase) found in the text for the command.
-                    # This ensures the output is "ask Merchant caravan" instead of "ask Merchant missing_supplies".
-                    # The resolve_topic_id function will handle mapping "caravan" back to the ID later.
+                    # Use the original word for the command to maintain immersion
+                    # The Resolve logic will map it back to the ID
                     topic_arg = original_word
                     
                     cmd = f"ask {topic_arg}"
@@ -206,12 +235,12 @@ class KnowledgeManager:
                 quest_id = effects["start_quest"]
                 self.world.quest_manager.start_quest(quest_id, player)
                 
-            # 2. Start Campaign (NEW)
+            # 2. Start Campaign
             if "start_campaign" in effects:
                 campaign_id = effects["start_campaign"]
-                self.world.quest_manager.start_campaign(campaign_id, player)
+                self.world.campaign_manager.start_campaign(campaign_id, player)
                 
-            # 3. Give Item (Optional Utility)
+            # 3. Give Item
             if "give_item" in effects:
                 item_id = effects["give_item"]
                 item = self.world.item_factory.create_item_from_template(item_id, self.world)

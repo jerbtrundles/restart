@@ -10,7 +10,7 @@ OUTPUT_DIR = "concatenated" # Write to ./concatenated (inside tools)
 IGNORE_DIRS = {
     '.git', '__pycache__', 'venv', '.venv', '_old', 
     'mud-world-editor', 'concatenated', '.vscode', '.idea', 
-    'tools' # Important: Ignore the tools dir so we don't scan this script or the output
+    'tools', 'tests_quarantine' # Important: Ignore the tools dir so we don't scan this script or the output
 }
 
 # Files to ignore specific filenames
